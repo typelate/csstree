@@ -113,3 +113,35 @@ Record every intentional difference from upstream here (file, what, why).
 - list: the tests store strings rather than distinct empty objects. Two upstream assertions (`#prependList()`, `#insertList()`) expect data `bar` where the list holds `foo` and pass only because `{}` deep-equals `{}`; the port asserts `foo`. `TestListMutateAhead` is Go-only: upstream's mutation tests only touch the current item, which never exercises `updateCursors`.
 - names: no cache. Upstream memoizes descriptors in two unbounded module-level Maps keyed by every input; the port recomputes (one `strings.ToLower` and a few slices) and returns descriptor values, so "result should be immutable" holds by copy and "should return the same object" compares values instead of identity.
 - names: optional `offset` of `vendorPrefix`/`isCustomProperty` is explicit (`VendorPrefix(s, 0)`). Descriptor types are `KeywordDescriptor`/`PropertyDescriptor` (the functions take the names `Keyword`/`Property`), with JSON tags matching upstream keys. Lower-casing uses `strings.ToLower`, which differs from JS `toLowerCase` for a few special-cased code points (e.g. U+0130).
+- tokenizer: `isBOM` → `IsBOM(code int) int` takes a decoded code point (callers use
+  `utf8.DecodeRuneInString`) and returns 3, the UTF-8 byte length of U+FEFF/U+FFFE,
+  where upstream returns 1 UTF-16 code unit. `Tokenize` and `OffsetToLocation` skip 3 bytes.
+- tokenizer: token types are `type TokenType int` constants; upstream `Url`/`BadUrl` are
+  `URL`/`BadURL`, `EofCategory` is `EOFCategory`, `isNonAscii` is `IsNonASCII`,
+  `consumeBadUrlRemnants` is `ConsumeBadURLRemnants`. `TokenType` has a `String()` method
+  returning the `TokenNames` entry (Go only). `tokenTypes` (the namespace object) has no Go
+  counterpart: the constants live in package `tokenizer`.
+- tokenizer: `CharCodeAt(s, i)` is a Go-only export: `s.charCodeAt(i)` returning 0 out of
+  range where JS returns NaN. Every place upstream reads past the end compares the result
+  against a non-zero code, so 0 and NaN behave the same.
+- tokenizer: `TokenStream` keeps `offsetAndType` and `firstCharOffset` unexported (nothing
+  outside lib/tokenizer reads them); `Balance` is exported (`[]int`) for the parser's token
+  iterate API. Reads of `offsetAndType[index - 1]` that upstream lets go out of range
+  (`lookupOffset`, `lookupValue`, `skip` with index 0) return 0, as a JS typed array read of
+  `undefined` does once masked. `isDelim(code, offset)` → `IsDelim(code, offset int)`; pass 0
+  for upstream's omitted offset. A nil `tokenize` func means upstream's no-op default.
+- tokenizer: `TokenStream.Dump()` returns `[]DumpToken` (JSON tags idx/type/chunk/balance).
+- tokenizer: `OffsetToLocation.GetLocation` returns `SourcePosition{Source, Position}` and
+  `GetLocationRange` returns `*Location`; `Position`/`Location` carry upstream's JSON keys.
+  `NewOffsetToLocation(source, startOffset, startLine, startColumn)` has no defaults: callers
+  pass upstream's defaults (0, 1, 1) themselves.
+- tokenizer: `computeLinesAndColumns` adopts `len(source)+1` cells instead of `len(source)`:
+  upstream writes cell `len(source)` past a reused typed array of exactly that length, which
+  JS silently drops and Go would panic on.
+- tokenizer: `DecodeEscaped` reads the leading hex digits like `parseInt(s, 16)`; when there
+  are none (upstream: `NaN`, then `String.fromCodePoint` throws) it returns U+FFFD.
+  A single non-hex escaped char is one byte; the caller appends the rest of a multi-byte
+  code point as upstream appends the second half of a surrogate pair.
+- tokenizer: tests `should convert input to string` and `should accept a Buffer` are skipped:
+  Go sources are typed `string`. Fixture test names omit JsonLocator's `line:column` prefix.
+  No fixture contains non-ASCII text, so no expected offsets needed converting.
