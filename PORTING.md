@@ -145,3 +145,26 @@ Record every intentional difference from upstream here (file, what, why).
 - tokenizer: tests `should convert input to string` and `should accept a Buffer` are skipped:
   Go sources are typed `string`. Fixture test names omit JsonLocator's `line:column` prefix.
   No fixture contains non-ASCII text, so no expected offsets needed converting.
+- definitionsyntax: `Node` is sealed (unexported method), so a node of an unknown
+  type cannot exist; the "should throw an exception on bad node type" generate test
+  is skipped. `Generate` returns a string with no error: a nil node (or a lone
+  `*Range`) generates `""` where upstream throws `Unknown node type`. `Walk` returns
+  an error for a nil node (`Unknown type: <nil>`) and when neither handler is set.
+- definitionsyntax: `walk(node, fn | {enter, leave}, context)` → `Walk(node, WalkOptions{Enter, Leave})`;
+  a lone function is `Enter`, and `context` is dropped (closures). `generate(node, fn | options)`
+  → `Generate(node, GenerateOptions{ForceBraces, Compact, Decorate})`; a lone function is `Decorate`.
+- definitionsyntax: `Range` min/max are `*RangeBound{Value float64, Unit string}`; nil is upstream
+  `null` (infinite). Upstream holds a number, or a string like `"0s"`/`"-90deg"` when a unit
+  follows; `Unit != ""` is that string case (the lexer skips range checks for it).
+  `RangeBound.String()`/JSON reproduce upstream text (`-0` → `0`).
+- definitionsyntax: `Multiplier.Min`/`Max` are `int`; a multiplier number too large for an int is a
+  `SyntaxError` "Number is out of range" (upstream keeps an inexact float).
+- definitionsyntax: the scanner reads a Token as one UTF-8 code point (upstream: one UTF-16 code
+  unit; differs only for characters outside the BMP), and `∞` in a range is matched as a 3-byte
+  prefix. `SyntaxError.Offset` and the caret line count bytes.
+- definitionsyntax: `SyntaxError.Error()` is upstream `error.message` (no `SyntaxError: ` prefix;
+  use `errors.As`). Error texts keep upstream capitalization so tests match. No `stack`/`name`.
+- definitionsyntax: the fixture loader ports only the `tests` export (with JsonLocator names
+  `testdata/definition-syntax/<file>:<line>:<col> (<key>)`); `forEachTest`, `atruleTests`,
+  `forEachAtrulePreludeTest` and `forEachAtruleDescriptorTest` need a lexer and belong to the
+  root package.
