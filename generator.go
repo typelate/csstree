@@ -199,5 +199,5 @@ func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (s
 // Generate turns an AST into CSS text with the default syntax (upstream
 // generate).
 func Generate(node Node, options GenerateOptions) (string, error) {
-	return defaultSyntax().Generate(node, options)
+	return defaultParseSyntax().Generate(node, options)
 }

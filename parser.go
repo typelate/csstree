@@ -650,7 +650,7 @@ var selectorParse = sync.OnceValue(func() ParseFunc {
 
 // Parse parses source with the default syntax (upstream parse).
 func Parse(source string, options ParseOptions) (Node, error) {
-	return defaultSyntax().Parse(source, options)
+	return defaultParseSyntax().Parse(source, options)
 }
 
 // ParseSelector parses source with the selector-only syntax (upstream

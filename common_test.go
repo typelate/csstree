@@ -5,6 +5,7 @@ package csstree
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -128,7 +129,44 @@ func TestCommon(t *testing.T) {
 	})
 
 	t.Run("generic option should work in fork()", func(t *testing.T) {
-		t.Skip("not ported yet: needs lexer")
+		forkWithoutGeneric, err := Fork(&Config{
+			// By default, generic is true, but we disable it
+			Generic: new(false),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		forkWithGeneric, err := Fork(&Config{
+			// By default, generic is true
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Generic should be set
+		if forkWithoutGeneric.Lexer.Generic() != false {
+			t.Errorf("forkWithoutGeneric.Lexer.Generic() = true, want false")
+		}
+		if forkWithGeneric.Lexer.Generic() != true {
+			t.Errorf("forkWithGeneric.Lexer.Generic() = false, want true")
+		}
+
+		// Lexer match should depend on generic (<length> is generic type)
+		node, err := Parse("1px", ParseOptions{Context: "value"})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// upstream asserts that match throws; the Go lexer reports what
+		// upstream throws as the result's Error, not a *SyntaxMatchError
+		var matchError *SyntaxMatchError
+		if result := forkWithoutGeneric.Lexer.Match("<length>", node); result.Error == nil || errors.As(result.Error, &matchError) {
+			t.Errorf(`forkWithoutGeneric.Lexer.Match("<length>", 1px) error = %v, want "Bad syntax reference: <length>"`, result.Error)
+		}
+		if result := forkWithGeneric.Lexer.Match("<length>", node); result.Error != nil {
+			t.Errorf(`forkWithGeneric.Lexer.Match("<length>", 1px) error = %v, want nil`, result.Error)
+		}
 	})
 
 	t.Run("fork()", func(t *testing.T) {

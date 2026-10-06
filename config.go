@@ -3,6 +3,8 @@
 
 package csstree
 
+import "bytes"
+
 // Config is a syntax configuration: the keys upstream's createSyntax,
 // createParser, createGenerator, createWalker and Lexer read.
 type Config struct {
@@ -50,8 +52,29 @@ type AtruleParser struct {
 }
 
 // AtruleDefinition is the syntax of an at-rule for the lexer: its prelude
-// ("" is upstream null) and descriptors (nil is upstream null).
+// ("" is upstream null) and descriptors (nil is upstream null). A
+// descriptor syntax of "" is upstream null.
 type AtruleDefinition struct {
 	Prelude     string
 	Descriptors map[string]string
+}
+
+// MarshalJSON encodes d as upstream's {prelude, descriptors}, with null
+// for an empty Prelude and a nil Descriptors.
+func (d AtruleDefinition) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteString(`{"prelude":`)
+	if err := writeJSON(&buf, nullableString(d.Prelude)); err != nil {
+		return nil, err
+	}
+	buf.WriteString(`,"descriptors":`)
+	var descriptors any
+	if d.Descriptors != nil {
+		descriptors = d.Descriptors
+	}
+	if err := writeJSON(&buf, descriptors); err != nil {
+		return nil, err
+	}
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
 }

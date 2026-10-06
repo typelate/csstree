@@ -118,9 +118,9 @@ func TestGenerate(t *testing.T) {
 			}
 		})
 
-		t.Run("lexer dictionary", func(t *testing.T) {
-			t.Skip("not ported yet: needs lexer (lexer.properties, lexer.types, lexer.atrules)")
-		})
+		// "lexer dictionary" checks the lexer's dictionaries; this package
+		// cannot import the lexer, so it is TestDefinitionSyntaxGenerateLexer
+		// in definition_syntax_lexer_test.go of package csstree.
 	})
 
 	t.Run("using forceBraces", func(t *testing.T) {

@@ -151,16 +151,9 @@ func TestParse(t *testing.T) {
 		}
 	})
 
-	// FIXME: in fact this test checks lexer's dictionaries, since lexer uses
-	// parse under the hood when first access to definition's "syntax" property;
-	// Problems:
-	// - test has side effect, because access to syntax trigger parsing and cache the result
-	// - some other tests can init syntax
-	// - dictionary can move or store actual ast and don't use parsing et all
-	// - etc.
-	t.Run("parse", func(t *testing.T) {
-		t.Skip("not ported yet: needs lexer (lexer.properties, lexer.types, lexer.atrules)")
-	})
+	// The "parse" tests check the lexer's dictionaries; this package cannot
+	// import the lexer, so they are TestDefinitionSyntaxParseLexer in
+	// definition_syntax_lexer_test.go of package csstree.
 }
 
 func TestSyntaxError(t *testing.T) {

@@ -8,16 +8,14 @@ import (
 	"github.com/typelate/csstree/tokenizer"
 )
 
-// Syntax is a CSS syntax: the parser, generator, walker and convertor of
-// one configuration (upstream the object createSyntax returns).
+// Syntax is a CSS syntax: the parser, generator, walker, convertor and
+// lexer of one configuration (upstream the object createSyntax returns).
 // A Syntax is safe for concurrent use; the ASTs it returns are not.
 type Syntax struct {
-	// Lexer is upstream syntax.lexer.
-	//
-	// TODO: a *Lexer built by createSyntax from the lexer keys of the
+	// Lexer is upstream syntax.lexer: the lexer of the lexer keys of the
 	// config (Generic, CSSWideKeywords, Units, Types, Atrules, Properties,
-	// Node) once lib/lexer is ported; nil until then.
-	Lexer any
+	// Node).
+	Lexer *Lexer
 
 	config    *Config
 	parse     ParseFunc
@@ -69,14 +67,33 @@ func createSyntax(config *Config) (*Syntax, error) {
 		clone:     cloneWith(cloneTypesFromConfig(config)),
 	}
 
-	// TODO: syntax.Lexer = a new Lexer for {generic, cssWideKeywords,
-	// units, types, atrules, properties, node} of config and syntax.
+	lexer, err := newLexer(&Config{
+		Generic:         config.Generic,
+		CSSWideKeywords: config.CSSWideKeywords,
+		Units:           config.Units,
+		Types:           config.Types,
+		Atrules:         config.Atrules,
+		Properties:      config.Properties,
+		Node:            config.Node,
+	}, syntax, nil)
+	if err != nil {
+		return nil, err
+	}
+	syntax.Lexer = lexer
 
 	return syntax, nil
 }
 
+// CreateLexer returns a new lexer for the lexer keys of config, sharing
+// this syntax and its node structures (upstream createLexer). It fails when
+// the CSS-wide keywords do not parse as a definition syntax.
+func (s *Syntax) CreateLexer(config *Config) (*Lexer, error) {
+	return newLexer(config, s, s.Lexer.structure)
+}
+
 // CreateSyntax returns the syntax of a copy of config (upstream
-// createSyntax). It fails when a node type has no Structure.
+// createSyntax). It fails when a node type has no Structure or a bad one,
+// or when the CSS-wide keywords do not parse as a definition syntax.
 func CreateSyntax(config *Config) (*Syntax, error) {
 	return createSyntax(mix(nil, config))
 }
@@ -154,7 +171,25 @@ func (s *Syntax) Fork(extension SyntaxExtension) (*Syntax, error) {
 // defaultSyntax is upstream lib/syntax/index.js:
 // createSyntax({ ...lexerConfig, ...parserConfig, ...walkerConfig }).
 var defaultSyntax = sync.OnceValue(func() *Syntax {
-	lexer := lexerConfig()
+	lexer, err := lexerConfig()
+	if err != nil {
+		// the embedded data is decoded by the tests
+		panic("csstree: default syntax: " + err.Error())
+	}
+
+	return createDefaultSyntax(lexer)
+})
+
+// defaultParseSyntax is defaultSyntax without the definitions of data.go
+// (types, properties, at-rules): the package-level Parse, Generate, Walk,
+// Find, FindLast, FindAll, ToPlainObject, FromPlainObject and Tokenize use
+// it, so that a program that only parses does not decode mdn-data. It
+// parses, generates and walks exactly as defaultSyntax does.
+var defaultParseSyntax = sync.OnceValue(func() *Syntax {
+	return createDefaultSyntax(lexerConfigWithoutDefinitions())
+})
+
+func createDefaultSyntax(lexer *Config) *Syntax {
 	parser := parserConfig()
 	walker := walkerConfig()
 
@@ -174,57 +209,69 @@ var defaultSyntax = sync.OnceValue(func() *Syntax {
 		Properties:      lexer.Properties,
 	})
 	if err != nil {
-		// every node type of this package has a structure
+		// every node type of this package has a valid structure
 		panic("csstree: default syntax: " + err.Error())
 	}
 
 	return syntax
-})
+}
 
-// DefaultSyntax returns the default syntax, which the package-level
-// functions (Parse, Generate, Walk, ...) use.
+// DefaultSyntax returns the default syntax, with the lexer of the CSS
+// definitions of mdn-data (decoded on first use). The package-level
+// functions (Parse, Generate, Walk, ...) behave as its methods do.
 func DefaultSyntax() *Syntax {
 	return defaultSyntax()
 }
 
+// DefaultLexer returns the lexer of the default syntax (upstream lexer).
+func DefaultLexer() *Lexer {
+	return defaultSyntax().Lexer
+}
+
+// CreateLexer returns a new lexer for the lexer keys of config with the
+// default syntax (see Syntax.CreateLexer).
+func CreateLexer(config *Config) (*Lexer, error) {
+	return defaultSyntax().CreateLexer(config)
+}
+
 // Tokenize splits source into tokens with the default syntax.
 func Tokenize(source string, onToken func(tokenType tokenizer.TokenType, start, end int)) {
-	defaultSyntax().Tokenize(source, onToken)
+	defaultParseSyntax().Tokenize(source, onToken)
 }
 
 // Walk traverses an AST with the default syntax (see Walker.Walk).
 func Walk(root Node, options WalkOptions) error {
-	return defaultSyntax().Walk(root, options)
+	return defaultParseSyntax().Walk(root, options)
 }
 
 // Find returns the first node for which fn returns true, or nil, with the
 // default syntax.
 func Find(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
-	return defaultSyntax().Find(ast, fn)
+	return defaultParseSyntax().Find(ast, fn)
 }
 
 // FindLast returns the last node for which fn returns true, or nil, with
 // the default syntax.
 func FindLast(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
-	return defaultSyntax().FindLast(ast, fn)
+	return defaultParseSyntax().FindLast(ast, fn)
 }
 
 // FindAll returns every node for which fn returns true, with the default
 // syntax.
 func FindAll(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) []Node {
-	return defaultSyntax().FindAll(ast, fn)
+	return defaultParseSyntax().FindAll(ast, fn)
 }
 
 // FromPlainObject builds an AST from its plain object form with the
 // default syntax.
 func FromPlainObject(ast map[string]any) (Node, error) {
-	return defaultSyntax().FromPlainObject(ast)
+	return defaultParseSyntax().FromPlainObject(ast)
 }
 
 // ToPlainObject returns the plain object form of an AST with the default
 // syntax.
 func ToPlainObject(ast Node) (map[string]any, error) {
-	return defaultSyntax().ToPlainObject(ast)
+	return defaultParseSyntax().ToPlainObject(ast)
 }
 
 // Fork returns a new syntax extending the default syntax (see
