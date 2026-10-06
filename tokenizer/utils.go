@@ -145,7 +145,7 @@ func ConsumeName(source string, offset int) int {
 	// Let result initially be an empty string.
 	// Repeatedly consume the next input code point from the stream:
 	for ; offset < len(source); offset++ {
-		code := int(source[offset])
+		code := getCharCode(source, offset)
 
 		// name code point
 		if IsName(code) {
@@ -238,7 +238,7 @@ func ConsumeNumber(source string, offset int) int {
 func ConsumeBadURLRemnants(source string, offset int) int {
 	// Repeatedly consume the next input code point from the stream:
 	for ; offset < len(source); offset++ {
-		code := int(source[offset])
+		code := getCharCode(source, offset)
 
 		// U+0029 RIGHT PARENTHESIS ())
 		// EOF

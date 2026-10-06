@@ -3,8 +3,8 @@
 package tokenizer
 
 const (
-	offsetMask      = 0x00FFFFFF
-	typeShift       = 24
+	offsetMask      = 1<<typeShift - 1
+	typeShift       = 58
 	blockOpenToken  = 1
 	blockCloseToken = 2
 )
@@ -42,8 +42,9 @@ func boundIndex(index, minimum, maximum int) int {
 // TokenStream is a cursor over the tokens of a source. Use NewTokenStream or
 // call SetSource before using it.
 //
-// Tokens are stored packed as (type << 24 | end) in uint32 cells, as
-// upstream does, so token offsets must fit in 24 bits (sources up to 16 MiB).
+// Tokens are stored packed as (type << 58 | end) in uint64 cells. Upstream
+// packs (type << 24 | end) into uint32 cells, which silently corrupts offsets
+// in sources of 16 MiB or more; 58 offset bits exceed any addressable source.
 type TokenStream struct {
 	Source string
 
@@ -62,7 +63,7 @@ type TokenStream struct {
 	Balance []int
 
 	firstCharOffset int
-	offsetAndType   []uint32
+	offsetAndType   []uint64
 }
 
 // NewTokenStream tokenizes source with tokenize and positions the stream on
@@ -108,7 +109,7 @@ func (ts *TokenStream) SetSource(source string, tokenize func(source string, onT
 		tokenCount++
 
 		// type & offset
-		offsetAndType[index] = uint32(tokenType)<<typeShift | uint32(end)
+		offsetAndType[index] = uint64(tokenType)<<typeShift | uint64(end)
 
 		if firstCharOffset == -1 {
 			firstCharOffset = start
@@ -134,7 +135,7 @@ func (ts *TokenStream) SetSource(source string, tokenize func(source string, onT
 	})
 
 	// finalize buffers
-	offsetAndType[tokenCount] = uint32(EOF)<<typeShift | uint32(sourceLength) // <EOF-token>
+	offsetAndType[tokenCount] = uint64(EOF)<<typeShift | uint64(sourceLength) // <EOF-token>
 	balance[tokenCount] = tokenCount                                          // prevents false positive balance match with any token
 
 	// reverse references from balance start to end
@@ -179,7 +180,7 @@ func (ts *TokenStream) SetSource(source string, tokenize func(source string, onT
 
 // packed reads offsetAndType[index], returning 0 out of range as a JavaScript
 // typed array read of undefined does once masked or shifted.
-func (ts *TokenStream) packed(index int) uint32 {
+func (ts *TokenStream) packed(index int) uint64 {
 	if index < 0 || index >= len(ts.offsetAndType) {
 		return 0
 	}
