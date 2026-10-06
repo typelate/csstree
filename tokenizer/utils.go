@@ -257,7 +257,9 @@ func ConsumeBadURLRemnants(source string, offset int) int {
 		}
 	}
 
-	return offset
+	// Go only: an escape at the very end makes the loop step one past the end
+	// (upstream returns len+1 and relies on JavaScript slicing to clamp it).
+	return min(offset, len(source))
 }
 
 // DecodeEscaped returns the code point an escape stands for, as a string.
