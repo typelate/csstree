@@ -42,7 +42,30 @@ func conditionNodeType() NodeConfig {
 				"SupportsDeclaration",
 			)}},
 		},
-		Generate: generateCondition,
+		Generate:        generateCondition,
+		Walk:            walkCondition,
+		Clone:           cloneCondition,
+		FromPlainObject: fromPlainObjectCondition,
+	}
+}
+
+func walkCondition(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Condition)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneCondition(node Node, clone func(Node) Node) Node {
+	c := *node.(*Condition)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectCondition(r *PlainObjectReader, object map[string]any) Node {
+	return &Condition{
+		Loc:      r.Location(object),
+		Kind:     r.String(object, "kind"),
+		Children: r.List(object, "children"),
 	}
 }
 

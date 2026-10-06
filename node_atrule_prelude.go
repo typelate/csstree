@@ -31,7 +31,29 @@ func atrulePreludeNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "children", Types: []FieldType{listField()}},
 		},
-		Generate: generateAtrulePrelude,
+		Generate:        generateAtrulePrelude,
+		Walk:            walkAtrulePrelude,
+		Clone:           cloneAtrulePrelude,
+		FromPlainObject: fromPlainObjectAtrulePrelude,
+	}
+}
+
+func walkAtrulePrelude(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*AtrulePrelude)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneAtrulePrelude(node Node, clone func(Node) Node) Node {
+	c := *node.(*AtrulePrelude)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectAtrulePrelude(r *PlainObjectReader, object map[string]any) Node {
+	return &AtrulePrelude{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
 	}
 }
 

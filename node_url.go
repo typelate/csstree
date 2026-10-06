@@ -26,7 +26,22 @@ func urlNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "value", Types: []FieldType{stringField()}},
 		},
-		Generate: generateURL,
+		Generate:        generateURL,
+		Clone:           cloneURL,
+		FromPlainObject: fromPlainObjectURL,
+	}
+}
+
+func cloneURL(node Node, _ func(Node) Node) Node {
+	c := *node.(*URL)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectURL(r *PlainObjectReader, object map[string]any) Node {
+	return &URL{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 

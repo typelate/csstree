@@ -25,7 +25,22 @@ func numberNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "value", Types: []FieldType{stringField()}},
 		},
-		Generate: generateNumber,
+		Generate:        generateNumber,
+		Clone:           cloneNumber,
+		FromPlainObject: fromPlainObjectNumber,
+	}
+}
+
+func cloneNumber(node Node, _ func(Node) Node) Node {
+	c := *node.(*Number)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectNumber(r *PlainObjectReader, object map[string]any) Node {
+	return &Number{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 

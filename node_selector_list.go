@@ -29,7 +29,29 @@ func selectorListNodeType() NodeConfig {
 				"Raw",
 			)}},
 		},
-		Generate: generateSelectorList,
+		Generate:        generateSelectorList,
+		Walk:            walkSelectorList,
+		Clone:           cloneSelectorList,
+		FromPlainObject: fromPlainObjectSelectorList,
+	}
+}
+
+func walkSelectorList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*SelectorList)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneSelectorList(node Node, clone func(Node) Node) Node {
+	c := *node.(*SelectorList)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectSelectorList(r *PlainObjectReader, object map[string]any) Node {
+	return &SelectorList{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
 	}
 }
 

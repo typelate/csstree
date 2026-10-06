@@ -26,7 +26,31 @@ func supportsDeclarationNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "declaration", Types: []FieldType{nodeField("Declaration")}},
 		},
-		Generate: generateSupportsDeclaration,
+		Generate:        generateSupportsDeclaration,
+		Walk:            walkSupportsDeclaration,
+		Clone:           cloneSupportsDeclaration,
+		FromPlainObject: fromPlainObjectSupportsDeclaration,
+	}
+}
+
+func walkSupportsDeclaration(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*SupportsDeclaration)
+	return n.Declaration != nil && walkNode(n.Declaration)
+}
+
+func cloneSupportsDeclaration(node Node, clone func(Node) Node) Node {
+	c := *node.(*SupportsDeclaration)
+	c.Loc = cloneLocation(c.Loc)
+	if c.Declaration != nil {
+		c.Declaration, _ = clone(c.Declaration).(*Declaration)
+	}
+	return &c
+}
+
+func fromPlainObjectSupportsDeclaration(r *PlainObjectReader, object map[string]any) Node {
+	return &SupportsDeclaration{
+		Loc:         r.Location(object),
+		Declaration: PlainObjectNode[*Declaration](r, object, "declaration"),
 	}
 }
 

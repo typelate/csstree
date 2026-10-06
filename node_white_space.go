@@ -25,7 +25,22 @@ func whiteSpaceNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "value", Types: []FieldType{stringField()}},
 		},
-		Generate: generateWhiteSpace,
+		Generate:        generateWhiteSpace,
+		Clone:           cloneWhiteSpace,
+		FromPlainObject: fromPlainObjectWhiteSpace,
+	}
+}
+
+func cloneWhiteSpace(node Node, _ func(Node) Node) Node {
+	c := *node.(*WhiteSpace)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectWhiteSpace(r *PlainObjectReader, object map[string]any) Node {
+	return &WhiteSpace{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 

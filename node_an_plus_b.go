@@ -131,7 +131,23 @@ func anPlusBNodeType() NodeConfig {
 			{Name: "a", Types: []FieldType{stringField(), nullField()}},
 			{Name: "b", Types: []FieldType{stringField(), nullField()}},
 		},
-		Generate: generateAnPlusB,
+		Generate:        generateAnPlusB,
+		Clone:           cloneAnPlusB,
+		FromPlainObject: fromPlainObjectAnPlusB,
+	}
+}
+
+func cloneAnPlusB(node Node, _ func(Node) Node) Node {
+	c := *node.(*AnPlusB)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectAnPlusB(r *PlainObjectReader, object map[string]any) Node {
+	return &AnPlusB{
+		Loc: r.Location(object),
+		A:   r.String(object, "a"),
+		B:   r.String(object, "b"),
 	}
 }
 

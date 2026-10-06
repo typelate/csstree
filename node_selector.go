@@ -31,7 +31,29 @@ func selectorNodeType() NodeConfig {
 				"Combinator",
 			)}},
 		},
-		Generate: generateSelector,
+		Generate:        generateSelector,
+		Walk:            walkSelector,
+		Clone:           cloneSelector,
+		FromPlainObject: fromPlainObjectSelector,
+	}
+}
+
+func walkSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Selector)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneSelector(node Node, clone func(Node) Node) Node {
+	c := *node.(*Selector)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &Selector{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
 	}
 }
 

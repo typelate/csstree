@@ -30,7 +30,38 @@ func nthNodeType() NodeConfig {
 			{Name: "nth", Types: []FieldType{nodeField("AnPlusB"), nodeField("Identifier")}},
 			{Name: "selector", Types: []FieldType{nodeField("SelectorList"), nullField()}},
 		},
-		Generate: generateNth,
+		Generate:        generateNth,
+		Walk:            walkNth,
+		Clone:           cloneNth,
+		FromPlainObject: fromPlainObjectNth,
+	}
+}
+
+func walkNth(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Nth)
+	if reverse {
+		return n.Selector != nil && walkNode(n.Selector) ||
+			n.Nth != nil && walkNode(n.Nth)
+	}
+	return n.Nth != nil && walkNode(n.Nth) ||
+		n.Selector != nil && walkNode(n.Selector)
+}
+
+func cloneNth(node Node, clone func(Node) Node) Node {
+	c := *node.(*Nth)
+	c.Loc = cloneLocation(c.Loc)
+	c.Nth = clone(c.Nth)
+	if c.Selector != nil {
+		c.Selector, _ = clone(c.Selector).(*SelectorList)
+	}
+	return &c
+}
+
+func fromPlainObjectNth(r *PlainObjectReader, object map[string]any) Node {
+	return &Nth{
+		Loc:      r.Location(object),
+		Nth:      r.Node(object, "nth"),
+		Selector: PlainObjectNode[*SelectorList](r, object, "selector"),
 	}
 }
 

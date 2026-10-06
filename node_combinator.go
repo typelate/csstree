@@ -26,7 +26,22 @@ func combinatorNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "name", Types: []FieldType{stringField()}},
 		},
-		Generate: generateCombinator,
+		Generate:        generateCombinator,
+		Clone:           cloneCombinator,
+		FromPlainObject: fromPlainObjectCombinator,
+	}
+}
+
+func cloneCombinator(node Node, _ func(Node) Node) Node {
+	c := *node.(*Combinator)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectCombinator(r *PlainObjectReader, object map[string]any) Node {
+	return &Combinator{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
 	}
 }
 

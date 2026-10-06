@@ -35,7 +35,30 @@ func pseudoElementSelectorNodeType() NodeConfig {
 			{Name: "name", Types: []FieldType{stringField()}},
 			{Name: "children", Types: []FieldType{listField("Raw"), nullField()}},
 		},
-		Generate: generatePseudoElementSelector,
+		Generate:        generatePseudoElementSelector,
+		Walk:            walkPseudoElementSelector,
+		Clone:           clonePseudoElementSelector,
+		FromPlainObject: fromPlainObjectPseudoElementSelector,
+	}
+}
+
+func walkPseudoElementSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*PseudoElementSelector)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func clonePseudoElementSelector(node Node, clone func(Node) Node) Node {
+	c := *node.(*PseudoElementSelector)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectPseudoElementSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &PseudoElementSelector{
+		Loc:      r.Location(object),
+		Name:     r.String(object, "name"),
+		Children: r.List(object, "children"),
 	}
 }
 

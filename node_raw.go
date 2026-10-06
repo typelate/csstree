@@ -38,7 +38,22 @@ func rawNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "value", Types: []FieldType{stringField()}},
 		},
-		Generate: generateRaw,
+		Generate:        generateRaw,
+		Clone:           cloneRaw,
+		FromPlainObject: fromPlainObjectRaw,
+	}
+}
+
+func cloneRaw(node Node, _ func(Node) Node) Node {
+	c := *node.(*Raw)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectRaw(r *PlainObjectReader, object map[string]any) Node {
+	return &Raw{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 

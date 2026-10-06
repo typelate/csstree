@@ -28,7 +28,23 @@ func dimensionNodeType() NodeConfig {
 			{Name: "value", Types: []FieldType{stringField()}},
 			{Name: "unit", Types: []FieldType{stringField()}},
 		},
-		Generate: generateDimension,
+		Generate:        generateDimension,
+		Clone:           cloneDimension,
+		FromPlainObject: fromPlainObjectDimension,
+	}
+}
+
+func cloneDimension(node Node, _ func(Node) Node) Node {
+	c := *node.(*Dimension)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectDimension(r *PlainObjectReader, object map[string]any) Node {
+	return &Dimension{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
+		Unit:  r.String(object, "unit"),
 	}
 }
 

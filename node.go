@@ -60,13 +60,40 @@ type StructureField struct {
 // the generator's public API).
 type GenerateFunc func(g *Generator, node Node)
 
+// WalkFieldsFunc calls walkNode for each non-nil node field and walkList
+// for each non-nil list field of node, in structure order or, when reverse
+// is set, in reverse structure order. It returns true as soon as walkNode
+// or walkList does (upstream: the type iterator the walker builds from
+// structure by reading node[field.name]).
+type WalkFieldsFunc func(node Node, reverse bool, walkNode func(Node) bool, walkList func(*List[Node]) bool) bool
+
+// CloneFunc returns a deep copy of node, copying its child nodes with
+// clone (upstream clone copies any object generically).
+type CloneFunc func(node Node, clone func(Node) Node) Node
+
+// FromPlainObjectFunc builds a node from its plain object form (upstream
+// fromPlainObject turns the arrays of a JSON-like AST back into Lists in
+// place). Fields are read with the methods of r, which records the first
+// error.
+type FromPlainObjectFunc func(r *PlainObjectReader, object map[string]any) Node
+
 // NodeConfig describes a node type (upstream config.node[name]: the exports
 // of lib/syntax/node/<Name>.js except parse, which is a *Parser method).
+//
+// Walk, Clone and FromPlainObject are Go-only: upstream reads and writes
+// node fields by name, which a typed AST cannot do without reflection, so
+// each node type supplies these functions. A node type added through
+// Syntax.Fork supplies its own; without them the walker does not descend
+// into its nodes, Clone shares them and FromPlainObject rejects them.
 type NodeConfig struct {
 	Name        string
 	Structure   []StructureField
 	WalkContext string
 	Generate    GenerateFunc
+
+	Walk            WalkFieldsFunc
+	Clone           CloneFunc
+	FromPlainObject FromPlainObjectFunc
 }
 
 // nodeConfigs returns every node type in upstream index.js order.

@@ -56,7 +56,29 @@ func blockNodeType() NodeConfig {
 				"Declaration",
 			)}},
 		},
-		Generate: generateBlock,
+		Generate:        generateBlock,
+		Walk:            walkBlock,
+		Clone:           cloneBlock,
+		FromPlainObject: fromPlainObjectBlock,
+	}
+}
+
+func walkBlock(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Block)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneBlock(node Node, clone func(Node) Node) Node {
+	c := *node.(*Block)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectBlock(r *PlainObjectReader, object map[string]any) Node {
+	return &Block{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
 	}
 }
 

@@ -25,7 +25,22 @@ func idSelectorNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "name", Types: []FieldType{stringField()}},
 		},
-		Generate: generateIDSelector,
+		Generate:        generateIDSelector,
+		Clone:           cloneIDSelector,
+		FromPlainObject: fromPlainObjectIDSelector,
+	}
+}
+
+func cloneIDSelector(node Node, _ func(Node) Node) Node {
+	c := *node.(*IDSelector)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectIDSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &IDSelector{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
 	}
 }
 

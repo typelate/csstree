@@ -18,9 +18,23 @@ func (n *NestingSelector) MarshalJSON() ([]byte, error) {
 
 func nestingSelectorNodeType() NodeConfig {
 	return NodeConfig{
-		Name:      "NestingSelector",
-		Structure: []StructureField{},
-		Generate:  generateNestingSelector,
+		Name:            "NestingSelector",
+		Structure:       []StructureField{},
+		Generate:        generateNestingSelector,
+		Clone:           cloneNestingSelector,
+		FromPlainObject: fromPlainObjectNestingSelector,
+	}
+}
+
+func cloneNestingSelector(node Node, _ func(Node) Node) Node {
+	c := *node.(*NestingSelector)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectNestingSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &NestingSelector{
+		Loc: r.Location(object),
 	}
 }
 

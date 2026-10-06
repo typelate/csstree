@@ -168,7 +168,22 @@ func unicodeRangeNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "value", Types: []FieldType{stringField()}},
 		},
-		Generate: generateUnicodeRange,
+		Generate:        generateUnicodeRange,
+		Clone:           cloneUnicodeRange,
+		FromPlainObject: fromPlainObjectUnicodeRange,
+	}
+}
+
+func cloneUnicodeRange(node Node, _ func(Node) Node) Node {
+	c := *node.(*UnicodeRange)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectUnicodeRange(r *PlainObjectReader, object map[string]any) Node {
+	return &UnicodeRange{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 

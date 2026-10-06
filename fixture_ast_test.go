@@ -39,10 +39,14 @@ type astFixturePosition struct {
 
 // astFixtureTest is one fixture entry after upstream's processTest.
 type astFixtureTest struct {
-	Name          string
-	Source        string
-	Generate      *string
-	AST           any
+	Name     string
+	Source   string
+	Generate *string
+	AST      any
+	// OrderedAST is AST with the keys of objects in source order
+	// (*orderedObject), for tests that depend on upstream's
+	// Object.values order.
+	OrderedAST    any
 	Error         string
 	Position      astFixturePosition
 	Options       astFixtureOptions
@@ -269,11 +273,26 @@ func processASTTest(raw json.RawMessage, scope string) (astFixtureTest, bool, er
 	if err := json.Unmarshal(raw, &fields); err != nil {
 		return astFixtureTest{}, false, err
 	}
+	var rawFields struct {
+		AST json.RawMessage `json:"ast"`
+	}
+	if err := json.Unmarshal(raw, &rawFields); err != nil {
+		return astFixtureTest{}, false, err
+	}
+	var orderedAST any
+	if len(rawFields.AST) > 0 {
+		var err error
+		orderedAST, err = decodeOrdered(rawFields.AST)
+		if err != nil {
+			return astFixtureTest{}, false, err
+		}
+	}
 
 	test := astFixtureTest{
 		Source:        fields.Source,
 		Generate:      fields.Generate,
 		AST:           fields.AST,
+		OrderedAST:    orderedAST,
 		Error:         fields.Error,
 		Options:       fields.Options,
 		Skip:          truthy(fields.Skip),
@@ -309,6 +328,7 @@ func processASTTest(raw json.RawMessage, scope string) (astFixtureTest, bool, er
 		if typ, _ := ast["type"].(string); !strings.EqualFold(typ, scope) {
 			if wrap, ok := astWrapper[scope]; ok {
 				test.AST = wrap(test.AST)
+				test.OrderedAST = orderedASTWrapper[scope](test.OrderedAST)
 			}
 		}
 	}
@@ -412,5 +432,94 @@ func assertASTEqualNoLoc(t *testing.T, source string, actual, expected any) {
 		gotJSON, _ := json.MarshalIndent(got, "", "    ")
 		wantJSON, _ := json.MarshalIndent(want, "", "    ")
 		t.Errorf("Parse(%q) =\n%s\nwant\n%s", source, gotJSON, wantJSON)
+	}
+}
+
+// orderedObject is a JSON object with its keys in source order.
+type orderedObject struct {
+	keys   []string
+	values map[string]any
+}
+
+func newOrderedObject(keysAndValues ...any) *orderedObject {
+	object := &orderedObject{values: make(map[string]any)}
+	for i := 0; i < len(keysAndValues); i += 2 {
+		key := keysAndValues[i].(string)
+		object.keys = append(object.keys, key)
+		object.values[key] = keysAndValues[i+1]
+	}
+	return object
+}
+
+// orderedASTWrapper is astWrapper building *orderedObject values with
+// upstream's key order.
+var orderedASTWrapper = map[string]func(ast any) any{
+	"stylesheet": func(ast any) any {
+		return newOrderedObject("type", "StyleSheet", "children", []any{ast})
+	},
+	"mediaQuery": func(ast any) any {
+		return newOrderedObject("type", "MediaQuery", "modifier", nil, "mediaType", nil, "condition", ast)
+	},
+	"rule": func(ast any) any {
+		return newOrderedObject("type", "Rule", "prelude", newOrderedObject("type", "SelectorList", "children", []any{}), "block", ast)
+	},
+	"selector": func(ast any) any {
+		return newOrderedObject("type", "Selector", "children", []any{ast})
+	},
+	"value": func(ast any) any {
+		return newOrderedObject("type", "Value", "children", []any{ast})
+	},
+}
+
+// decodeOrdered decodes JSON like json.Unmarshal into an any, except that
+// objects are *orderedObject.
+func decodeOrdered(data []byte) (any, error) {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	return decodeOrderedValue(dec)
+}
+
+func decodeOrderedValue(dec *json.Decoder) (any, error) {
+	tok, err := dec.Token()
+	if err != nil {
+		return nil, err
+	}
+	switch tok {
+	case json.Delim('{'):
+		object := &orderedObject{values: make(map[string]any)}
+		for dec.More() {
+			keyTok, err := dec.Token()
+			if err != nil {
+				return nil, err
+			}
+			key, ok := keyTok.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected a key")
+			}
+			value, err := decodeOrderedValue(dec)
+			if err != nil {
+				return nil, err
+			}
+			object.keys = append(object.keys, key)
+			object.values[key] = value
+		}
+		if _, err := dec.Token(); err != nil {
+			return nil, err
+		}
+		return object, nil
+	case json.Delim('['):
+		array := []any{}
+		for dec.More() {
+			value, err := decodeOrderedValue(dec)
+			if err != nil {
+				return nil, err
+			}
+			array = append(array, value)
+		}
+		if _, err := dec.Token(); err != nil {
+			return nil, err
+		}
+		return array, nil
+	default:
+		return tok, nil
 	}
 }

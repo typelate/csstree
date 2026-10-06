@@ -27,7 +27,29 @@ func mediaQueryListNodeType() NodeConfig {
 				"MediaQuery",
 			)}},
 		},
-		Generate: generateMediaQueryList,
+		Generate:        generateMediaQueryList,
+		Walk:            walkMediaQueryList,
+		Clone:           cloneMediaQueryList,
+		FromPlainObject: fromPlainObjectMediaQueryList,
+	}
+}
+
+func walkMediaQueryList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*MediaQueryList)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneMediaQueryList(node Node, clone func(Node) Node) Node {
+	c := *node.(*MediaQueryList)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectMediaQueryList(r *PlainObjectReader, object map[string]any) Node {
+	return &MediaQueryList{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
 	}
 }
 

@@ -643,11 +643,6 @@ func substring(s string, start, end int) string {
 	return s[start:end]
 }
 
-// defaultParse is upstream lib/parser/index.js.
-var defaultParse = sync.OnceValue(func() ParseFunc {
-	return CreateParser(parserConfig())
-})
-
 // selectorParse is upstream lib/parser/parse-selector.js.
 var selectorParse = sync.OnceValue(func() ParseFunc {
 	return CreateParser(parserSelectorConfig())
@@ -655,7 +650,7 @@ var selectorParse = sync.OnceValue(func() ParseFunc {
 
 // Parse parses source with the default syntax (upstream parse).
 func Parse(source string, options ParseOptions) (Node, error) {
-	return defaultParse()(source, options)
+	return defaultSyntax().Parse(source, options)
 }
 
 // ParseSelector parses source with the selector-only syntax (upstream

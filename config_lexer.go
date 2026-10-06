@@ -6,11 +6,9 @@ package csstree
 //
 // TODO: add upstream's `...definitions` (types, properties, atrules and
 // units from lib/data.js) once data.go is ported.
-//
-//lint:ignore U1000 used by the lexer and walker, which are not ported yet
 func lexerConfig() *Config {
 	return &Config{
-		Generic:         true,
+		Generic:         new(true),
 		CSSWideKeywords: cssWideKeywords(),
 		Node:            nodeConfigs(),
 	}

@@ -25,7 +25,22 @@ func identifierNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "name", Types: []FieldType{stringField()}},
 		},
-		Generate: generateIdentifier,
+		Generate:        generateIdentifier,
+		Clone:           cloneIdentifier,
+		FromPlainObject: fromPlainObjectIdentifier,
+	}
+}
+
+func cloneIdentifier(node Node, _ func(Node) Node) Node {
+	c := *node.(*Identifier)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectIdentifier(r *PlainObjectReader, object map[string]any) Node {
+	return &Identifier{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
 	}
 }
 

@@ -37,7 +37,33 @@ func mediaQueryNodeType() NodeConfig {
 			{Name: "mediaType", Types: []FieldType{stringField(), nullField()}},
 			{Name: "condition", Types: []FieldType{nodeField("Condition"), nullField()}},
 		},
-		Generate: generateMediaQuery,
+		Generate:        generateMediaQuery,
+		Walk:            walkMediaQuery,
+		Clone:           cloneMediaQuery,
+		FromPlainObject: fromPlainObjectMediaQuery,
+	}
+}
+
+func walkMediaQuery(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*MediaQuery)
+	return n.Condition != nil && walkNode(n.Condition)
+}
+
+func cloneMediaQuery(node Node, clone func(Node) Node) Node {
+	c := *node.(*MediaQuery)
+	c.Loc = cloneLocation(c.Loc)
+	if c.Condition != nil {
+		c.Condition, _ = clone(c.Condition).(*Condition)
+	}
+	return &c
+}
+
+func fromPlainObjectMediaQuery(r *PlainObjectReader, object map[string]any) Node {
+	return &MediaQuery{
+		Loc:       r.Location(object),
+		Modifier:  r.String(object, "modifier"),
+		MediaType: r.String(object, "mediaType"),
+		Condition: PlainObjectNode[*Condition](r, object, "condition"),
 	}
 }
 

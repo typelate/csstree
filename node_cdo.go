@@ -18,9 +18,23 @@ func (n *CDO) MarshalJSON() ([]byte, error) {
 
 func cdoNodeType() NodeConfig {
 	return NodeConfig{
-		Name:      "CDO",
-		Structure: []StructureField{},
-		Generate:  generateCDO,
+		Name:            "CDO",
+		Structure:       []StructureField{},
+		Generate:        generateCDO,
+		Clone:           cloneCDO,
+		FromPlainObject: fromPlainObjectCDO,
+	}
+}
+
+func cloneCDO(node Node, _ func(Node) Node) Node {
+	c := *node.(*CDO)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectCDO(r *PlainObjectReader, object map[string]any) Node {
+	return &CDO{
+		Loc: r.Location(object),
 	}
 }
 

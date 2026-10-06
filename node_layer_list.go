@@ -27,7 +27,29 @@ func layerListNodeType() NodeConfig {
 				"Layer",
 			)}},
 		},
-		Generate: generateLayerList,
+		Generate:        generateLayerList,
+		Walk:            walkLayerList,
+		Clone:           cloneLayerList,
+		FromPlainObject: fromPlainObjectLayerList,
+	}
+}
+
+func walkLayerList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*LayerList)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneLayerList(node Node, clone func(Node) Node) Node {
+	c := *node.(*LayerList)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectLayerList(r *PlainObjectReader, object map[string]any) Node {
+	return &LayerList{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
 	}
 }
 

@@ -25,7 +25,22 @@ func layerNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "name", Types: []FieldType{stringField()}},
 		},
-		Generate: generateLayer,
+		Generate:        generateLayer,
+		Clone:           cloneLayer,
+		FromPlainObject: fromPlainObjectLayer,
+	}
+}
+
+func cloneLayer(node Node, _ func(Node) Node) Node {
+	c := *node.(*Layer)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectLayer(r *PlainObjectReader, object map[string]any) Node {
+	return &Layer{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
 	}
 }
 

@@ -34,7 +34,22 @@ func typeSelectorNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "name", Types: []FieldType{stringField()}},
 		},
-		Generate: generateTypeSelector,
+		Generate:        generateTypeSelector,
+		Clone:           cloneTypeSelector,
+		FromPlainObject: fromPlainObjectTypeSelector,
+	}
+}
+
+func cloneTypeSelector(node Node, _ func(Node) Node) Node {
+	c := *node.(*TypeSelector)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectTypeSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &TypeSelector{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
 	}
 }
 

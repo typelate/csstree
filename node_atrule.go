@@ -62,7 +62,39 @@ func atruleNodeType() NodeConfig {
 			{Name: "prelude", Types: []FieldType{nodeField("AtrulePrelude"), nodeField("Raw"), nullField()}},
 			{Name: "block", Types: []FieldType{nodeField("Block"), nullField()}},
 		},
-		Generate: generateAtrule,
+		Generate:        generateAtrule,
+		Walk:            walkAtrule,
+		Clone:           cloneAtrule,
+		FromPlainObject: fromPlainObjectAtrule,
+	}
+}
+
+func walkAtrule(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Atrule)
+	if reverse {
+		return n.Block != nil && walkNode(n.Block) ||
+			n.Prelude != nil && walkNode(n.Prelude)
+	}
+	return n.Prelude != nil && walkNode(n.Prelude) ||
+		n.Block != nil && walkNode(n.Block)
+}
+
+func cloneAtrule(node Node, clone func(Node) Node) Node {
+	c := *node.(*Atrule)
+	c.Loc = cloneLocation(c.Loc)
+	c.Prelude = clone(c.Prelude)
+	if c.Block != nil {
+		c.Block, _ = clone(c.Block).(*Block)
+	}
+	return &c
+}
+
+func fromPlainObjectAtrule(r *PlainObjectReader, object map[string]any) Node {
+	return &Atrule{
+		Loc:     r.Location(object),
+		Name:    r.String(object, "name"),
+		Prelude: r.Node(object, "prelude"),
+		Block:   PlainObjectNode[*Block](r, object, "block"),
 	}
 }
 

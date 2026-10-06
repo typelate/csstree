@@ -104,7 +104,40 @@ func attributeSelectorNodeType() NodeConfig {
 			{Name: "value", Types: []FieldType{nodeField("String"), nodeField("Identifier"), nullField()}},
 			{Name: "flags", Types: []FieldType{stringField(), nullField()}},
 		},
-		Generate: generateAttributeSelector,
+		Generate:        generateAttributeSelector,
+		Walk:            walkAttributeSelector,
+		Clone:           cloneAttributeSelector,
+		FromPlainObject: fromPlainObjectAttributeSelector,
+	}
+}
+
+func walkAttributeSelector(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*AttributeSelector)
+	if reverse {
+		return n.Value != nil && walkNode(n.Value) ||
+			n.Name != nil && walkNode(n.Name)
+	}
+	return n.Name != nil && walkNode(n.Name) ||
+		n.Value != nil && walkNode(n.Value)
+}
+
+func cloneAttributeSelector(node Node, clone func(Node) Node) Node {
+	c := *node.(*AttributeSelector)
+	c.Loc = cloneLocation(c.Loc)
+	if c.Name != nil {
+		c.Name, _ = clone(c.Name).(*Identifier)
+	}
+	c.Value = clone(c.Value)
+	return &c
+}
+
+func fromPlainObjectAttributeSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &AttributeSelector{
+		Loc:     r.Location(object),
+		Name:    PlainObjectNode[*Identifier](r, object, "name"),
+		Matcher: r.String(object, "matcher"),
+		Value:   r.Node(object, "value"),
+		Flags:   r.String(object, "flags"),
 	}
 }
 

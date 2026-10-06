@@ -33,7 +33,31 @@ func featureNodeType() NodeConfig {
 			{Name: "name", Types: []FieldType{stringField()}},
 			{Name: "value", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function"), nullField()}},
 		},
-		Generate: generateFeature,
+		Generate:        generateFeature,
+		Walk:            walkFeature,
+		Clone:           cloneFeature,
+		FromPlainObject: fromPlainObjectFeature,
+	}
+}
+
+func walkFeature(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Feature)
+	return n.Value != nil && walkNode(n.Value)
+}
+
+func cloneFeature(node Node, clone func(Node) Node) Node {
+	c := *node.(*Feature)
+	c.Loc = cloneLocation(c.Loc)
+	c.Value = clone(c.Value)
+	return &c
+}
+
+func fromPlainObjectFeature(r *PlainObjectReader, object map[string]any) Node {
+	return &Feature{
+		Loc:   r.Location(object),
+		Kind:  r.String(object, "kind"),
+		Name:  r.String(object, "name"),
+		Value: r.Node(object, "value"),
 	}
 }
 

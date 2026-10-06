@@ -23,7 +23,22 @@ func operatorNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "value", Types: []FieldType{stringField()}},
 		},
-		Generate: generateOperator,
+		Generate:        generateOperator,
+		Clone:           cloneOperator,
+		FromPlainObject: fromPlainObjectOperator,
+	}
+}
+
+func cloneOperator(node Node, _ func(Node) Node) Node {
+	c := *node.(*Operator)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectOperator(r *PlainObjectReader, object map[string]any) Node {
+	return &Operator{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 

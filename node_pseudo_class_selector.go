@@ -35,7 +35,30 @@ func pseudoClassSelectorNodeType() NodeConfig {
 			{Name: "name", Types: []FieldType{stringField()}},
 			{Name: "children", Types: []FieldType{listField("Raw"), nullField()}},
 		},
-		Generate: generatePseudoClassSelector,
+		Generate:        generatePseudoClassSelector,
+		Walk:            walkPseudoClassSelector,
+		Clone:           clonePseudoClassSelector,
+		FromPlainObject: fromPlainObjectPseudoClassSelector,
+	}
+}
+
+func walkPseudoClassSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*PseudoClassSelector)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func clonePseudoClassSelector(node Node, clone func(Node) Node) Node {
+	c := *node.(*PseudoClassSelector)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectPseudoClassSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &PseudoClassSelector{
+		Loc:      r.Location(object),
+		Name:     r.String(object, "name"),
+		Children: r.List(object, "children"),
 	}
 }
 

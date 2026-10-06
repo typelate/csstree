@@ -68,7 +68,50 @@ func declarationNodeType() NodeConfig {
 			{Name: "property", Types: []FieldType{stringField()}},
 			{Name: "value", Types: []FieldType{nodeField("Value"), nodeField("Raw")}},
 		},
-		Generate: generateDeclaration,
+		Generate:        generateDeclaration,
+		Walk:            walkDeclaration,
+		Clone:           cloneDeclaration,
+		FromPlainObject: fromPlainObjectDeclaration,
+	}
+}
+
+func walkDeclaration(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Declaration)
+	return n.Value != nil && walkNode(n.Value)
+}
+
+func cloneDeclaration(node Node, clone func(Node) Node) Node {
+	c := *node.(*Declaration)
+	c.Loc = cloneLocation(c.Loc)
+	c.Value = clone(c.Value)
+	return &c
+}
+
+func fromPlainObjectDeclaration(r *PlainObjectReader, object map[string]any) Node {
+	return &Declaration{
+		Loc:       r.Location(object),
+		Important: plainObjectImportant(r, object),
+		Property:  r.String(object, "property"),
+		Value:     r.Node(object, "value"),
+	}
+}
+
+// plainObjectImportant reads Declaration.important: false, true or a
+// string.
+func plainObjectImportant(r *PlainObjectReader, object map[string]any) string {
+	switch value := object["important"].(type) {
+	case nil:
+		return ""
+	case bool:
+		if value {
+			return "important"
+		}
+		return ""
+	case string:
+		return value
+	default:
+		r.fieldError(object, "important", "a boolean or a string")
+		return ""
 	}
 }
 

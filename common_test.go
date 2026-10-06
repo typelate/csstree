@@ -1,4 +1,4 @@
-// Ported from the parts of lib/__tests/common.js that need only the parser.
+// Ported from lib/__tests/common.js.
 
 package csstree
 
@@ -8,8 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/typelate/csstree/tokenizer"
 )
 
 const stringifyFixtureFilename = "testdata/stringify.css"
@@ -26,7 +29,10 @@ func TestCommon(t *testing.T) {
 	fixture := normalizeNewlines(string(data))
 
 	t.Run("should expose version", func(t *testing.T) {
-		t.Skip("not ported yet: version")
+		// upstream compares with the version of package.json
+		if want := "3.2.1"; Version != want {
+			t.Errorf("Version = %q, want %q", Version, want)
+		}
 	})
 
 	t.Run("JSON.stringify()", func(t *testing.T) {
@@ -66,20 +72,90 @@ func TestCommon(t *testing.T) {
 	})
 
 	t.Run("test CSS should contain all node types", func(t *testing.T) {
-		t.Skip("not ported yet: needs walker")
+		foundTypes := make(map[string]bool)
+		ast, err := Parse(fixture, ParseOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := Walk(ast, WalkOptions{
+			Enter: func(_ *WalkContext, node Node, _ *ListItem[Node], _ *List[Node]) WalkAction {
+				foundTypes[node.Type()] = true
+				return WalkContinue
+			},
+		}); err != nil {
+			t.Fatal(err)
+		}
+
+		var actual []string
+		for nodeType := range foundTypes {
+			actual = append(actual, nodeType)
+		}
+		slices.Sort(actual)
+
+		var types []string
+		for nodeType := range nodeConfigs() {
+			// DeclarationList doesn't appear in StyleSheet
+			// FIXME: temporary filter white space
+			if nodeType != "DeclarationList" && nodeType != "WhiteSpace" {
+				types = append(types, nodeType)
+			}
+		}
+		slices.Sort(types)
+
+		if !slices.Equal(actual, types) {
+			t.Errorf("Walk(Parse(stringify.css)) types = %v, want %v", actual, types)
+		}
 	})
 
 	t.Run("extension in base classes should not cause to exception", func(t *testing.T) {
-		t.Skip("not ported: JavaScript prototype extension has no Go counterpart")
+		// Upstream extends Object.prototype and Array.prototype, which
+		// has no Go counterpart; the fork itself is ported.
+		t.Run("fork()", func(t *testing.T) {
+			if _, err := Fork(&Config{
+				Node: map[string]NodeConfig{
+					"Test": {
+						Structure: []StructureField{
+							{Name: "foo", Types: []FieldType{nodeField("Rule")}},
+							{Name: "bar", Types: []FieldType{listField("Rule")}},
+						},
+					},
+				},
+			}); err != nil {
+				t.Errorf("Fork() error = %v", err)
+			}
+		})
 	})
 
 	t.Run("generic option should work in fork()", func(t *testing.T) {
-		t.Skip("not ported yet: needs fork and lexer")
+		t.Skip("not ported yet: needs lexer")
 	})
 
 	t.Run("fork()", func(t *testing.T) {
 		t.Run("extend nodes", func(t *testing.T) {
-			t.Skip("not ported yet: needs fork")
+			ast, err := Parse("20px", ParseOptions{Context: "value"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			forkedSyntax, err := Fork(&Config{
+				Node: map[string]NodeConfig{
+					"Dimension": {
+						Generate: func(g *Generator, node Node) {
+							g.Token(tokenizer.Dimension, "?"+node.(*Dimension).Unit)
+						},
+					},
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if actual, err := forkedSyntax.Generate(ast, GenerateOptions{}); err != nil || actual != "?px" {
+				t.Errorf("forkedSyntax.Generate(20px) = %q, %v, want %q", actual, err, "?px")
+			}
+			if actual, err := Generate(ast, GenerateOptions{}); err != nil || actual != "20px" {
+				t.Errorf("Generate(20px) = %q, %v, want %q", actual, err, "20px")
+			}
 		})
 	})
 }

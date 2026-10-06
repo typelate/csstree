@@ -38,7 +38,31 @@ func featureFunctionNodeType() NodeConfig {
 			{Name: "feature", Types: []FieldType{stringField()}},
 			{Name: "value", Types: []FieldType{nodeField("Declaration"), nodeField("Selector")}},
 		},
-		Generate: generateFeatureFunction,
+		Generate:        generateFeatureFunction,
+		Walk:            walkFeatureFunction,
+		Clone:           cloneFeatureFunction,
+		FromPlainObject: fromPlainObjectFeatureFunction,
+	}
+}
+
+func walkFeatureFunction(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*FeatureFunction)
+	return n.Value != nil && walkNode(n.Value)
+}
+
+func cloneFeatureFunction(node Node, clone func(Node) Node) Node {
+	c := *node.(*FeatureFunction)
+	c.Loc = cloneLocation(c.Loc)
+	c.Value = clone(c.Value)
+	return &c
+}
+
+func fromPlainObjectFeatureFunction(r *PlainObjectReader, object map[string]any) Node {
+	return &FeatureFunction{
+		Loc:     r.Location(object),
+		Kind:    r.String(object, "kind"),
+		Feature: r.String(object, "feature"),
+		Value:   r.Node(object, "value"),
 	}
 }
 

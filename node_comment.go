@@ -26,7 +26,22 @@ func commentNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "value", Types: []FieldType{stringField()}},
 		},
-		Generate: generateComment,
+		Generate:        generateComment,
+		Clone:           cloneComment,
+		FromPlainObject: fromPlainObjectComment,
+	}
+}
+
+func cloneComment(node Node, _ func(Node) Node) Node {
+	c := *node.(*Comment)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectComment(r *PlainObjectReader, object map[string]any) Node {
+	return &Comment{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 

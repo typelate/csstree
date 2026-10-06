@@ -654,12 +654,110 @@ func TestParse(t *testing.T) {
 	})
 
 	t.Run("positions", func(t *testing.T) {
+		const source = ".foo.bar {\n  property: value 123 123.4 .123 123px 99% #fff url( a ) / var( --a ), \"test\" 'test';\n}"
+
+		type position struct {
+			Offset, Line, Column int
+			Type                 string
+		}
+
+		collectPositions := func(t *testing.T, options ParseOptions) []position {
+			t.Helper()
+			var positions []position
+			ast, err := Parse(source, options)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := Walk(ast, WalkOptions{
+				Enter: func(_ *WalkContext, node Node, _ *ListItem[Node], _ *List[Node]) WalkAction {
+					if loc := node.Location(); loc != nil {
+						positions = append(positions, position{
+							loc.Start.Offset,
+							loc.Start.Line,
+							loc.Start.Column,
+							node.Type(),
+						})
+					}
+					return WalkContinue
+				},
+			}); err != nil {
+				t.Fatal(err)
+			}
+			return positions
+		}
+
 		t.Run("should start with line 1 column 1 by default", func(t *testing.T) {
-			t.Skip("not ported yet: needs walker")
+			positions := collectPositions(t, ParseOptions{
+				Positions: true,
+			})
+
+			expected := []position{
+				{0, 1, 1, "StyleSheet"},
+				{0, 1, 1, "Rule"},
+				{0, 1, 1, "SelectorList"},
+				{0, 1, 1, "Selector"},
+				{0, 1, 1, "ClassSelector"},
+				{4, 1, 5, "ClassSelector"},
+				{9, 1, 10, "Block"},
+				{13, 2, 3, "Declaration"},
+				{23, 2, 13, "Value"},
+				{23, 2, 13, "Identifier"},
+				{29, 2, 19, "Number"},
+				{33, 2, 23, "Number"},
+				{39, 2, 29, "Number"},
+				{44, 2, 34, "Dimension"},
+				{50, 2, 40, "Percentage"},
+				{54, 2, 44, "Hash"},
+				{59, 2, 49, "Url"},
+				{68, 2, 58, "Operator"},
+				{70, 2, 60, "Function"},
+				{75, 2, 65, "Identifier"},
+				{80, 2, 70, "Operator"},
+				{82, 2, 72, "String"},
+				{89, 2, 79, "String"},
+			}
+			if !slices.Equal(positions, expected) {
+				t.Errorf("positions =\n%v\nwant\n%v", positions, expected)
+			}
 		})
 
 		t.Run("should start with specified offset, line and column", func(t *testing.T) {
-			t.Skip("not ported yet: needs walker")
+			positions := collectPositions(t, ParseOptions{
+				Positions: true,
+				Offset:    100,
+				Line:      3,
+				Column:    5,
+			})
+
+			expected := []position{
+				{100, 3, 5, "StyleSheet"},
+				{100, 3, 5, "Rule"},
+				{100, 3, 5, "SelectorList"},
+				{100, 3, 5, "Selector"},
+				{100, 3, 5, "ClassSelector"},
+				{104, 3, 9, "ClassSelector"},
+				{109, 3, 14, "Block"},
+				{113, 4, 3, "Declaration"},
+				{123, 4, 13, "Value"},
+				{123, 4, 13, "Identifier"},
+				{129, 4, 19, "Number"},
+				{133, 4, 23, "Number"},
+				{139, 4, 29, "Number"},
+				{144, 4, 34, "Dimension"},
+				{150, 4, 40, "Percentage"},
+				{154, 4, 44, "Hash"},
+				{159, 4, 49, "Url"},
+				{168, 4, 58, "Operator"},
+				{170, 4, 60, "Function"},
+				{175, 4, 65, "Identifier"},
+				{180, 4, 70, "Operator"},
+				{182, 4, 72, "String"},
+				{189, 4, 79, "String"},
+			}
+			if !slices.Equal(positions, expected) {
+				t.Errorf("positions =\n%v\nwant\n%v", positions, expected)
+			}
 		})
 	})
 }

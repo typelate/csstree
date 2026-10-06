@@ -25,7 +25,22 @@ func hashNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "value", Types: []FieldType{stringField()}},
 		},
-		Generate: generateHash,
+		Generate:        generateHash,
+		Clone:           cloneHash,
+		FromPlainObject: fromPlainObjectHash,
+	}
+}
+
+func cloneHash(node Node, _ func(Node) Node) Node {
+	c := *node.(*Hash)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectHash(r *PlainObjectReader, object map[string]any) Node {
+	return &Hash{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 

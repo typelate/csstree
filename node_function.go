@@ -33,7 +33,30 @@ func functionNodeType() NodeConfig {
 			{Name: "name", Types: []FieldType{stringField()}},
 			{Name: "children", Types: []FieldType{listField()}},
 		},
-		Generate: generateFunction,
+		Generate:        generateFunction,
+		Walk:            walkFunction,
+		Clone:           cloneFunction,
+		FromPlainObject: fromPlainObjectFunction,
+	}
+}
+
+func walkFunction(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Function)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneFunction(node Node, clone func(Node) Node) Node {
+	c := *node.(*Function)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectFunction(r *PlainObjectReader, object map[string]any) Node {
+	return &Function{
+		Loc:      r.Location(object),
+		Name:     r.String(object, "name"),
+		Children: r.List(object, "children"),
 	}
 }
 

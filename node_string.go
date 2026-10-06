@@ -25,7 +25,22 @@ func stringNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "value", Types: []FieldType{stringField()}},
 		},
-		Generate: generateString,
+		Generate:        generateString,
+		Clone:           cloneString,
+		FromPlainObject: fromPlainObjectString,
+	}
+}
+
+func cloneString(node Node, _ func(Node) Node) Node {
+	c := *node.(*String)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectString(r *PlainObjectReader, object map[string]any) Node {
+	return &String{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 

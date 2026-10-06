@@ -4,7 +4,6 @@ package csstree
 
 import (
 	"strings"
-	"sync"
 
 	"github.com/typelate/csstree/tokenizer"
 )
@@ -37,6 +36,12 @@ type GenerateOptions struct {
 	// Decorator, when set, receives the default handlers and returns the
 	// handlers to use.
 	Decorator func(handlers GenerateHandlers) GenerateHandlers
+	// SourceMap, when set, receives a source map of the generated CSS
+	// (upstream sourceMap: true, which makes generate return { css, map }).
+	// Pass a new SourceMapGenerator: nodes need locations (ParseOptions
+	// Positions), and only Atrule, Selector and Declaration nodes are
+	// mapped.
+	SourceMap *SourceMapGenerator
 }
 
 // UnknownNodeTypeError is returned by Generate for a node whose type has no
@@ -162,6 +167,10 @@ func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (s
 			handlers = options.Decorator(handlers)
 		}
 
+		if options.SourceMap != nil {
+			handlers = generateSourceMap(handlers, options.SourceMap)
+		}
+
 		switch options.Mode {
 		case "safe":
 			handlers.TokenBefore = safeTokenBefore()
@@ -187,13 +196,8 @@ func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (s
 	}
 }
 
-// defaultGenerate is upstream lib/generator/index.js.
-var defaultGenerate = sync.OnceValue(func() func(node Node, options GenerateOptions) (string, error) {
-	return CreateGenerator(generatorConfig())
-})
-
 // Generate turns an AST into CSS text with the default syntax (upstream
 // generate).
 func Generate(node Node, options GenerateOptions) (string, error) {
-	return defaultGenerate()(node, options)
+	return defaultSyntax().Generate(node, options)
 }

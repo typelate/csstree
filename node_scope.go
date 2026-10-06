@@ -29,7 +29,36 @@ func scopeNodeType() NodeConfig {
 			{Name: "root", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw"), nullField()}},
 			{Name: "limit", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw"), nullField()}},
 		},
-		Generate: generateScope,
+		Generate:        generateScope,
+		Walk:            walkScope,
+		Clone:           cloneScope,
+		FromPlainObject: fromPlainObjectScope,
+	}
+}
+
+func walkScope(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Scope)
+	if reverse {
+		return n.Limit != nil && walkNode(n.Limit) ||
+			n.Root != nil && walkNode(n.Root)
+	}
+	return n.Root != nil && walkNode(n.Root) ||
+		n.Limit != nil && walkNode(n.Limit)
+}
+
+func cloneScope(node Node, clone func(Node) Node) Node {
+	c := *node.(*Scope)
+	c.Loc = cloneLocation(c.Loc)
+	c.Root = clone(c.Root)
+	c.Limit = clone(c.Limit)
+	return &c
+}
+
+func fromPlainObjectScope(r *PlainObjectReader, object map[string]any) Node {
+	return &Scope{
+		Loc:   r.Location(object),
+		Root:  r.Node(object, "root"),
+		Limit: r.Node(object, "limit"),
 	}
 }
 

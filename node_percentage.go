@@ -25,7 +25,22 @@ func percentageNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "value", Types: []FieldType{stringField()}},
 		},
-		Generate: generatePercentage,
+		Generate:        generatePercentage,
+		Clone:           clonePercentage,
+		FromPlainObject: fromPlainObjectPercentage,
+	}
+}
+
+func clonePercentage(node Node, _ func(Node) Node) Node {
+	c := *node.(*Percentage)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectPercentage(r *PlainObjectReader, object map[string]any) Node {
+	return &Percentage{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 

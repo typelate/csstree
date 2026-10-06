@@ -46,7 +46,38 @@ func ruleNodeType() NodeConfig {
 			{Name: "prelude", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw")}},
 			{Name: "block", Types: []FieldType{nodeField("Block")}},
 		},
-		Generate: generateRule,
+		Generate:        generateRule,
+		Walk:            walkRule,
+		Clone:           cloneRule,
+		FromPlainObject: fromPlainObjectRule,
+	}
+}
+
+func walkRule(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Rule)
+	if reverse {
+		return n.Block != nil && walkNode(n.Block) ||
+			n.Prelude != nil && walkNode(n.Prelude)
+	}
+	return n.Prelude != nil && walkNode(n.Prelude) ||
+		n.Block != nil && walkNode(n.Block)
+}
+
+func cloneRule(node Node, clone func(Node) Node) Node {
+	c := *node.(*Rule)
+	c.Loc = cloneLocation(c.Loc)
+	c.Prelude = clone(c.Prelude)
+	if c.Block != nil {
+		c.Block, _ = clone(c.Block).(*Block)
+	}
+	return &c
+}
+
+func fromPlainObjectRule(r *PlainObjectReader, object map[string]any) Node {
+	return &Rule{
+		Loc:     r.Location(object),
+		Prelude: r.Node(object, "prelude"),
+		Block:   PlainObjectNode[*Block](r, object, "block"),
 	}
 }
 

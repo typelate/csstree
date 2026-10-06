@@ -28,7 +28,9 @@ type Config struct {
 
 	// Lexer keys, carried for the lexer.
 
-	Generic         bool
+	// Generic is upstream generic; nil is upstream undefined (absent),
+	// which Syntax.Fork does not mix into the base config.
+	Generic         *bool
 	CSSWideKeywords []string
 	Units           map[string][]string
 	Types           map[string]string

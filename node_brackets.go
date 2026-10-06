@@ -25,7 +25,29 @@ func bracketsNodeType() NodeConfig {
 		Structure: []StructureField{
 			{Name: "children", Types: []FieldType{listField()}},
 		},
-		Generate: generateBrackets,
+		Generate:        generateBrackets,
+		Walk:            walkBrackets,
+		Clone:           cloneBrackets,
+		FromPlainObject: fromPlainObjectBrackets,
+	}
+}
+
+func walkBrackets(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Brackets)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneBrackets(node Node, clone func(Node) Node) Node {
+	c := *node.(*Brackets)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectBrackets(r *PlainObjectReader, object map[string]any) Node {
+	return &Brackets{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
 	}
 }
 

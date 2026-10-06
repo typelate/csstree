@@ -35,7 +35,31 @@ func generalEnclosedNodeType() NodeConfig {
 			{Name: "function", Types: []FieldType{stringField(), nullField()}},
 			{Name: "children", Types: []FieldType{listField()}},
 		},
-		Generate: generateGeneralEnclosed,
+		Generate:        generateGeneralEnclosed,
+		Walk:            walkGeneralEnclosed,
+		Clone:           cloneGeneralEnclosed,
+		FromPlainObject: fromPlainObjectGeneralEnclosed,
+	}
+}
+
+func walkGeneralEnclosed(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*GeneralEnclosed)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneGeneralEnclosed(node Node, clone func(Node) Node) Node {
+	c := *node.(*GeneralEnclosed)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectGeneralEnclosed(r *PlainObjectReader, object map[string]any) Node {
+	return &GeneralEnclosed{
+		Loc:      r.Location(object),
+		Kind:     r.String(object, "kind"),
+		Function: r.String(object, "function"),
+		Children: r.List(object, "children"),
 	}
 }
 

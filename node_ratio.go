@@ -57,7 +57,36 @@ func ratioNodeType() NodeConfig {
 			{Name: "left", Types: []FieldType{nodeField("Number"), nodeField("Function")}},
 			{Name: "right", Types: []FieldType{nodeField("Number"), nodeField("Function"), nullField()}},
 		},
-		Generate: generateRatio,
+		Generate:        generateRatio,
+		Walk:            walkRatio,
+		Clone:           cloneRatio,
+		FromPlainObject: fromPlainObjectRatio,
+	}
+}
+
+func walkRatio(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Ratio)
+	if reverse {
+		return n.Right != nil && walkNode(n.Right) ||
+			n.Left != nil && walkNode(n.Left)
+	}
+	return n.Left != nil && walkNode(n.Left) ||
+		n.Right != nil && walkNode(n.Right)
+}
+
+func cloneRatio(node Node, clone func(Node) Node) Node {
+	c := *node.(*Ratio)
+	c.Loc = cloneLocation(c.Loc)
+	c.Left = clone(c.Left)
+	c.Right = clone(c.Right)
+	return &c
+}
+
+func fromPlainObjectRatio(r *PlainObjectReader, object map[string]any) Node {
+	return &Ratio{
+		Loc:   r.Location(object),
+		Left:  r.Node(object, "left"),
+		Right: r.Node(object, "right"),
 	}
 }
 

@@ -46,7 +46,43 @@ func featureRangeNodeType() NodeConfig {
 			{Name: "rightComparison", Types: []FieldType{stringField(), nullField()}},
 			{Name: "right", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function"), nullField()}},
 		},
-		Generate: generateFeatureRange,
+		Generate:        generateFeatureRange,
+		Walk:            walkFeatureRange,
+		Clone:           cloneFeatureRange,
+		FromPlainObject: fromPlainObjectFeatureRange,
+	}
+}
+
+func walkFeatureRange(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*FeatureRange)
+	if reverse {
+		return n.Right != nil && walkNode(n.Right) ||
+			n.Middle != nil && walkNode(n.Middle) ||
+			n.Left != nil && walkNode(n.Left)
+	}
+	return n.Left != nil && walkNode(n.Left) ||
+		n.Middle != nil && walkNode(n.Middle) ||
+		n.Right != nil && walkNode(n.Right)
+}
+
+func cloneFeatureRange(node Node, clone func(Node) Node) Node {
+	c := *node.(*FeatureRange)
+	c.Loc = cloneLocation(c.Loc)
+	c.Left = clone(c.Left)
+	c.Middle = clone(c.Middle)
+	c.Right = clone(c.Right)
+	return &c
+}
+
+func fromPlainObjectFeatureRange(r *PlainObjectReader, object map[string]any) Node {
+	return &FeatureRange{
+		Loc:             r.Location(object),
+		Kind:            r.String(object, "kind"),
+		Left:            r.Node(object, "left"),
+		LeftComparison:  r.String(object, "leftComparison"),
+		Middle:          r.Node(object, "middle"),
+		RightComparison: r.String(object, "rightComparison"),
+		Right:           r.Node(object, "right"),
 	}
 }
 
