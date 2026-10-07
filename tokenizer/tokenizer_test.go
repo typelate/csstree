@@ -229,23 +229,23 @@ func TestTokenizeStream(t *testing.T) {
 				leftCurlyBracketCode = 0x007B // U+007B LEFT CURLY BRACKET ({)
 				semicolonCode        = 0x003B // U+003B SEMICOLON (;)
 			)
-			leftCurlyBracket := func(code int) int {
+			leftCurlyBracket := func(code int) StopMode {
 				if code == leftCurlyBracketCode {
-					return 1
+					return StopBefore
 				}
-				return 0
+				return NoStop
 			}
-			semicolonIncluded := func(code int) int {
+			semicolonIncluded := func(code int) StopMode {
 				if code == semicolonCode {
-					return 2
+					return StopAfter
 				}
-				return 0
+				return NoStop
 			}
 			tests := []struct {
 				source   string
 				start    string
 				skip     string
-				mode     func(code int) int
+				mode     StopFunc
 				expected string
 			}{
 				{
@@ -344,11 +344,7 @@ func TestTokenizeStream(t *testing.T) {
 						stream.Next()
 					}
 
-					mode := test.mode
-					if mode == nil {
-						mode = func(int) int { return 0 }
-					}
-					stream.SkipUntilBalanced(startToken, mode)
+					stream.SkipUntilBalanced(startToken, test.mode)
 					if got := stream.Source[startOffset:stream.TokenStart]; got != test.expected {
 						t.Errorf("SkipUntilBalanced on %q consumed %q, want %q", test.source, got, test.expected)
 					}

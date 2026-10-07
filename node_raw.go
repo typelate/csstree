@@ -61,7 +61,7 @@ func fromPlainObjectRaw(r *PlainObjectReader, object map[string]any) Node {
 // consumeUntil stops (see ConsumeUntilBalanceEnd); a nil consumeUntil is
 // ConsumeUntilBalanceEnd. excludeWhiteSpace leaves trailing whitespace
 // out of the value.
-func (p *Parser) Raw(consumeUntil func(code int) int, excludeWhiteSpace bool) *Raw {
+func (p *Parser) Raw(consumeUntil tokenizer.StopFunc, excludeWhiteSpace bool) *Raw {
 	startOffset := p.GetTokenStart(p.TokenIndex)
 	var endOffset int
 

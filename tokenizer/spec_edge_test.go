@@ -681,12 +681,13 @@ func TestSkipUntilBalanced(t *testing.T) {
 	for _, tt := range []struct {
 		name        string
 		skip, start int
-		stop        func(code int) int
+		stop        StopFunc
 		want        int
 	}{
-		{"stop before ;", 0, 0, func(code int) int { return boolInt(code == ';') }, 5},
-		{"stop after ;", 0, 0, func(code int) int { return 2 * boolInt(code == ';') }, 6},
-		{"end of the enclosing block", 2, 2, func(int) int { return 0 }, 4},
+		{"stop before ;", 0, 0, stopAt(';', StopBefore), 5},
+		{"stop after ;", 0, 0, stopAt(';', StopAfter), 6},
+		{"end of the enclosing block", 2, 2, func(int) StopMode { return NoStop }, 4},
+		{"nil stop", 2, 2, nil, 4},
 	} {
 		ts := NewTokenStream(source, Tokenize)
 		ts.Skip(tt.skip)
@@ -697,11 +698,14 @@ func TestSkipUntilBalanced(t *testing.T) {
 	}
 }
 
-func boolInt(b bool) int {
-	if b {
-		return 1
+// stopAt returns a StopFunc that answers mode for code and NoStop otherwise.
+func stopAt(code int, mode StopMode) StopFunc {
+	return func(c int) StopMode {
+		if c == code {
+			return mode
+		}
+		return NoStop
 	}
-	return 0
 }
 
 func TestSkipSC(t *testing.T) {

@@ -429,11 +429,30 @@ func (ts *TokenStream) SkipSC() {
 	}
 }
 
+// StopMode is what SkipUntilBalanced does at a token, as a StopFunc decides.
+type StopMode int
+
+const (
+	// NoStop goes on past the token.
+	NoStop StopMode = iota
+	// StopBefore stops with the token as the current one.
+	StopBefore
+	// StopAfter stops past the token.
+	StopAfter
+)
+
+// StopFunc tells SkipUntilBalanced whether to stop at a token, given the
+// char code at its start (see CharCodeAt).
+type StopFunc func(code int) StopMode
+
 // SkipUntilBalanced moves the cursor forward from startToken to the end of
-// the enclosing block, stopping early where stopConsume, given the first
-// char code of a token, returns 1 (stop before the token) or 2 (stop after
-// it). Blocks opened on the way are skipped whole.
-func (ts *TokenStream) SkipUntilBalanced(startToken int, stopConsume func(code int) int) {
+// the enclosing block, stopping early where stop says so. Blocks opened on
+// the way are skipped whole, without calling stop for their tokens. A nil
+// stop never stops early.
+func (ts *TokenStream) SkipUntilBalanced(startToken int, stop StopFunc) {
+	if stop == nil {
+		stop = func(int) StopMode { return NoStop }
+	}
 	cursor := startToken
 	balanceEnd := 0
 	offset := 0
@@ -454,11 +473,11 @@ loop:
 		}
 
 		// check stop condition
-		switch stopConsume(CharCodeAt(ts.Source, offset)) {
-		case 1: // just stop
+		switch stop(CharCodeAt(ts.Source, offset)) {
+		case StopBefore:
 			break loop
 
-		case 2: // stop & included
+		case StopAfter:
 			cursor++
 			break loop
 

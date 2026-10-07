@@ -309,44 +309,44 @@ func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error
 	return ast, nil
 }
 
-// consumeUntil* are stop functions for Raw and SkipUntilBalanced: they get
-// the first char code of a token and return 1 to stop before it, 2 to stop
-// after it and 0 to go on.
+// The ConsumeUntil* methods are tokenizer.StopFunc values for Raw and
+// SkipUntilBalanced: they get the first char code of a token and say
+// whether to stop before it, after it or not at all.
 
 // ConsumeUntilBalanceEnd never stops early: it consumes to the end of the
 // enclosing block.
-func (p *Parser) ConsumeUntilBalanceEnd(int) int { return 0 }
+func (p *Parser) ConsumeUntilBalanceEnd(int) tokenizer.StopMode { return tokenizer.NoStop }
 
 // ConsumeUntilLeftCurlyBracket stops before a {.
-func (p *Parser) ConsumeUntilLeftCurlyBracket(code int) int {
+func (p *Parser) ConsumeUntilLeftCurlyBracket(code int) tokenizer.StopMode {
 	if code == leftCurlyBracket {
-		return 1
+		return tokenizer.StopBefore
 	}
-	return 0
+	return tokenizer.NoStop
 }
 
 // ConsumeUntilLeftCurlyBracketOrSemicolon stops before a { or a ;.
-func (p *Parser) ConsumeUntilLeftCurlyBracketOrSemicolon(code int) int {
+func (p *Parser) ConsumeUntilLeftCurlyBracketOrSemicolon(code int) tokenizer.StopMode {
 	if code == leftCurlyBracket || code == semicolon {
-		return 1
+		return tokenizer.StopBefore
 	}
-	return 0
+	return tokenizer.NoStop
 }
 
 // ConsumeUntilExclamationMarkOrSemicolon stops before a ! or a ;.
-func (p *Parser) ConsumeUntilExclamationMarkOrSemicolon(code int) int {
+func (p *Parser) ConsumeUntilExclamationMarkOrSemicolon(code int) tokenizer.StopMode {
 	if code == exclamationMark || code == semicolon {
-		return 1
+		return tokenizer.StopBefore
 	}
-	return 0
+	return tokenizer.NoStop
 }
 
 // ConsumeUntilSemicolonIncluded stops after a ;.
-func (p *Parser) ConsumeUntilSemicolonIncluded(code int) int {
+func (p *Parser) ConsumeUntilSemicolonIncluded(code int) tokenizer.StopMode {
 	if code == semicolon {
-		return 2
+		return tokenizer.StopAfter
 	}
-	return 0
+	return tokenizer.NoStop
 }
 
 // scanUntilBalanced returns the index of the first token from start that
