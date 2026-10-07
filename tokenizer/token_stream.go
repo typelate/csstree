@@ -514,21 +514,22 @@ func (ts *TokenStream) ForEachToken(fn func(tokenType TokenType, start, end, ind
 	}
 }
 
-// DumpToken is one entry of Dump.
-type DumpToken struct {
-	Idx     int    `json:"idx"`
-	Type    string `json:"type"`
-	Chunk   string `json:"chunk"`
-	Balance int    `json:"balance"`
+// dumpToken is one entry of dump.
+type dumpToken struct {
+	Index   int
+	Type    string
+	Chunk   string
+	Balance int
 }
 
-// Dump returns every token with its name, text and balance, for debugging.
-func (ts *TokenStream) Dump() []DumpToken {
-	tokens := make([]DumpToken, ts.TokenCount)
+// dump returns every token with its name, text and balance, for tests and
+// debugging (upstream dump).
+func (ts *TokenStream) dump() []dumpToken {
+	tokens := make([]dumpToken, ts.TokenCount)
 
 	ts.ForEachToken(func(tokenType TokenType, start, end, index int) {
-		tokens[index] = DumpToken{
-			Idx:     index,
+		tokens[index] = dumpToken{
+			Index:   index,
 			Type:    tokenType.String(),
 			Chunk:   substring(ts.Source, start, end),
 			Balance: ts.Balance[index],

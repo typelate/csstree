@@ -2,6 +2,8 @@
 
 package tokenizer
 
+import "strings"
+
 // Char codes are ints. In Go they are bytes of a UTF-8 string (see CharCodeAt);
 // upstream reads UTF-16 code units. Every byte >= 0x80 is part of a non-ASCII
 // code point, so it classifies the same way as the code unit upstream sees.
@@ -32,31 +34,31 @@ func IsHexDigit(code int) bool {
 		(code >= 0x0061 && code <= 0x0066) // a .. f
 }
 
-// IsUppercaseLetter reports whether code is an uppercase letter.
+// isUppercaseLetter reports whether code is an uppercase letter.
 //
 // uppercase letter
 // A code point between U+0041 LATIN CAPITAL LETTER A (A) and U+005A LATIN CAPITAL LETTER Z (Z).
-func IsUppercaseLetter(code int) bool {
+func isUppercaseLetter(code int) bool {
 	return code >= 0x0041 && code <= 0x005A
 }
 
-// IsLowercaseLetter reports whether code is a lowercase letter.
+// isLowercaseLetter reports whether code is a lowercase letter.
 //
 // lowercase letter
 // A code point between U+0061 LATIN SMALL LETTER A (a) and U+007A LATIN SMALL LETTER Z (z).
-func IsLowercaseLetter(code int) bool {
+func isLowercaseLetter(code int) bool {
 	return code >= 0x0061 && code <= 0x007A
 }
 
-// IsLetter reports whether code is a letter.
+// isLetter reports whether code is a letter.
 //
 // letter
 // An uppercase letter or a lowercase letter.
-func IsLetter(code int) bool {
-	return IsUppercaseLetter(code) || IsLowercaseLetter(code)
+func isLetter(code int) bool {
+	return isUppercaseLetter(code) || isLowercaseLetter(code)
 }
 
-// IsNonASCII reports whether code is a non-ASCII code point.
+// isNonASCII reports whether code is a non-ASCII code point.
 //
 // non-ASCII code point
 // A code point with a value equal to or greater than U+0080 <control>.
@@ -65,16 +67,16 @@ func IsLetter(code int) bool {
 // However, all modern browsers support a wider range, and strictly following the latest spec could result
 // in some CSS being parsed incorrectly, even though it works in the browser. Therefore, this function adheres
 // to the previous, broader definition of non-ASCII characters.
-func IsNonASCII(code int) bool {
+func isNonASCII(code int) bool {
 	return code >= 0x0080
 }
 
-// IsNameStart reports whether code is a name-start code point.
+// isNameStart reports whether code is a name-start code point.
 //
 // name-start code point
 // A letter, a non-ASCII code point, or U+005F LOW LINE (_).
-func IsNameStart(code int) bool {
-	return IsLetter(code) || IsNonASCII(code) || code == 0x005F
+func isNameStart(code int) bool {
+	return isLetter(code) || isNonASCII(code) || code == 0x005F
 }
 
 // IsName reports whether code is a name code point.
@@ -82,28 +84,28 @@ func IsNameStart(code int) bool {
 // name code point
 // A name-start code point, a digit, or U+002D HYPHEN-MINUS (-).
 func IsName(code int) bool {
-	return IsNameStart(code) || IsDigit(code) || code == 0x002D
+	return isNameStart(code) || IsDigit(code) || code == 0x002D
 }
 
-// IsNonPrintable reports whether code is a non-printable code point.
+// isNonPrintable reports whether code is a non-printable code point.
 //
 // non-printable code point
 // A code point between U+0000 NULL and U+0008 BACKSPACE, or U+000B LINE TABULATION,
 // or a code point between U+000E SHIFT OUT and U+001F INFORMATION SEPARATOR ONE, or U+007F DELETE.
-func IsNonPrintable(code int) bool {
+func isNonPrintable(code int) bool {
 	return (code >= 0x0000 && code <= 0x0008) ||
 		(code == 0x000B) ||
 		(code >= 0x000E && code <= 0x001F) ||
 		(code == 0x007F)
 }
 
-// IsNewline reports whether code is a newline.
+// isNewline reports whether code is a newline.
 //
 // newline
 // U+000A LINE FEED. Note that U+000D CARRIAGE RETURN and U+000C FORM FEED are not included in this definition,
 // as they are converted to U+000A LINE FEED during preprocessing.
 // TODO: we doesn't do a preprocessing, so check a code point for U+000D CARRIAGE RETURN and U+000C FORM FEED
-func IsNewline(code int) bool {
+func isNewline(code int) bool {
 	return code == 0x000A || code == 0x000D || code == 0x000C
 }
 
@@ -112,7 +114,7 @@ func IsNewline(code int) bool {
 // whitespace
 // A newline, U+0009 CHARACTER TABULATION, or U+0020 SPACE.
 func IsWhiteSpace(code int) bool {
-	return IsNewline(code) || code == 0x0020 || code == 0x0009
+	return isNewline(code) || code == 0x0020 || code == 0x0009
 }
 
 // IsValidEscape reports whether two code points are a valid escape.
@@ -125,7 +127,7 @@ func IsValidEscape(first, second int) bool {
 	}
 
 	// Otherwise, if the second code point is a newline or EOF, return false.
-	if IsNewline(second) || second == eofCode {
+	if isNewline(second) || second == eofCode {
 		return false
 	}
 
@@ -143,13 +145,13 @@ func IsIdentifierStart(first, second, third int) bool {
 	if first == 0x002D {
 		// If the second code point is a name-start code point or a U+002D HYPHEN-MINUS,
 		// or the second and third code points are a valid escape, return true. Otherwise, return false.
-		return IsNameStart(second) ||
+		return isNameStart(second) ||
 			second == 0x002D ||
 			IsValidEscape(second, third)
 	}
 
 	// name-start code point
-	if IsNameStart(first) {
+	if isNameStart(first) {
 		// Return true.
 		return true
 	}
@@ -165,66 +167,51 @@ func IsIdentifierStart(first, second, third int) bool {
 	return false
 }
 
-// IsNumberStart reports whether three code points would start a number. It
-// returns 0 when they would not, otherwise the number of code points (1..3)
-// that were looked at to decide.
+// isNumberStart reports whether three code points would start a number.
 //
 // § 4.3.10. Check if three code points would start a number
-func IsNumberStart(first, second, third int) int {
+func isNumberStart(first, second, third int) bool {
 	// Look at the first code point:
 
 	// U+002B PLUS SIGN (+)
 	// U+002D HYPHEN-MINUS (-)
 	if first == 0x002B || first == 0x002D {
 		// If the second code point is a digit, return true.
-		if IsDigit(second) {
-			return 2
-		}
-
 		// Otherwise, if the second code point is a U+002E FULL STOP (.)
 		// and the third code point is a digit, return true.
 		// Otherwise, return false.
-		if second == 0x002E && IsDigit(third) {
-			return 3
-		}
-		return 0
+		return IsDigit(second) || second == 0x002E && IsDigit(third)
 	}
 
 	// U+002E FULL STOP (.)
 	if first == 0x002E {
 		// If the second code point is a digit, return true. Otherwise, return false.
-		if IsDigit(second) {
-			return 2
-		}
-		return 0
+		return IsDigit(second)
 	}
 
 	// digit
-	if IsDigit(first) {
-		// Return true.
-		return 1
-	}
-
+	// Return true.
 	// anything else
 	// Return false.
-	return 0
+	return IsDigit(first)
 }
 
 //
 // Misc
 //
 
-// IsBOM detects a byte order mark (https://en.wikipedia.org/wiki/Byte_order_mark).
-// code is a code point (decode it with utf8.DecodeRuneInString); the result is
-// the number of bytes to skip, which is 3 for a BOM (upstream returns 1, the
-// number of UTF-16 code units), else 0.
+// bomLen returns the length of the byte order mark
+// (https://en.wikipedia.org/wiki/Byte_order_mark) at the start of source,
+// or 0 when there is none. Upstream's isBOM(code) returns 1, the number of
+// UTF-16 code units; U+FEFF is 3 bytes of UTF-8.
 //
 // Only U+FEFF is a BOM. A Go string is already decoded, and a UTF-16LE BOM
 // decodes to U+FEFF too; upstream also skips U+FFFE, a noncharacter that CSS
 // Syntax §3.2 treats as ordinary input.
-func IsBOM(code int) int {
-	if code == 0xFEFF {
-		return 3
+func bomLen(source string) int {
+	const bom = "\uFEFF"
+	if strings.HasPrefix(source, bom) {
+		return len(bom)
 	}
 
 	return 0
@@ -233,11 +220,11 @@ func IsBOM(code int) int {
 // Fast code category
 // Only ASCII code points has a special meaning, that's why we define a maps for 0..127 codes only
 const (
-	EOFCategory          = 0x80
-	WhiteSpaceCategory   = 0x82
-	DigitCategory        = 0x83
-	NameStartCategory    = 0x84
-	NonPrintableCategory = 0x85
+	eofCategory          = 0x80
+	whiteSpaceCategory   = 0x82
+	digitCategory        = 0x83
+	nameStartCategory    = 0x84
+	nonPrintableCategory = 0x85
 )
 
 // category is a read-only table built once at package initialization.
@@ -245,31 +232,31 @@ var category = func() (category [0x80]int) {
 	for i := range category {
 		switch {
 		case IsWhiteSpace(i):
-			category[i] = WhiteSpaceCategory
+			category[i] = whiteSpaceCategory
 		case IsDigit(i):
-			category[i] = DigitCategory
-		case IsNameStart(i):
-			category[i] = NameStartCategory
-		case IsNonPrintable(i):
-			category[i] = NonPrintableCategory
+			category[i] = digitCategory
+		case isNameStart(i):
+			category[i] = nameStartCategory
+		case isNonPrintable(i):
+			category[i] = nonPrintableCategory
 		case i != 0:
 			category[i] = i
 		default:
-			category[i] = EOFCategory
+			category[i] = eofCategory
 		}
 	}
 	return category
 }()
 
-// CharCodeCategory returns one of the *Category constants for code, or code
+// charCodeCategory returns one of the *Category constants for code, or code
 // itself when it has no category.
-func CharCodeCategory(code int) int {
+func charCodeCategory(code int) int {
 	switch {
 	case code < 0:
 		return code
 	case code < len(category):
 		return category[code]
 	default:
-		return NameStartCategory
+		return nameStartCategory
 	}
 }

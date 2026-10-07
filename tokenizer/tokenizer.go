@@ -6,10 +6,7 @@
 // and lexer share.
 package tokenizer
 
-import (
-	"strings"
-	"unicode/utf8"
-)
+import "strings"
 
 // Tokenize splits source into tokens and calls onToken for each one with its
 // type and the byte offsets [start, end) of its text. A leading byte order
@@ -47,7 +44,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 			// Consume a name. Set the <dimension-token>’s unit to the returned value.
 			// Return the <dimension-token>.
 			tokenType = Dimension
-			offset = ConsumeName(source, offset)
+			offset = consumeName(source, offset)
 			return
 		}
 
@@ -68,13 +65,13 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 		nameStartOffset := offset
 
 		// Consume a name, and let string be the result.
-		offset = ConsumeName(source, offset)
+		offset = consumeName(source, offset)
 
 		// If string’s value is an ASCII case-insensitive match for "url",
 		// and the next input code point is U+0028 LEFT PARENTHESIS ((), consume it.
 		if CmpStr(source, nameStartOffset, offset, "url") && getCharCode(offset) == 0x0028 {
 			// While the next two input code points are whitespace, consume the next input code point.
-			offset = FindWhiteSpaceEnd(source, offset+1)
+			offset = findWhiteSpaceEnd(source, offset+1)
 
 			// If the next one or two input code points are U+0022 QUOTATION MARK ("), U+0027 APOSTROPHE ('),
 			// or whitespace followed by U+0022 QUOTATION MARK (") or U+0027 APOSTROPHE ('),
@@ -120,7 +117,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 		for ; offset < len(source); offset++ {
 			code := getCharCode(offset)
 
-			switch CharCodeCategory(code) {
+			switch charCodeCategory(code) {
 			// ending code point
 			case endingCodePoint:
 				// Return the <string-token>.
@@ -133,8 +130,8 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 				// return;
 
 			// newline
-			case WhiteSpaceCategory:
-				if IsNewline(code) {
+			case whiteSpaceCategory:
+				if isNewline(code) {
 					// This is a parse error. Reconsume the current input code point,
 					// create a <bad-string-token>, and return it.
 					// (upstream consumes the newline into the bad-string; the
@@ -153,8 +150,8 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 				nextCode := getCharCode(offset + 1)
 
 				// Otherwise, if the next input code point is a newline, consume it.
-				if IsNewline(nextCode) {
-					offset += GetNewlineLength(source, offset+1, nextCode)
+				if isNewline(nextCode) {
+					offset += newlineLength(source, offset+1)
 				} else if IsValidEscape(code, nextCode) {
 					// Otherwise, (the stream starts with a valid escape) consume
 					// an escaped code point and append the returned code point to
@@ -178,13 +175,13 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 		tokenType = URL
 
 		// Consume as much whitespace as possible.
-		offset = FindWhiteSpaceEnd(source, offset)
+		offset = findWhiteSpaceEnd(source, offset)
 
 		// Repeatedly consume the next input code point from the stream:
 		for ; offset < len(source); offset++ {
 			code := getCharCode(offset)
 
-			switch CharCodeCategory(code) {
+			switch charCodeCategory(code) {
 			// U+0029 RIGHT PARENTHESIS ())
 			case 0x0029:
 				// Return the <url-token>.
@@ -197,9 +194,9 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 				// return;
 
 			// whitespace
-			case WhiteSpaceCategory:
+			case whiteSpaceCategory:
 				// Consume as much whitespace as possible.
-				offset = FindWhiteSpaceEnd(source, offset)
+				offset = findWhiteSpaceEnd(source, offset)
 
 				// If the next input code point is U+0029 RIGHT PARENTHESIS ()) or EOF,
 				// consume it and return the <url-token>
@@ -213,7 +210,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 
 				// otherwise, consume the remnants of a bad url, create a <bad-url-token>,
 				// and return it.
-				offset = ConsumeBadURLRemnants(source, offset)
+				offset = consumeBadURLRemnants(source, offset)
 				tokenType = BadURL
 				return
 
@@ -224,10 +221,10 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 			case 0x0022,
 				0x0027,
 				0x0028,
-				NonPrintableCategory:
+				nonPrintableCategory:
 				// This is a parse error. Consume the remnants of a bad url,
 				// create a <bad-url-token>, and return it.
-				offset = ConsumeBadURLRemnants(source, offset)
+				offset = consumeBadURLRemnants(source, offset)
 				tokenType = BadURL
 				return
 
@@ -242,7 +239,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 
 				// Otherwise, this is a parse error. Consume the remnants of a bad url,
 				// create a <bad-url-token>, and return it.
-				offset = ConsumeBadURLRemnants(source, offset)
+				offset = consumeBadURLRemnants(source, offset)
 				tokenType = BadURL
 				return
 
@@ -252,9 +249,8 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 		}
 	}
 
-	// upstream: isBOM(getCharCode(0)); a BOM is a 3 byte sequence in UTF-8
-	firstCodePoint, _ := utf8.DecodeRuneInString(source)
-	start := IsBOM(int(firstCodePoint))
+	// upstream: isBOM(getCharCode(0))
+	start := bomLen(source)
 	offset = start
 
 	// https://drafts.csswg.org/css-syntax-3/#consume-token
@@ -262,12 +258,12 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 	for offset < sourceLength {
 		code := getCharCode(offset)
 
-		switch CharCodeCategory(code) {
+		switch charCodeCategory(code) {
 		// whitespace
-		case WhiteSpaceCategory:
+		case whiteSpaceCategory:
 			// Consume as much whitespace as possible. Return a <whitespace-token>.
 			tokenType = WhiteSpace
-			offset = FindWhiteSpaceEnd(source, offset+1)
+			offset = findWhiteSpaceEnd(source, offset+1)
 
 		// U+0022 QUOTATION MARK (")
 		case 0x0022:
@@ -287,7 +283,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 				// }
 
 				// Consume a name, and set the <hash-token>’s value to the returned string.
-				offset = ConsumeName(source, offset+1)
+				offset = consumeName(source, offset+1)
 
 				// Return the <hash-token>.
 			} else {
@@ -316,7 +312,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 		// U+002B PLUS SIGN (+)
 		case 0x002B:
 			// If the input stream starts with a number, ...
-			if IsNumberStart(code, getCharCode(offset+1), getCharCode(offset+2)) != 0 {
+			if isNumberStart(code, getCharCode(offset+1), getCharCode(offset+2)) {
 				// ... reconsume the current input code point, consume a numeric token, and return it.
 				consumeNumericToken()
 			} else {
@@ -334,7 +330,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 		// U+002D HYPHEN-MINUS (-)
 		case 0x002D:
 			// If the input stream starts with a number, reconsume the current input code point, consume a numeric token, and return it.
-			if IsNumberStart(code, getCharCode(offset+1), getCharCode(offset+2)) != 0 {
+			if isNumberStart(code, getCharCode(offset+1), getCharCode(offset+2)) {
 				consumeNumericToken()
 			} else {
 				// Otherwise, if the next 2 input code points are U+002D HYPHEN-MINUS U+003E GREATER-THAN SIGN (->), consume them and return a <CDC-token>.
@@ -358,7 +354,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 		// U+002E FULL STOP (.)
 		case 0x002E:
 			// If the input stream starts with a number, ...
-			if IsNumberStart(code, getCharCode(offset+1), getCharCode(offset+2)) != 0 {
+			if isNumberStart(code, getCharCode(offset+1), getCharCode(offset+2)) {
 				// ... reconsume the current input code point, consume a numeric token, and return it.
 				consumeNumericToken()
 			} else {
@@ -417,7 +413,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 			if IsIdentifierStart(getCharCode(offset+1), getCharCode(offset+2), getCharCode(offset+3)) {
 				// ... consume a name, create an <at-keyword-token> with its value set to the returned value, and return it.
 				tokenType = AtKeyword
-				offset = ConsumeName(source, offset+1)
+				offset = consumeName(source, offset+1)
 			} else {
 				// Otherwise, return a <delim-token> with its value set to the current input code point.
 				tokenType = Delim
@@ -461,12 +457,12 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 			offset++
 
 		// digit
-		case DigitCategory:
+		case digitCategory:
 			// Reconsume the current input code point, consume a numeric token, and return it.
 			consumeNumericToken()
 
 		// name-start code point
-		case NameStartCategory:
+		case nameStartCategory:
 			// Reconsume the current input code point, consume an ident-like token, and return it.
 			consumeIdentLikeToken()
 

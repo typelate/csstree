@@ -7,18 +7,6 @@ import "unicode/utf8"
 // replacementCharacter is U+FFFD REPLACEMENT CHARACTER.
 const replacementCharacter = 0xFFFD
 
-func getCharCode(source string, offset int) int {
-	if offset >= 0 && offset < len(source) {
-		if code := source[offset]; code != 0 {
-			return int(code)
-		}
-		// § 3.3. Preprocessing the input stream
-		// Replace any U+0000 NULL ... code points in input with U+FFFD REPLACEMENT CHARACTER.
-		return replacementCharacter
-	}
-	return 0
-}
-
 // CharCodeAt is the Go form of source.charCodeAt(offset): the byte at offset,
 // or 0 when offset is out of range (where JavaScript returns NaN, which
 // compares unequal to every code these helpers test for). It is not an
@@ -31,7 +19,15 @@ func getCharCode(source string, offset int) int {
 // UTF-8 sequence that decodes to U+FFFD, and either classifies as a name
 // code point.
 func CharCodeAt(source string, offset int) int {
-	return getCharCode(source, offset)
+	if offset < 0 || offset >= len(source) {
+		return 0
+	}
+	if code := source[offset]; code != 0 {
+		return int(code)
+	}
+	// § 3.3. Preprocessing the input stream
+	// Replace any U+0000 NULL ... code points in input with U+FFFD REPLACEMENT CHARACTER.
+	return replacementCharacter
 }
 
 // CodePointAt returns the code point that starts at byte offset in source and
@@ -92,10 +88,9 @@ func CodePointAt(source string, offset int) (rune, int) {
 	return replacementCharacter, size
 }
 
-// GetNewlineLength returns 2 for "\r\n" at offset, else 1. code is the char
-// code at offset.
-func GetNewlineLength(source string, offset, code int) int {
-	if code == 13 /* \r */ && getCharCode(source, offset+1) == 10 /* \n */ {
+// newlineLength returns 2 for "\r\n" at offset, else 1.
+func newlineLength(source string, offset int) int {
+	if CharCodeAt(source, offset) == '\r' && CharCodeAt(source, offset+1) == '\n' {
 		return 2
 	}
 
@@ -108,7 +103,7 @@ func CmpChar(testStr string, offset, referenceCode int) bool {
 	code := CharCodeAt(testStr, offset)
 
 	// code.toLowerCase() for A..Z
-	if IsUppercaseLetter(code) {
+	if isUppercaseLetter(code) {
 		code = code | 32
 	}
 
@@ -131,7 +126,7 @@ func CmpStr(testStr string, start, end int, referenceStr string) bool {
 		testCode := int(testStr[i])
 
 		// testCode.toLowerCase() for A..Z
-		if IsUppercaseLetter(testCode) {
+		if isUppercaseLetter(testCode) {
 			testCode = testCode | 32
 		}
 
@@ -155,9 +150,9 @@ func FindWhiteSpaceStart(source string, offset int) int {
 	return offset + 1
 }
 
-// FindWhiteSpaceEnd returns the offset just past the whitespace run starting
+// findWhiteSpaceEnd returns the offset just past the whitespace run starting
 // at offset.
-func FindWhiteSpaceEnd(source string, offset int) int {
+func findWhiteSpaceEnd(source string, offset int) int {
 	for ; offset < len(source); offset++ {
 		if !IsWhiteSpace(CharCodeAt(source, offset)) {
 			break
@@ -167,9 +162,9 @@ func FindWhiteSpaceEnd(source string, offset int) int {
 	return offset
 }
 
-// FindDecimalNumberEnd returns the offset just past the digits starting at
+// findDecimalNumberEnd returns the offset just past the digits starting at
 // offset.
-func FindDecimalNumberEnd(source string, offset int) int {
+func findDecimalNumberEnd(source string, offset int) int {
 	for ; offset < len(source); offset++ {
 		if !IsDigit(CharCodeAt(source, offset)) {
 			break
@@ -192,7 +187,7 @@ func ConsumeEscaped(source string, offset int) int {
 	// Return the current input code point.
 	// (Go only: the whole code point; upstream consumes one UTF-16 code unit,
 	// and offset+1 past the end, where this returns that too.)
-	if !IsHexDigit(getCharCode(source, offset)) {
+	if !IsHexDigit(CharCodeAt(source, offset)) {
 		_, size := CodePointAt(source, offset)
 		return offset + max(size, 1)
 	}
@@ -202,31 +197,31 @@ func ConsumeEscaped(source string, offset int) int {
 	// Note that this means 1-6 hex digits have been consumed in total.
 	offset++
 	for maxOffset := min(len(source), offset+5); offset < maxOffset; offset++ {
-		if !IsHexDigit(getCharCode(source, offset)) {
+		if !IsHexDigit(CharCodeAt(source, offset)) {
 			break
 		}
 	}
 
 	// If the next input code point is whitespace, consume it as well.
-	code := getCharCode(source, offset)
+	code := CharCodeAt(source, offset)
 	if IsWhiteSpace(code) {
-		offset += GetNewlineLength(source, offset, code)
+		offset += newlineLength(source, offset)
 	}
 
 	return offset
 }
 
-// ConsumeName returns the offset just past the name starting at offset.
+// consumeName returns the offset just past the name starting at offset.
 //
 // §4.3.11. Consume a name
 // Note: This algorithm does not do the verification of the first few code points that are necessary
 // to ensure the returned code points would constitute an <ident-token>. If that is the intended use,
 // ensure that the stream starts with an identifier before calling this algorithm.
-func ConsumeName(source string, offset int) int {
+func consumeName(source string, offset int) int {
 	// Let result initially be an empty string.
 	// Repeatedly consume the next input code point from the stream:
 	for ; offset < len(source); offset++ {
-		code := getCharCode(source, offset)
+		code := CharCodeAt(source, offset)
 
 		// name code point
 		if IsName(code) {
@@ -235,7 +230,7 @@ func ConsumeName(source string, offset int) int {
 		}
 
 		// the stream starts with a valid escape
-		if IsValidEscape(code, getCharCode(source, offset+1)) {
+		if IsValidEscape(code, CharCodeAt(source, offset+1)) {
 			// Consume an escaped code point. Append the returned code point to result.
 			offset = ConsumeEscaped(source, offset) - 1
 			continue
@@ -264,7 +259,7 @@ func ConsumeNumber(source string, offset int) int {
 
 	// 3. While the next input code point is a digit, consume it and append it to repr.
 	if IsDigit(code) {
-		offset = FindDecimalNumberEnd(source, offset+1)
+		offset = findDecimalNumberEnd(source, offset+1)
 		code = CharCodeAt(source, offset)
 	}
 
@@ -279,7 +274,7 @@ func ConsumeNumber(source string, offset int) int {
 
 		// 4.4 While the next input code point is a digit, consume it and append it to repr.
 
-		offset = FindDecimalNumberEnd(source, offset)
+		offset = findDecimalNumberEnd(source, offset)
 	}
 
 	// 5. If the next 2 or 3 input code points are U+0045 LATIN CAPITAL LETTER E (E)
@@ -303,23 +298,23 @@ func ConsumeNumber(source string, offset int) int {
 			// TODO
 
 			// 5.4 While the next input code point is a digit, consume it and append it to repr.
-			offset = FindDecimalNumberEnd(source, offset+1+sign+1)
+			offset = findDecimalNumberEnd(source, offset+1+sign+1)
 		}
 	}
 
 	return offset
 }
 
-// ConsumeBadURLRemnants returns the offset just past the remnants of a bad url
+// consumeBadURLRemnants returns the offset just past the remnants of a bad url
 // starting at offset.
 //
 // § 4.3.14. Consume the remnants of a bad url
 // ... its sole use is to consume enough of the input stream to reach a recovery point
 // where normal tokenizing can resume.
-func ConsumeBadURLRemnants(source string, offset int) int {
+func consumeBadURLRemnants(source string, offset int) int {
 	// Repeatedly consume the next input code point from the stream:
 	for ; offset < len(source); offset++ {
-		code := getCharCode(source, offset)
+		code := CharCodeAt(source, offset)
 
 		// U+0029 RIGHT PARENTHESIS ())
 		// EOF
@@ -329,7 +324,7 @@ func ConsumeBadURLRemnants(source string, offset int) int {
 			break
 		}
 
-		if IsValidEscape(code, getCharCode(source, offset+1)) {
+		if IsValidEscape(code, CharCodeAt(source, offset+1)) {
 			// Consume an escaped code point.
 			// Note: This allows an escaped right parenthesis ("\)") to be encountered
 			// without ending the <bad-url-token>. This is otherwise identical to

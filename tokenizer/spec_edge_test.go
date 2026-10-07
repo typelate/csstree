@@ -157,22 +157,22 @@ func TestCharCodeDefinitions(t *testing.T) {
 		}{
 			{"IsDigit", IsDigit, tt.digit},
 			{"IsHexDigit", IsHexDigit, tt.hex},
-			{"IsUppercaseLetter", IsUppercaseLetter, tt.upper},
-			{"IsLowercaseLetter", IsLowercaseLetter, tt.lower},
-			{"IsLetter", IsLetter, tt.letter},
-			{"IsNonASCII", IsNonASCII, tt.nonASCII},
-			{"IsNameStart", IsNameStart, tt.nameStart},
+			{"isUppercaseLetter", isUppercaseLetter, tt.upper},
+			{"isLowercaseLetter", isLowercaseLetter, tt.lower},
+			{"isLetter", isLetter, tt.letter},
+			{"isNonASCII", isNonASCII, tt.nonASCII},
+			{"isNameStart", isNameStart, tt.nameStart},
 			{"IsName", IsName, tt.name},
-			{"IsNonPrintable", IsNonPrintable, tt.nonPrintable},
-			{"IsNewline", IsNewline, tt.newline},
+			{"isNonPrintable", isNonPrintable, tt.nonPrintable},
+			{"isNewline", isNewline, tt.newline},
 			{"IsWhiteSpace", IsWhiteSpace, tt.whiteSpace},
 		} {
 			if got := check.fn(tt.code); got != check.want {
 				t.Errorf("%s(%#x) = %t, want %t", check.name, tt.code, got, check.want)
 			}
 		}
-		if got := CharCodeCategory(tt.code); got != tt.category {
-			t.Errorf("CharCodeCategory(%#x) = %#x, want %#x", tt.code, got, tt.category)
+		if got := charCodeCategory(tt.code); got != tt.category {
+			t.Errorf("charCodeCategory(%#x) = %#x, want %#x", tt.code, got, tt.category)
 		}
 	}
 }
@@ -186,24 +186,24 @@ func codesAt(s string) (int, int, int) {
 func TestIsNumberStart(t *testing.T) {
 	for _, tt := range []struct {
 		source string
-		want   int
+		want   bool
 	}{
-		{"+1", 2},
-		{"+.1", 3},
-		{"+.a", 0},
-		{"+a", 0},
-		{"-1", 2},
-		{"-.1", 3},
-		{"-.", 0},
-		{".1", 2},
-		{".a", 0},
-		{"1", 1},
-		{"a", 0},
-		{"+", 0},
-		{"", 0},
+		{"+1", true},
+		{"+.1", true},
+		{"+.a", false},
+		{"+a", false},
+		{"-1", true},
+		{"-.1", true},
+		{"-.", false},
+		{".1", true},
+		{".a", false},
+		{"1", true},
+		{"a", false},
+		{"+", false},
+		{"", false},
 	} {
-		if got := IsNumberStart(codesAt(tt.source)); got != tt.want {
-			t.Errorf("IsNumberStart(%q) = %d, want %d", tt.source, got, tt.want)
+		if got := isNumberStart(codesAt(tt.source)); got != tt.want {
+			t.Errorf("isNumberStart(%q) = %t, want %t", tt.source, got, tt.want)
 		}
 	}
 }
@@ -234,29 +234,35 @@ func TestIsIdentifierStart(t *testing.T) {
 	}
 }
 
-func TestIsBOM(t *testing.T) {
-	for _, tt := range []struct{ code, want int }{
-		{0xfeff, 3}, // upstream 1: one UTF-16 code unit; three bytes of UTF-8
-		{0xfffe, 0}, // upstream 1; see TestIsBOMSpecFixes
-		{0xfffd, 0},
-		{0x61, 0},
-		{0, 0},
+func TestBOMLen(t *testing.T) {
+	for _, tt := range []struct {
+		source string
+		want   int
+	}{
+		{"\ufeff", 3}, // upstream 1: one UTF-16 code unit; three bytes of UTF-8
+		{"\ufeffa", 3},
+		{"a\ufeff", 0},
+		{"\ufffe", 0}, // upstream 1: it takes U+FFFE for a little-endian BOM
+		{"\ufffd", 0},
+		{"\xef\xbb", 0},
+		{"a", 0},
+		{"", 0},
 	} {
-		if got := IsBOM(tt.code); got != tt.want {
-			t.Errorf("IsBOM(%#x) = %d, want %d", tt.code, got, tt.want)
+		if got := bomLen(tt.source); got != tt.want {
+			t.Errorf("bomLen(%q) = %d, want %d", tt.source, got, tt.want)
 		}
 	}
 }
 
-func TestGetNewlineLength(t *testing.T) {
+func TestNewlineLength(t *testing.T) {
 	for _, tt := range []struct {
 		source       string
 		offset, want int
 	}{
 		{"\r\n", 0, 2}, {"\n\n", 0, 1}, {"\r\r", 0, 1}, {"\r", 0, 1}, {"\n", 0, 1}, {"a\r\n", 1, 2}, {"\f\n", 0, 1},
 	} {
-		if got := GetNewlineLength(tt.source, tt.offset, CharCodeAt(tt.source, tt.offset)); got != tt.want {
-			t.Errorf("GetNewlineLength(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.want)
+		if got := newlineLength(tt.source, tt.offset); got != tt.want {
+			t.Errorf("newlineLength(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.want)
 		}
 	}
 }
@@ -322,11 +328,11 @@ func TestFindWhiteSpace(t *testing.T) {
 	}{
 		{"  a", 0, 2, 0}, {"a", 0, 0, 0}, {"  ", 0, 2, 0}, {"123a", 0, 0, 3}, {"123", 1, 1, 3}, {"", 0, 0, 0},
 	} {
-		if got := FindWhiteSpaceEnd(tt.source, tt.offset); got != tt.wantWS {
-			t.Errorf("FindWhiteSpaceEnd(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.wantWS)
+		if got := findWhiteSpaceEnd(tt.source, tt.offset); got != tt.wantWS {
+			t.Errorf("findWhiteSpaceEnd(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.wantWS)
 		}
-		if got := FindDecimalNumberEnd(tt.source, tt.offset); got != tt.wantDigit {
-			t.Errorf("FindDecimalNumberEnd(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.wantDigit)
+		if got := findDecimalNumberEnd(tt.source, tt.offset); got != tt.wantDigit {
+			t.Errorf("findDecimalNumberEnd(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.wantDigit)
 		}
 	}
 }
@@ -348,12 +354,12 @@ func TestConsumeHelpers(t *testing.T) {
 		{"ConsumeEscaped", ConsumeEscaped, "\\a\nb", 3},
 		{"ConsumeEscaped", ConsumeEscaped, "\\aa", 3},
 		{"ConsumeEscaped", ConsumeEscaped, "\\g", 2},
-		{"ConsumeName", ConsumeName, "abc d", 3},
-		{"ConsumeName", ConsumeName, "a\\62 c", 6},
-		{"ConsumeName", ConsumeName, "a\\", 1},
-		{"ConsumeName", ConsumeName, "a\\\nb", 1},
-		{"ConsumeName", ConsumeName, "-_1é(", 5}, // upstream 4: é is two bytes
-		{"ConsumeName", ConsumeName, "a\\)b", 4},
+		{"consumeName", consumeName, "abc d", 3},
+		{"consumeName", consumeName, "a\\62 c", 6},
+		{"consumeName", consumeName, "a\\", 1},
+		{"consumeName", consumeName, "a\\\nb", 1},
+		{"consumeName", consumeName, "-_1é(", 5}, // upstream 4: é is two bytes
+		{"consumeName", consumeName, "a\\)b", 4},
 		{"ConsumeNumber", ConsumeNumber, "1", 1},
 		{"ConsumeNumber", ConsumeNumber, "123", 3},
 		{"ConsumeNumber", ConsumeNumber, "+1", 2},
@@ -372,16 +378,16 @@ func TestConsumeHelpers(t *testing.T) {
 		{"ConsumeNumber", ConsumeNumber, "1.5e-3x", 6},
 		{"ConsumeNumber", ConsumeNumber, "+", 1},
 		{"ConsumeNumber", ConsumeNumber, "a", 0},
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "a)b", 2},
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "ab", 2},
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, ")", 1},
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\\)a)b", 4},
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\\", 1},
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "a\\", 2},
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\\aa)b)", 4}, // upstream 6: it skips the ) after an escape
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\\a)b)", 3},  // upstream 5
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\n\\)b)c", 5},
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "", 0},
+		{"consumeBadURLRemnants", consumeBadURLRemnants, "a)b", 2},
+		{"consumeBadURLRemnants", consumeBadURLRemnants, "ab", 2},
+		{"consumeBadURLRemnants", consumeBadURLRemnants, ")", 1},
+		{"consumeBadURLRemnants", consumeBadURLRemnants, "\\)a)b", 4},
+		{"consumeBadURLRemnants", consumeBadURLRemnants, "\\", 1},
+		{"consumeBadURLRemnants", consumeBadURLRemnants, "a\\", 2},
+		{"consumeBadURLRemnants", consumeBadURLRemnants, "\\aa)b)", 4}, // upstream 6: it skips the ) after an escape
+		{"consumeBadURLRemnants", consumeBadURLRemnants, "\\a)b)", 3},  // upstream 5
+		{"consumeBadURLRemnants", consumeBadURLRemnants, "\n\\)b)c", 5},
+		{"consumeBadURLRemnants", consumeBadURLRemnants, "", 0},
 	} {
 		if got := tt.fn(tt.source, 0); got != tt.want {
 			t.Errorf("%s(%q, 0) = %d, want %d", tt.name, tt.source, got, tt.want)
@@ -662,7 +668,7 @@ func TestTokenStreamUnbalanced(t *testing.T) {
 	} {
 		ts := NewTokenStream(tt.source)
 		var balance []int
-		for _, token := range ts.Dump() {
+		for _, token := range ts.dump() {
 			balance = append(balance, token.Balance)
 		}
 		if !slices.Equal(balance, tt.balance) {
@@ -722,13 +728,13 @@ func TestSkipSC(t *testing.T) {
 
 func TestTokenStreamBOM(t *testing.T) {
 	ts := NewTokenStream("\ufeffa b")
-	want := []DumpToken{
-		{Idx: 0, Type: "ident-token", Chunk: "a", Balance: 3},
-		{Idx: 1, Type: "whitespace-token", Chunk: " ", Balance: 3},
-		{Idx: 2, Type: "ident-token", Chunk: "b", Balance: 3},
+	want := []dumpToken{
+		{Index: 0, Type: "ident-token", Chunk: "a", Balance: 3},
+		{Index: 1, Type: "whitespace-token", Chunk: " ", Balance: 3},
+		{Index: 2, Type: "ident-token", Chunk: "b", Balance: 3},
 	}
-	if got := ts.Dump(); !slices.Equal(got, want) {
-		t.Errorf("Dump() = %v, want %v", got, want)
+	if got := ts.dump(); !slices.Equal(got, want) {
+		t.Errorf("dump() = %v, want %v", got, want)
 	}
 	if got := ts.GetTokenStart(0); got != 3 {
 		t.Errorf("GetTokenStart(0) = %d, want 3", got)
@@ -759,8 +765,8 @@ func TestTokenStreamReuseBuffers(t *testing.T) {
 	for _, source := range []string{"a", ")", strings.Repeat(",", 100)} {
 		ts.SetSource(source)
 		want := NewTokenStream(source)
-		if !slices.Equal(ts.Dump(), want.Dump()) {
-			t.Errorf("after SetSource(%q) Dump() = %v, want %v", source, ts.Dump(), want.Dump())
+		if !slices.Equal(ts.dump(), want.dump()) {
+			t.Errorf("after SetSource(%q) dump() = %v, want %v", source, ts.dump(), want.dump())
 		}
 		if !slices.Equal(ts.Balance, want.Balance) {
 			t.Errorf("after SetSource(%q) Balance = %v, want %v", source, ts.Balance, want.Balance)
@@ -917,8 +923,8 @@ func TestTokenStreamZeroValue(t *testing.T) {
 			}
 		}
 	}
-	if got := zero.Dump(); len(got) != 0 {
-		t.Errorf("zero TokenStream Dump() = %v, want no tokens", got)
+	if got := zero.dump(); len(got) != 0 {
+		t.Errorf("zero TokenStream dump() = %v, want no tokens", got)
 	}
 	zero.SkipUntilBalanced(-1, nil)
 	if !zero.EOF || zero.TokenType != EOF || zero.TokenIndex != 0 {
@@ -937,7 +943,7 @@ func TestSkipUntilBalancedNegativeStart(t *testing.T) {
 
 // A negative code has no category instead of indexing before the table.
 func TestCharCodeCategoryNegative(t *testing.T) {
-	if got := CharCodeCategory(-1); got != -1 {
-		t.Errorf("CharCodeCategory(-1) = %d, want -1", got)
+	if got := charCodeCategory(-1); got != -1 {
+		t.Errorf("charCodeCategory(-1) = %d, want -1", got)
 	}
 }

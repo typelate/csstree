@@ -159,17 +159,6 @@ func TestTokenizeSpecFixes(t *testing.T) {
 	}
 }
 
-func TestIsBOMSpecFixes(t *testing.T) {
-	for _, tt := range []struct{ code, want int }{
-		{0xfeff, 3},
-		{0xfffe, 0}, // upstream 1: it takes U+FFFE for a little-endian BOM
-	} {
-		if got := IsBOM(tt.code); got != tt.want {
-			t.Errorf("IsBOM(%#x) = %d, want %d", tt.code, got, tt.want)
-		}
-	}
-}
-
 // OffsetToLocation counts U+FFFE at the start as a character, not a BOM.
 func TestOffsetToLocationFFFE(t *testing.T) {
 	const source = "\ufffea"

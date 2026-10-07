@@ -63,14 +63,14 @@ func TestTokenizeStream(t *testing.T) {
 			{Type: "whitespace-token", Chunk: "\n", Balance: 31},
 		}
 		var (
-			dump  []DumpToken
+			dump  []dumpToken
 			types []string
 			start []int
 			end   []int
 		)
 		offset := 0
 		for idx, token := range tokens {
-			dump = append(dump, DumpToken{Idx: idx, Type: token.Type, Chunk: token.Chunk, Balance: token.Balance})
+			dump = append(dump, dumpToken{Index: idx, Type: token.Type, Chunk: token.Chunk, Balance: token.Balance})
 			types = append(types, token.Type)
 			start = append(start, offset)
 			offset += len(token.Chunk)
@@ -116,8 +116,8 @@ func TestTokenizeStream(t *testing.T) {
 		t.Run("dump()", func(t *testing.T) {
 			stream := createStream(css)
 
-			if got := stream.Dump(); !slices.Equal(got, dump) {
-				t.Errorf("Dump() = %v, want %v", got, dump)
+			if got := stream.dump(); !slices.Equal(got, dump) {
+				t.Errorf("dump() = %v, want %v", got, dump)
 			}
 		})
 

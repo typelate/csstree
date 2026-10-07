@@ -22,10 +22,10 @@ func TestTokenStreamLargeSource(t *testing.T) {
 // A negative offset reads as no character, as charCodeAt does upstream, so
 // these scan forward instead of panicking.
 func TestConsumeNegativeOffset(t *testing.T) {
-	if got := ConsumeName("abc", -1); got != -1 {
-		t.Errorf(`ConsumeName("abc", -1) = %d, want -1`, got)
+	if got := consumeName("abc", -1); got != -1 {
+		t.Errorf(`consumeName("abc", -1) = %d, want -1`, got)
 	}
-	if got := ConsumeBadURLRemnants("abc)", -1); got != 4 {
-		t.Errorf(`ConsumeBadURLRemnants("abc)", -1) = %d, want 4`, got)
+	if got := consumeBadURLRemnants("abc)", -1); got != 4 {
+		t.Errorf(`consumeBadURLRemnants("abc)", -1) = %d, want 4`, got)
 	}
 }

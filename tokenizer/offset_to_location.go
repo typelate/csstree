@@ -2,8 +2,6 @@
 
 package tokenizer
 
-import "unicode/utf8"
-
 // Position is a point in a source: upstream's {offset, line, column}.
 // Offsets and columns count bytes; lines and columns start at 1 unless the
 // OffsetToLocation says otherwise.
@@ -69,8 +67,7 @@ const (
 
 func (l *OffsetToLocation) computeLinesAndColumns() {
 	source := l.Source
-	first, _ := utf8.DecodeRuneInString(source)
-	startOffset := IsBOM(int(first))
+	startOffset := bomLen(source)
 	lines := l.lines[:0]
 	line := 0
 	column := 0
