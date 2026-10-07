@@ -365,9 +365,6 @@ func TestTokenizeStream(t *testing.T) {
 			if count != bufferSize {
 				t.Errorf("token count = %d, want %d", count, bufferSize)
 			}
-			if len(stream.offsetAndType) < bufferSize {
-				t.Errorf("len(offsetAndType) = %d, want >= %d", len(stream.offsetAndType), bufferSize)
-			}
 		})
 
 		t.Run("values", func(t *testing.T) {

@@ -752,20 +752,25 @@ func TestOffsetToLocationNewlines(t *testing.T) {
 	}
 }
 
-// A stream reuses its buffers; one exactly as long as a source with a token
-// per char has no room for the EOF entry, so SetSource must grow it.
+// A stream reuses its buffers across sources; nothing of a longer earlier
+// source shows through a shorter later one, and a longer one grows them.
 func TestTokenStreamReuseBuffers(t *testing.T) {
-	ts := NewTokenStream("a")
-	source := strings.Repeat(",", len(ts.offsetAndType))
-	ts.SetSource(source)
-	if ts.TokenCount != len(source) {
-		t.Fatalf("TokenCount = %d, want %d", ts.TokenCount, len(source))
-	}
-	if got := ts.GetTokenType(len(source)); got != EOF {
-		t.Errorf("GetTokenType(%d) = %v, want %v", len(source), got, EOF)
-	}
-	if got := ts.GetTokenEnd(len(source) - 1); got != len(source) {
-		t.Errorf("GetTokenEnd(%d) = %d, want %d", len(source)-1, got, len(source))
+	ts := NewTokenStream("f([{a}]) (")
+	for _, source := range []string{"a", ")", strings.Repeat(",", 100)} {
+		ts.SetSource(source)
+		want := NewTokenStream(source)
+		if !slices.Equal(ts.Dump(), want.Dump()) {
+			t.Errorf("after SetSource(%q) Dump() = %v, want %v", source, ts.Dump(), want.Dump())
+		}
+		if !slices.Equal(ts.Balance, want.Balance) {
+			t.Errorf("after SetSource(%q) Balance = %v, want %v", source, ts.Balance, want.Balance)
+		}
+		if got := ts.GetTokenType(ts.TokenCount); got != EOF {
+			t.Errorf("after SetSource(%q) GetTokenType(%d) = %v, want %v", source, ts.TokenCount, got, EOF)
+		}
+		if got := ts.GetTokenEnd(ts.TokenCount - 1); got != len(source) {
+			t.Errorf("after SetSource(%q) GetTokenEnd(%d) = %d, want %d", source, ts.TokenCount-1, got, len(source))
+		}
 	}
 }
 

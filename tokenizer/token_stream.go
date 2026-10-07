@@ -2,6 +2,8 @@
 
 package tokenizer
 
+import "math"
+
 const (
 	offsetMask      = 1<<typeShift - 1
 	typeShift       = 58
@@ -118,35 +120,32 @@ func (ts *TokenStream) Reset() {
 	ts.TokenEnd = ts.firstCharOffset
 }
 
-// SetSource tokenizes source, reusing the stream's buffers, and positions
-// the stream on the first token.
+// SetSource tokenizes source, reusing the stream's buffers (so slices of
+// Balance taken before it change), and positions the stream on the first
+// token.
 func (ts *TokenStream) SetSource(source string) {
-	sourceLength := len(source)
-	offsetAndType := adoptBuffer(ts.offsetAndType, len(source)+1) // +1 because of eof-token
-	balance := adoptBuffer(ts.Balance, len(source)+1)
-	tokenCount := 0
-	firstCharOffset := -1
-	balanceCloseType := TokenType(0)
-	balanceStart := len(source)
+	// topLevel is the balance of a token outside any block until the
+	// references are reversed below (upstream uses source.length).
+	const topLevel = math.MaxInt
 
-	// capture buffers
-	ts.offsetAndType = nil
-	ts.Balance = nil
-	clear(balance)
+	offsetAndType := ts.offsetAndType[:0]
+	balance := ts.Balance[:0]
+	firstCharOffset := -1
+	balanceCloseType := EOF // no token closes the top level
+	balanceStart := topLevel
 
 	Tokenize(source, func(tokenType TokenType, start, end int) {
-		index := tokenCount
-		tokenCount++
+		index := len(offsetAndType)
 
 		// type & offset
-		offsetAndType[index] = uint64(tokenType)<<typeShift | uint64(end)
+		offsetAndType = append(offsetAndType, uint64(tokenType)<<typeShift|uint64(end))
 
 		if firstCharOffset == -1 {
 			firstCharOffset = start
 		}
 
 		// balance
-		balance[index] = balanceStart
+		balance = append(balance, balanceStart)
 
 		if tokenType == balanceCloseType {
 			prevBalanceStart := balance[balanceStart]
@@ -156,7 +155,10 @@ func (ts *TokenStream) SetSource(source string) {
 
 			// pop state
 			balanceStart = prevBalanceStart
-			balanceCloseType = TokenType(offsetAndType[prevBalanceStart] >> typeShift).closer()
+			balanceCloseType = EOF
+			if balanceStart != topLevel {
+				balanceCloseType = TokenType(offsetAndType[balanceStart] >> typeShift).closer()
+			}
 		} else if tokenType.IsBlockOpener() { // check for FunctionToken, <(-token>, <[-token> and <{-token>
 			// push state
 			balanceStart = index
@@ -165,8 +167,9 @@ func (ts *TokenStream) SetSource(source string) {
 	})
 
 	// finalize buffers
-	offsetAndType[tokenCount] = uint64(EOF)<<typeShift | uint64(sourceLength) // <EOF-token>
-	balance[tokenCount] = tokenCount                                          // prevents false positive balance match with any token
+	tokenCount := len(offsetAndType)
+	offsetAndType = append(offsetAndType, uint64(EOF)<<typeShift|uint64(len(source))) // <EOF-token>
+	balance = append(balance, tokenCount)                                             // prevents false positive balance match with any token
 
 	// reverse references from balance start to end
 	// tokens
@@ -191,8 +194,6 @@ func (ts *TokenStream) SetSource(source string) {
 			balance[i] = tokenCount
 		}
 	}
-
-	// balance[0] = tokenCount;
 
 	ts.Source = source
 	if firstCharOffset == -1 {
