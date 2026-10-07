@@ -82,6 +82,9 @@ func matchFragments(lexer *Lexer, ast Node, match *MatchResult, target SyntaxRef
 							Parent: list,
 							Nodes:  nodes,
 						})
+						// a node is in the AST once: stop walking
+						// (upstream walks the rest of the AST)
+						return WalkBreak
 					}
 					return WalkContinue
 				},
