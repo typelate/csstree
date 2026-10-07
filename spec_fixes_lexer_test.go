@@ -251,3 +251,55 @@ func TestSpecRangesWithUnits(t *testing.T) {
 		{"syntax", "<time [0s,∞]>", `1s\9`, true},
 	})
 }
+
+// TestSpecURange checks <urange> against CSS Syntax 3 §7.1 (Candidate
+// Recommendation Draft, 24 December 2021): the first token is an ident u,
+// the representations of the other tokens are interpreted as a range, and
+// the range is invalid when its end is above U+10FFFF or below its start.
+func TestSpecURange(t *testing.T) {
+	runSpecMatchCases(t, []specMatchCase{
+		{"type", "urange", "U+0-10FFFF", true},
+		{"type", "urange", "U+10FFFF", true},
+		{"type", "urange", "U+110000", false},
+		{"type", "urange", "U+0-110000", false},
+		{"type", "urange", "U+10FFF?", true},
+		{"type", "urange", "U+11????", false},
+		{"type", "urange", "U+??????", false},
+		{"type", "urange", "U+0?????", true},
+		{"type", "urange", "U+FF-00", false},
+		{"type", "urange", "U+FF-FF", true},
+		{"type", "urange", "U+1-zz", false},
+		{"type", "urange", "u+a-", false},
+		{"type", "urange", "U+1e-3", false},
+		{"type", "urange", "U+1e-1e", true},
+		{"type", "urange", "U+1e3", true},
+		{"type", "urange", "u+12e-130", true},
+		{"type", "urange", "ua+1", false},
+		{"type", "urange", "Ua+1", false},
+		{"type", "urange", "UU+1", false},
+		{"type", "urange", `\75+1`, true},
+		{"type", "urange", `\55 +1`, true},
+		{"type", "urange", "U+1?-2", false},
+		{"type", "urange", "u+?", true},
+		{"type", "urange", "U+0-7F", true},
+		{"type", "urange", "u+0025-00FF", true},
+		{"type", "urange", "U+4??", true},
+		{"syntax", "<urange>#", "U+0-7F, U+110000", false},
+		{"property", "unicode-range", "U+0-7F", false}, // a descriptor, not a property
+	})
+
+	lexer := DefaultLexer()
+	for _, c := range []struct {
+		value string
+		want  bool
+	}{
+		{"U+0-7F, U+0400-04FF", true},
+		{"U+0-7F, U+FF-00", false},
+		{"U+110000", false},
+	} {
+		result := lexer.MatchAtruleDescriptorString("font-face", "unicode-range", c.value)
+		if got := result.Matched != nil; got != c.want {
+			t.Errorf("MatchAtruleDescriptorString(%q, %q, %q) = %v, want %v (error: %v)", "font-face", "unicode-range", c.value, got, c.want, result.Error)
+		}
+	}
+}

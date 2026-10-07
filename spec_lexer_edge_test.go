@@ -329,14 +329,15 @@ func TestLexerSpecEdgeCases(t *testing.T) {
 		// Syntax 3 §7.1 <urange>: upstream checks the token forms and digit
 		// counts, but not that the start is at most the end and at most
 		// 10FFFF, that the end of a range is hex digits, or that the
-		// first ident is u, so it takes ranges the spec rejects
+		// first ident is u, so it takes ranges the spec rejects; the port
+		// follows the spec
 		{kind: "type", name: "urange", value: "U+0-10FFFF", matched: true, iterations: 3},
-		{kind: "type", name: "urange", value: "U+110000", matched: true, iterations: 3},
-		{kind: "type", name: "urange", value: "U+FF-00", matched: true, iterations: 3},
-		{kind: "type", name: "urange", value: "U+1-zz", matched: true, iterations: 3},
-		{kind: "type", name: "urange", value: "u+a-", matched: true, iterations: 3},
-		{kind: "type", name: "urange", value: "U+1e-3", matched: true, iterations: 3},
-		{kind: "type", name: "urange", value: "ua+1", matched: true, iterations: 3},
+		{kind: "type", name: "urange", value: "U+110000", iterations: 3},
+		{kind: "type", name: "urange", value: "U+FF-00", iterations: 3},
+		{kind: "type", name: "urange", value: "U+1-zz", iterations: 3},
+		{kind: "type", name: "urange", value: "u+a-", iterations: 3},
+		{kind: "type", name: "urange", value: "U+1e-3", iterations: 3},
+		{kind: "type", name: "urange", value: "ua+1", iterations: 3},
 		{kind: "type", name: "urange", value: "U+1-1234567", iterations: 3},
 		{kind: "type", name: "urange", value: "U+??-1", iterations: 4, mismatchOffset: 4},
 

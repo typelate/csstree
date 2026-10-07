@@ -3,6 +3,8 @@
 package csstree
 
 import (
+	"strings"
+
 	"github.com/typelate/csstree/definitionsyntax"
 	"github.com/typelate/csstree/tokenizer"
 )
@@ -11,7 +13,6 @@ const (
 	urangePlusSign     = 0x002B // U+002B PLUS SIGN (+)
 	urangeHyphenMinus  = 0x002D // U+002D HYPHEN-MINUS (-)
 	urangeQuestionMark = 0x003F // U+003F QUESTION MARK (?)
-	urangeU            = 0x0075 // U+0075 LATIN SMALL LETTER U (u)
 )
 
 func tokenStartsWith(token *matchToken, code int) bool {
@@ -85,11 +86,36 @@ func withQuestionMarkSequence(consumed, length int, getNextToken func(offset int
 //	u <number-token> <dimension-token> |
 //	u <number-token> <number-token> |
 //	u '+' '?'+
+//
+// The tokens must then interpret into a valid range, see validURange.
 func urange(token *matchToken, getNextToken func(offset int) *matchToken, _ *definitionsyntax.Range) int {
+	length := urangeTokens(token, getNextToken)
+	if length == 0 {
+		return 0
+	}
+
+	// Skipping the first u token, concatenate the representations of all
+	// the tokens in the production together.
+	var text strings.Builder
+	for i := 1; i < length; i++ {
+		text.WriteString(getNextToken(i).value)
+	}
+
+	if !validURange(text.String()) {
+		return 0
+	}
+
+	return length
+}
+
+// urangeTokens returns how many tokens starting at token have the forms
+// of <urange>, 0 for none.
+func urangeTokens(token *matchToken, getNextToken func(offset int) *matchToken) int {
 	length := 0
 
-	// should start with `u` or `U`
-	if token == nil || token.typ != tokenizer.Ident || !tokenizer.CmpChar(token.value, 0, urangeU) {
+	// should start with the ident u (upstream: an ident starting with
+	// `u` or `U`, so ua+1 was a <urange>)
+	if token == nil || token.typ != tokenizer.Ident || !eqStr(token.value, "u") {
 		return 0
 	}
 
@@ -161,4 +187,95 @@ func urange(token *matchToken, getNextToken func(offset int) *matchToken, _ *def
 	}
 
 	return 0
+}
+
+// maxCodePoint is the maximum allowed code point (CSS Syntax 3 §4.2).
+const maxCodePoint = 0x10FFFF
+
+// validURange reports whether text, the representations of the tokens of
+// a <urange> after its u, is a valid range: it interprets text into a
+// start and an end value as CSS Syntax 3 §7.1 says (Candidate
+// Recommendation Draft, 24 December 2021), and the range is invalid when
+// the end is greater than the maximum allowed code point or the start is
+// greater than the end.
+func validURange(text string) bool {
+	// If the first character of text is U+002B PLUS SIGN, consume it.
+	// Otherwise, this is an invalid <urange>.
+	if !strings.HasPrefix(text, "+") {
+		return false
+	}
+	text = text[1:]
+
+	// Consume as many hex digits from text as possible, then consume as
+	// many U+003F QUESTION MARK (?) code points as possible. If zero code
+	// points were consumed, or more than six code points were consumed,
+	// this is an invalid <urange>.
+	digits := hexDigitsPrefix(text)
+	questionMarks := len(text[digits:]) - len(strings.TrimLeft(text[digits:], "?"))
+	consumed := text[:digits+questionMarks]
+	text = text[len(consumed):]
+	if len(consumed) == 0 || len(consumed) > 6 {
+		return false
+	}
+
+	var start, end int64
+	switch {
+	case questionMarks > 0:
+		// If there are any code points left in text, this is an invalid
+		// <urange>. The start value is the consumed code points with the ?
+		// replaced by 0, the end value with the ? replaced by F.
+		if text != "" {
+			return false
+		}
+		start = parseHex(strings.ReplaceAll(consumed, "?", "0"))
+		end = parseHex(strings.ReplaceAll(consumed, "?", "F"))
+
+	case text == "":
+		// If there are no code points left in text, the end value is the
+		// same as the start value.
+		start = parseHex(consumed)
+		end = start
+
+	default:
+		start = parseHex(consumed)
+
+		// If the next code point in text is U+002D HYPHEN-MINUS (-),
+		// consume it. Otherwise, this is an invalid <urange>.
+		if text[0] != '-' {
+			return false
+		}
+		text = text[1:]
+
+		// Consume as many hex digits as possible from text. If zero hex
+		// digits were consumed, or more than 6 hex digits were consumed,
+		// or there are any code points left in text, this is an invalid
+		// <urange>.
+		digits := hexDigitsPrefix(text)
+		if digits == 0 || digits > 6 || digits != len(text) {
+			return false
+		}
+		end = parseHex(text)
+	}
+
+	// If end value is greater than the maximum allowed code point, or
+	// start value is greater than end value, the <urange> is invalid.
+	return end <= maxCodePoint && start <= end
+}
+
+// hexDigitsPrefix returns the number of hex digits at the start of s.
+func hexDigitsPrefix(s string) int {
+	n := 0
+	for n < len(s) && tokenizer.IsHexDigit(int(s[n])) {
+		n++
+	}
+	return n
+}
+
+// parseHex returns the value of at most six hex digits.
+func parseHex(digits string) int64 {
+	var value int64
+	for i := 0; i < len(digits); i++ {
+		value = value<<4 | int64(digitValue(digits[i]))
+	}
+	return value
 }
