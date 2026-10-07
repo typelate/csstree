@@ -4,8 +4,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/typelate/csstree/tokenizer"
 )
 
 // Tests of CSS Values and Units Level 4 §10 math functions, where this port
@@ -13,367 +11,329 @@ import (
 // function as upstream csstree does.
 // https://drafts.csswg.org/css-values-4/#math
 
-type mathMatchCase struct {
-	name  string // property name, or type name for MatchTypeString
-	value string
-	want  bool
-}
-
 func TestSpecMathMatchProperty(t *testing.T) {
-	cases := []mathMatchCase{
+	cases := []matchCase{
 		// §10.1 calc() takes a <calc-sum>; width is a <length-percentage>
-		{"width", "calc(1px + 2px)", true},
-		{"width", "calc(100% - 2em)", true},
-		{"width", "calc(100% / 3 - 2 * 1em - 2 * 1px)", true},
-		{"width", "calc((1px + 2px) * 3)", true},
-		{"width", "calc(calc(1px + 2px) * 3)", true},
-		{"width", "calc( 1px )", true},
-		{"width", "calc(1px*2)", true},
-		{"width", "calc(1px/2)", true},
-		{"width", "calc(1px /* note */ + 2px)", true},
-		{"width", "calc(10%)", true},
-		{"width", "calc(1px * (2 + 3))", true},
-		{"width", "calc((1px + 2px) / (1 + 1))", true},
-		{"width", "calc(1px / (2px / 1px))", true},
-		{"width", "calc(1px / 1px * 1px)", true},
-		{"width", "calc(10px * 10px / 1px)", true},
-		{"width", "calc(1px / 0)", true},
-		{"width", "calc(min(1px, max(2px, 3%)) + clamp(1px, 2px, 3px))", true},
+		{kind: "property", name: "width", value: "calc(1px + 2px)", matched: true},
+		{kind: "property", name: "width", value: "calc(100% - 2em)", matched: true},
+		{kind: "property", name: "width", value: "calc(100% / 3 - 2 * 1em - 2 * 1px)", matched: true},
+		{kind: "property", name: "width", value: "calc((1px + 2px) * 3)", matched: true},
+		{kind: "property", name: "width", value: "calc(calc(1px + 2px) * 3)", matched: true},
+		{kind: "property", name: "width", value: "calc( 1px )", matched: true},
+		{kind: "property", name: "width", value: "calc(1px*2)", matched: true},
+		{kind: "property", name: "width", value: "calc(1px/2)", matched: true},
+		{kind: "property", name: "width", value: "calc(1px /* note */ + 2px)", matched: true},
+		{kind: "property", name: "width", value: "calc(10%)", matched: true},
+		{kind: "property", name: "width", value: "calc(1px * (2 + 3))", matched: true},
+		{kind: "property", name: "width", value: "calc((1px + 2px) / (1 + 1))", matched: true},
+		{kind: "property", name: "width", value: "calc(1px / (2px / 1px))", matched: true},
+		{kind: "property", name: "width", value: "calc(1px / 1px * 1px)", matched: true},
+		{kind: "property", name: "width", value: "calc(10px * 10px / 1px)", matched: true},
+		{kind: "property", name: "width", value: "calc(1px / 0)", matched: true},
+		{kind: "property", name: "width", value: "calc(min(1px, max(2px, 3%)) + clamp(1px, 2px, 3px))", matched: true},
 		// a function name is ASCII case-insensitive
-		{"width", "CALC(1px)", true},
-		{"width", "Calc(1px + 1%)", true},
-		{"width", "-webkit-calc(1px + 2%)", true},
-		{"width", "-moz-calc(1px + 2%)", true},
+		{kind: "property", name: "width", value: "CALC(1px)", matched: true},
+		{kind: "property", name: "width", value: "Calc(1px + 1%)", matched: true},
+		{kind: "property", name: "width", value: "-webkit-calc(1px + 2%)", matched: true},
+		{kind: "property", name: "width", value: "-moz-calc(1px + 2%)", matched: true},
 		// and may be escaped (CSS Syntax 3 §4.3.7), as may keywords and
 		// units
-		{"width", `c\61lc(1px)`, true},
-		{"width", `c\61lc(red)`, false},
-		{"width", `calc(1px * p\69)`, true},
-		{"width", `calc(1p\78)`, true},
-		{"width", `clamp(n\6fne, 1px, none)`, true},
+		{kind: "property", name: "width", value: `c\61lc(1px)`, matched: true},
+		{kind: "property", name: "width", value: `c\61lc(red)`},
+		{kind: "property", name: "width", value: `calc(1px * p\69)`, matched: true},
+		{kind: "property", name: "width", value: `calc(1p\78)`, matched: true},
+		{kind: "property", name: "width", value: `clamp(n\6fne, 1px, none)`, matched: true},
 		// §10.2 comparison functions
-		{"width", "min(10px, 5%)", true},
-		{"width", "max(10px, 5%, 1em)", true},
-		{"width", "clamp(10px, 5%, 100px)", true},
-		{"width", "clamp(none, 5%, 100px)", true},
-		{"width", "clamp(10px, 5%, NONE)", true},
-		{"width", "clamp(none, 5%, none)", true},
+		{kind: "property", name: "width", value: "min(10px, 5%)", matched: true},
+		{kind: "property", name: "width", value: "max(10px, 5%, 1em)", matched: true},
+		{kind: "property", name: "width", value: "clamp(10px, 5%, 100px)", matched: true},
+		{kind: "property", name: "width", value: "clamp(none, 5%, 100px)", matched: true},
+		{kind: "property", name: "width", value: "clamp(10px, 5%, NONE)", matched: true},
+		{kind: "property", name: "width", value: "clamp(none, 5%, none)", matched: true},
 		// §10.3 stepped value functions
-		{"width", "round(10.5px, 1px)", true},
-		{"width", "round(up, 10.5px, 1px)", true},
-		{"width", "round(TO-ZERO, 10.5px, 1px)", true},
-		{"width", "round(line-width, 1.5px)", true},
-		{"width", "round(line-width, 1.5px, 1px)", true},
-		{"width", "mod(18px, 5px)", true},
-		{"width", "rem(18px, 5%)", true},
+		{kind: "property", name: "width", value: "round(10.5px, 1px)", matched: true},
+		{kind: "property", name: "width", value: "round(up, 10.5px, 1px)", matched: true},
+		{kind: "property", name: "width", value: "round(TO-ZERO, 10.5px, 1px)", matched: true},
+		{kind: "property", name: "width", value: "round(line-width, 1.5px)", matched: true},
+		{kind: "property", name: "width", value: "round(line-width, 1.5px, 1px)", matched: true},
+		{kind: "property", name: "width", value: "mod(18px, 5px)", matched: true},
+		{kind: "property", name: "width", value: "rem(18px, 5%)", matched: true},
 		// §10.4 and §10.5 functions of numbers used as factors
-		{"width", "calc(1px * sin(30deg))", true},
-		{"width", "calc(1px * cos(1))", true},
-		{"width", "calc(1px * tan(0.5turn))", true},
-		{"width", "calc(1px * pow(2, 3))", true},
-		{"width", "calc(1px * sqrt(4))", true},
-		{"width", "calc(1px * exp(1) / log(2))", true},
-		{"width", "calc(1px * log(8, 2))", true},
-		{"width", "calc(1px * pow(10% / 1px, 2))", true},
-		{"width", "hypot(30px, 40px)", true},
-		{"width", "hypot(30px, 4%)", true},
+		{kind: "property", name: "width", value: "calc(1px * sin(30deg))", matched: true},
+		{kind: "property", name: "width", value: "calc(1px * cos(1))", matched: true},
+		{kind: "property", name: "width", value: "calc(1px * tan(0.5turn))", matched: true},
+		{kind: "property", name: "width", value: "calc(1px * pow(2, 3))", matched: true},
+		{kind: "property", name: "width", value: "calc(1px * sqrt(4))", matched: true},
+		{kind: "property", name: "width", value: "calc(1px * exp(1) / log(2))", matched: true},
+		{kind: "property", name: "width", value: "calc(1px * log(8, 2))", matched: true},
+		{kind: "property", name: "width", value: "calc(1px * pow(10% / 1px, 2))", matched: true},
+		{kind: "property", name: "width", value: "hypot(30px, 40px)", matched: true},
+		{kind: "property", name: "width", value: "hypot(30px, 4%)", matched: true},
 		// §10.6 sign-related functions
-		{"width", "abs(-1px)", true},
-		{"width", "calc(1px * sign(-5%))", true},
+		{kind: "property", name: "width", value: "abs(-1px)", matched: true},
+		{kind: "property", name: "width", value: "calc(1px * sign(-5%))", matched: true},
 		// §10.7 numeric constants are ASCII case-insensitive <number>s
-		{"width", "calc(1px * e)", true},
-		{"width", "calc(1px * PI)", true},
-		{"width", "calc(infinity * 1px)", true},
-		{"width", "calc(-INFINITY * 1px)", true},
-		{"width", "calc(NaN * 1px)", true},
-		{"width", "calc(nan * 1px)", true},
+		{kind: "property", name: "width", value: "calc(1px * e)", matched: true},
+		{kind: "property", name: "width", value: "calc(1px * PI)", matched: true},
+		{kind: "property", name: "width", value: "calc(infinity * 1px)", matched: true},
+		{kind: "property", name: "width", value: "calc(-INFINITY * 1px)", matched: true},
+		{kind: "property", name: "width", value: "calc(NaN * 1px)", matched: true},
+		{kind: "property", name: "width", value: "calc(nan * 1px)", matched: true},
 
 		// mismatches: the arguments are not a <calc-sum>
-		{"width", "calc(red)", false},
-		{"width", "calc()", false},
-		{"width", "min()", false},
-		{"width", "calc(1px, 2px)", false},
-		{"width", "calc(none)", false},
-		{"width", "calc(1px +)", false},
-		{"width", "calc(+ 1px)", false},
-		{"width", "calc(1px *)", false},
-		{"width", "calc(1px / )", false},
-		{"width", "calc(1px ** 2)", false},
-		{"width", "calc(1px 2px)", false},
-		{"width", "calc(-(1px))", false},
-		{"width", "calc(-pi * 1px)", false},
-		{"width", "calc(\"1px\")", false},
-		{"width", "calc([1px])", false},
-		{"width", "calc(1px + foo(2px))", false},
+		{kind: "property", name: "width", value: "calc(red)"},
+		{kind: "property", name: "width", value: "calc()"},
+		{kind: "property", name: "width", value: "min()"},
+		{kind: "property", name: "width", value: "calc(1px, 2px)"},
+		{kind: "property", name: "width", value: "calc(none)"},
+		{kind: "property", name: "width", value: "calc(1px +)"},
+		{kind: "property", name: "width", value: "calc(+ 1px)"},
+		{kind: "property", name: "width", value: "calc(1px *)"},
+		{kind: "property", name: "width", value: "calc(1px / )"},
+		{kind: "property", name: "width", value: "calc(1px ** 2)"},
+		{kind: "property", name: "width", value: "calc(1px 2px)"},
+		{kind: "property", name: "width", value: "calc(-(1px))"},
+		{kind: "property", name: "width", value: "calc(-pi * 1px)"},
+		{kind: "property", name: "width", value: "calc(\"1px\")"},
+		{kind: "property", name: "width", value: "calc([1px])"},
+		{kind: "property", name: "width", value: "calc(1px + foo(2px))"},
 		// §10.8 + and - need whitespace on both sides
-		{"width", "calc(1px+2px)", false},
-		{"width", "calc(1px +2px)", false},
-		{"width", "calc(1px- 2px)", false},
-		{"width", "calc(1px/**/+ 2px)", false},
+		{kind: "property", name: "width", value: "calc(1px+2px)"},
+		{kind: "property", name: "width", value: "calc(1px +2px)"},
+		{kind: "property", name: "width", value: "calc(1px- 2px)"},
+		{kind: "property", name: "width", value: "calc(1px/**/+ 2px)"},
 		// §10.2, §10.3 argument counts and keywords
-		{"width", "clamp(1px, 2px)", false},
-		{"width", "clamp(1px, none, 2px)", false},
-		{"width", "clamp(1px, 2px, 3px, 4px)", false},
-		{"width", "round(1.5px)", false},
-		{"width", "round(nearest 1px, 1px)", false},
-		{"width", "round(sideways, 1px, 1px)", false},
-		{"width", "round(up, 1px, 1px, 1px)", false},
-		{"width", "round(line-width, 1.5)", false},
-		{"width", "mod(1px)", false},
-		{"width", "hypot()", false},
+		{kind: "property", name: "width", value: "clamp(1px, 2px)"},
+		{kind: "property", name: "width", value: "clamp(1px, none, 2px)"},
+		{kind: "property", name: "width", value: "clamp(1px, 2px, 3px, 4px)"},
+		{kind: "property", name: "width", value: "round(1.5px)"},
+		{kind: "property", name: "width", value: "round(nearest 1px, 1px)"},
+		{kind: "property", name: "width", value: "round(sideways, 1px, 1px)"},
+		{kind: "property", name: "width", value: "round(up, 1px, 1px, 1px)"},
+		{kind: "property", name: "width", value: "round(line-width, 1.5)"},
+		{kind: "property", name: "width", value: "mod(1px)"},
+		{kind: "property", name: "width", value: "hypot()"},
 		// §10.9 type checking
-		{"width", "calc(1px + 2s)", false},
-		{"width", "calc(1px - 1px + 1s)", false},
-		{"width", "calc(0 * 5px + 10s)", false},
-		{"width", "calc(1px * 1px)", false},
-		{"width", "calc(1 / 1px)", false},
-		{"width", "calc(0)", false},
-		{"width", "calc(0 + 5px)", false},
-		{"width", "calc(5)", false},
-		{"width", "calc(pi)", false},
-		{"width", "calc(1px + (2s))", false},
-		{"width", "calc(10% * 10%)", false},
-		{"width", "min(1px, 1s)", false},
-		{"width", "calc(sin(1px) * 1px)", false},
-		{"width", "calc(sqrt(4px))", false},
-		{"width", "calc(pow(2px, 2))", false},
-		{"width", "asin(0.5)", false},
-		{"width", "atan2(1px, 2px)", false},
-		{"width", "sign(1px)", false},
+		{kind: "property", name: "width", value: "calc(1px + 2s)"},
+		{kind: "property", name: "width", value: "calc(1px - 1px + 1s)"},
+		{kind: "property", name: "width", value: "calc(0 * 5px + 10s)"},
+		{kind: "property", name: "width", value: "calc(1px * 1px)"},
+		{kind: "property", name: "width", value: "calc(1 / 1px)"},
+		{kind: "property", name: "width", value: "calc(0)"},
+		{kind: "property", name: "width", value: "calc(0 + 5px)"},
+		{kind: "property", name: "width", value: "calc(5)"},
+		{kind: "property", name: "width", value: "calc(pi)"},
+		{kind: "property", name: "width", value: "calc(1px + (2s))"},
+		{kind: "property", name: "width", value: "calc(10% * 10%)"},
+		{kind: "property", name: "width", value: "min(1px, 1s)"},
+		{kind: "property", name: "width", value: "calc(sin(1px) * 1px)"},
+		{kind: "property", name: "width", value: "calc(sqrt(4px))"},
+		{kind: "property", name: "width", value: "calc(pow(2px, 2))"},
+		{kind: "property", name: "width", value: "asin(0.5)"},
+		{kind: "property", name: "width", value: "atan2(1px, 2px)"},
+		{kind: "property", name: "width", value: "sign(1px)"},
 		// <flex> values are not allowed in math functions (CSS Grid 2 §7.2.4)
-		{"width", "calc(1fr)", false},
+		{kind: "property", name: "width", value: "calc(1fr)"},
 
 		// opacity is <number> | <percentage>: percentages resolve against a
 		// <number> and do not combine with numbers
-		{"opacity", "calc(0.5)", true},
-		{"opacity", "calc(50%)", true},
-		{"opacity", "calc(100% / 3)", true},
-		{"opacity", "calc(50% / 1%)", true},
-		{"opacity", "calc(1 * 1%)", true},
-		{"opacity", "sin(1)", true},
-		{"opacity", "sign(-1)", true},
-		{"opacity", "calc(1px)", false},
-		{"opacity", "calc(.25 + 25%)", false},
-		{"opacity", "hypot(1px)", false},
+		{kind: "property", name: "opacity", value: "calc(0.5)", matched: true},
+		{kind: "property", name: "opacity", value: "calc(50%)", matched: true},
+		{kind: "property", name: "opacity", value: "calc(100% / 3)", matched: true},
+		{kind: "property", name: "opacity", value: "calc(50% / 1%)", matched: true},
+		{kind: "property", name: "opacity", value: "calc(1 * 1%)", matched: true},
+		{kind: "property", name: "opacity", value: "sin(1)", matched: true},
+		{kind: "property", name: "opacity", value: "sign(-1)", matched: true},
+		{kind: "property", name: "opacity", value: "calc(1px)"},
+		{kind: "property", name: "opacity", value: "calc(.25 + 25%)"},
+		{kind: "property", name: "opacity", value: "hypot(1px)"},
 
 		// line-height is normal | <number> | <length> | <percentage>
-		{"line-height", "calc(1 + 1)", true},
-		{"line-height", "calc(1em + 10%)", true},
-		{"line-height", "calc(1 + 1em)", false},
-		{"line-height", "calc(1 + 10%)", false},
+		{kind: "property", name: "line-height", value: "calc(1 + 1)", matched: true},
+		{kind: "property", name: "line-height", value: "calc(1em + 10%)", matched: true},
+		{kind: "property", name: "line-height", value: "calc(1 + 1em)"},
+		{kind: "property", name: "line-height", value: "calc(1 + 10%)"},
 
 		// rotate takes an <angle>
-		{"rotate", "calc(45deg + 0.5turn)", true},
-		{"rotate", "atan2(1, 1)", true},
-		{"rotate", "atan2(1px, 1%)", false},
-		{"rotate", "asin(0.5)", true},
-		{"rotate", "calc(1rad * pi)", true},
-		{"rotate", "x calc(90deg)", true},
-		{"rotate", "calc(45deg + 10%)", false},
-		{"rotate", "asin(1deg)", false},
-		{"rotate", "calc(45)", false},
-		{"rotate", "sin(45deg)", false},
+		{kind: "property", name: "rotate", value: "calc(45deg + 0.5turn)", matched: true},
+		{kind: "property", name: "rotate", value: "atan2(1, 1)", matched: true},
+		{kind: "property", name: "rotate", value: "atan2(1px, 1%)"},
+		{kind: "property", name: "rotate", value: "asin(0.5)", matched: true},
+		{kind: "property", name: "rotate", value: "calc(1rad * pi)", matched: true},
+		{kind: "property", name: "rotate", value: "x calc(90deg)", matched: true},
+		{kind: "property", name: "rotate", value: "calc(45deg + 10%)"},
+		{kind: "property", name: "rotate", value: "asin(1deg)"},
+		{kind: "property", name: "rotate", value: "calc(45)"},
+		{kind: "property", name: "rotate", value: "sin(45deg)"},
 
 		// transition-duration takes a <time>
-		{"transition-duration", "calc(1s + 100ms)", true},
-		{"transition-duration", "calc(1s * 2)", true},
-		{"transition-duration", "min(1s, 500ms), 2s", true},
-		{"transition-duration", "calc(1s + 1px)", false},
-		{"transition-duration", "calc(2 / 1s)", false},
-		{"transition-duration", "calc(10%)", false},
+		{kind: "property", name: "transition-duration", value: "calc(1s + 100ms)", matched: true},
+		{kind: "property", name: "transition-duration", value: "calc(1s * 2)", matched: true},
+		{kind: "property", name: "transition-duration", value: "min(1s, 500ms), 2s", matched: true},
+		{kind: "property", name: "transition-duration", value: "calc(1s + 1px)"},
+		{kind: "property", name: "transition-duration", value: "calc(2 / 1s)"},
+		{kind: "property", name: "transition-duration", value: "calc(10%)"},
 
 		// flex-grow takes a <number>; §10.12 a math function out of the
 		// range is clamped, not rejected
-		{"flex-grow", "calc(1 + 1)", true},
-		{"flex-grow", "calc(-1)", true},
-		{"flex-grow", "calc(1px)", false},
-		{"flex-grow", "calc(1%)", false},
+		{kind: "property", name: "flex-grow", value: "calc(1 + 1)", matched: true},
+		{kind: "property", name: "flex-grow", value: "calc(-1)", matched: true},
+		{kind: "property", name: "flex-grow", value: "calc(1px)"},
+		{kind: "property", name: "flex-grow", value: "calc(1%)"},
 
 		// §10.9 a math function resolving to <number> can be used where an
 		// <integer> is accepted
-		{"z-index", "calc(1 + 1)", true},
-		{"z-index", "calc(1.5)", true},
-		{"z-index", "round(1.5)", true},
-		{"z-index", "round(down, 1.5, 1)", true},
-		{"z-index", "calc(1px)", false},
-		{"z-index", "calc(1%)", false},
-		{"counter-increment", "foo calc(1 + 1)", true},
-		{"tab-size", "calc(4)", true},
-		{"tab-size", "calc(4px)", true},
-		{"tab-size", "calc(4%)", false},
+		{kind: "property", name: "z-index", value: "calc(1 + 1)", matched: true},
+		{kind: "property", name: "z-index", value: "calc(1.5)", matched: true},
+		{kind: "property", name: "z-index", value: "round(1.5)", matched: true},
+		{kind: "property", name: "z-index", value: "round(down, 1.5, 1)", matched: true},
+		{kind: "property", name: "z-index", value: "calc(1px)"},
+		{kind: "property", name: "z-index", value: "calc(1%)"},
+		{kind: "property", name: "counter-increment", value: "foo calc(1 + 1)", matched: true},
+		{kind: "property", name: "tab-size", value: "calc(4)", matched: true},
+		{kind: "property", name: "tab-size", value: "calc(4px)", matched: true},
+		{kind: "property", name: "tab-size", value: "calc(4%)"},
 
 		// font-weight takes a <number [1,1000]>
-		{"font-weight", "calc(400 + 100)", true},
-		{"font-weight", "calc(2000)", true},
-		{"font-weight", "calc(400px)", false},
+		{kind: "property", name: "font-weight", value: "calc(400 + 100)", matched: true},
+		{kind: "property", name: "font-weight", value: "calc(2000)", matched: true},
+		{kind: "property", name: "font-weight", value: "calc(400px)"},
 		// font-stretch takes a <percentage>
-		{"font-stretch", "calc(50% + 10%)", true},
-		{"font-stretch", "calc(1)", false},
-		{"font-stretch", "calc(1px + 10%)", false},
+		{kind: "property", name: "font-stretch", value: "calc(50% + 10%)", matched: true},
+		{kind: "property", name: "font-stretch", value: "calc(1)"},
+		{kind: "property", name: "font-stretch", value: "calc(1px + 10%)"},
 
 		// margin and padding take <length-percentage>s
-		{"margin", "calc(-10% - 1px)", true},
-		{"margin", "calc(1px) calc(2%)", true},
-		{"margin", "calc(1px + 1s)", false},
-		{"padding", "calc(1em + 10%)", true},
+		{kind: "property", name: "margin", value: "calc(-10% - 1px)", matched: true},
+		{kind: "property", name: "margin", value: "calc(1px) calc(2%)", matched: true},
+		{kind: "property", name: "margin", value: "calc(1px + 1s)"},
+		{kind: "property", name: "padding", value: "calc(1em + 10%)", matched: true},
 		// border-width takes a <length>, not a percentage
-		{"border-width", "calc(2px)", true},
-		{"border-width", "calc(10%)", false},
-		{"border-width", "calc(1px + 10%)", false},
-		{"font-size", "clamp(1rem, 2.5vw, 2rem)", true},
-		{"font-size", "calc(1em + 1vw)", true},
-		{"background-position", "calc(100% - 10px) calc(100% - 10px)", true},
+		{kind: "property", name: "border-width", value: "calc(2px)", matched: true},
+		{kind: "property", name: "border-width", value: "calc(10%)"},
+		{kind: "property", name: "border-width", value: "calc(1px + 10%)"},
+		{kind: "property", name: "font-size", value: "clamp(1rem, 2.5vw, 2rem)", matched: true},
+		{kind: "property", name: "font-size", value: "calc(1em + 1vw)", matched: true},
+		{kind: "property", name: "background-position", value: "calc(100% - 10px) calc(100% - 10px)", matched: true},
 
 		// grid tracks: a <flex> is not allowed in a math function
-		{"grid-template-columns", "calc(100px)", true},
-		{"grid-template-columns", "repeat(2, calc(10% + 1px))", true},
-		{"grid-template-columns", "minmax(calc(10px), 1fr)", true},
-		{"grid-template-columns", "calc(1fr)", false},
-		{"grid-template-columns", "calc(1fr + 1px)", false},
+		{kind: "property", name: "grid-template-columns", value: "calc(100px)", matched: true},
+		{kind: "property", name: "grid-template-columns", value: "repeat(2, calc(10% + 1px))", matched: true},
+		{kind: "property", name: "grid-template-columns", value: "minmax(calc(10px), 1fr)", matched: true},
+		{kind: "property", name: "grid-template-columns", value: "calc(1fr)"},
+		{kind: "property", name: "grid-template-columns", value: "calc(1fr + 1px)"},
 
 		// aspect-ratio takes a <ratio> of <number>s
-		{"aspect-ratio", "calc(16 / 9)", true},
-		{"aspect-ratio", "16 / calc(9)", true},
-		{"aspect-ratio", "calc(16px / 9)", false},
+		{kind: "property", name: "aspect-ratio", value: "calc(16 / 9)", matched: true},
+		{kind: "property", name: "aspect-ratio", value: "16 / calc(9)", matched: true},
+		{kind: "property", name: "aspect-ratio", value: "calc(16px / 9)"},
 
 		// math functions in other functions
-		{"transform", "translate(calc(50% + 10px), 0)", true},
-		{"transform", "rotate(calc(1turn / 4))", true},
-		{"transform", "scale(calc(1 + 0.5))", true},
-		{"transform", "scale(calc(1px))", false},
-		{"color", "rgb(calc(255 / 2) 0 0)", true},
-		{"color", "rgb(calc(1px) 0 0)", false},
-		{"color", "hsl(calc(120deg + 10deg) 50% 50%)", true},
+		{kind: "property", name: "transform", value: "translate(calc(50% + 10px), 0)", matched: true},
+		{kind: "property", name: "transform", value: "rotate(calc(1turn / 4))", matched: true},
+		{kind: "property", name: "transform", value: "scale(calc(1 + 0.5))", matched: true},
+		{kind: "property", name: "transform", value: "scale(calc(1px))"},
+		{kind: "property", name: "color", value: "rgb(calc(255 / 2) 0 0)", matched: true},
+		{kind: "property", name: "color", value: "rgb(calc(1px) 0 0)"},
+		{kind: "property", name: "color", value: "hsl(calc(120deg + 10deg) 50% 50%)", matched: true},
 
 		// arbitrary substitution functions are not type checked, as
 		// upstream; anchor-size() and anchor() are <length>s
-		{"width", "calc(1px + env(safe-area-inset-top))", true},
-		{"width", "calc(attr(data-width px))", true},
-		{"width", "calc(1px + anchor-size(width))", true},
-		{"top", "calc(anchor(--a bottom) + 1em)", true},
-		{"width", "calc(1s + anchor-size(width))", false},
-		{"voice-volume", "calc(1db + env(x))", true},
-		{"grid-template-columns", "calc(1fr * env(x))", true},
-		{"voice-volume", "calc(1db)", false},
+		{kind: "property", name: "width", value: "calc(1px + env(safe-area-inset-top))", matched: true},
+		{kind: "property", name: "width", value: "calc(attr(data-width px))", matched: true},
+		{kind: "property", name: "width", value: "calc(1px + anchor-size(width))", matched: true},
+		{kind: "property", name: "top", value: "calc(anchor(--a bottom) + 1em)", matched: true},
+		{kind: "property", name: "width", value: "calc(1s + anchor-size(width))"},
+		{kind: "property", name: "voice-volume", value: "calc(1db + env(x))", matched: true},
+		{kind: "property", name: "grid-template-columns", value: "calc(1fr * env(x))", matched: true},
+		{kind: "property", name: "voice-volume", value: "calc(1db)"},
 	}
 
 	lexer := DefaultLexer()
-	for _, tc := range cases {
-		result := lexer.MatchPropertyString(tc.name, tc.value)
-		if got := result.Matched != nil; got != tc.want {
-			t.Errorf("MatchPropertyString(%q, %q) matched = %t, want %t (error: %v)", tc.name, tc.value, got, tc.want, result.Error)
-		}
-	}
+	runMatchCases(t, lexer, cases)
 
-	// a parsed value is matched as its text is
-	for _, tc := range cases {
-		node, err := Parse(tc.value, ParseOptions{Context: "value"})
-		if err != nil {
-			t.Fatalf("Parse(%q) error = %v", tc.value, err)
-		}
-		result := lexer.MatchProperty(tc.name, node)
-		got := result.Matched != nil
-		want := tc.want
-		// the parser drops the whitespace of "1px +2px", giving the
-		// tokens of "1px +2px" without whitespace, still not a sum
-		if got != want {
-			t.Errorf("MatchProperty(%q, Parse(%q)) matched = %t, want %t (error: %v)", tc.name, tc.value, got, want, result.Error)
-		}
-	}
+	// a parsed value is matched as its text is; the parser drops the
+	// whitespace of "1px +2px", giving the tokens of "1px+2px", still not a
+	// sum
+	runMatchCases(t, lexer, parsedMatchCases(cases))
 }
 
 func TestSpecMathMatchType(t *testing.T) {
-	cases := []mathMatchCase{
-		{"length", "calc(1px)", true},
-		{"length", "calc(1px + 1em)", true},
-		{"length", "calc(10%)", false},
-		{"length", "calc(1px + 1%)", false},
-		{"length", "asin(0.5)", false},
-		{"length-percentage", "calc(10%)", true},
-		{"length-percentage", "calc(1px + 1%)", true},
-		{"percentage", "calc(10% + 1%)", true},
-		{"percentage", "calc(10% + 1px)", false},
-		{"number", "calc(1)", true},
-		{"number", "calc(1px / 1px)", true},
-		{"number", "calc(1% / 1%)", false},
-		{"number", "round(down, 1px, 2px)", false},
-		{"number", "mod(1px, 2px)", false},
-		{"number", "sign(-1px)", true},
-		{"number-percentage", "calc(1% / 1%)", true},
-		{"integer", "calc(1.5)", true},
-		{"integer", "calc(1px)", false},
-		{"angle", "calc(1deg + 1grad)", true},
-		{"angle", "calc(1deg + 0)", false},
-		{"angle-percentage", "calc(1deg + 10%)", true},
-		{"time", "calc(1s - 1ms)", true},
-		{"time-percentage", "calc(1s - 10%)", true},
-		{"frequency", "calc(1hz + 1khz)", true},
-		{"frequency", "calc(1 / 1s)", false},
-		{"frequency-percentage", "calc(1khz * 10%)", false},
-		{"resolution", "calc(1dppx * 2)", true},
-		{"resolution", "calc(1x + 1dpi)", true},
-		{"dimension", "calc(1px)", true},
-		{"dimension", "calc(1deg * 2)", true},
-		{"dimension", "calc(1)", false},
-		{"dimension", "calc(1%)", false},
-		{"dimension", "calc(1foo)", false},
+	cases := []matchCase{
+		{kind: "type", name: "length", value: "calc(1px)", matched: true},
+		{kind: "type", name: "length", value: "calc(1px + 1em)", matched: true},
+		{kind: "type", name: "length", value: "calc(10%)"},
+		{kind: "type", name: "length", value: "calc(1px + 1%)"},
+		{kind: "type", name: "length", value: "asin(0.5)"},
+		{kind: "type", name: "length-percentage", value: "calc(10%)", matched: true},
+		{kind: "type", name: "length-percentage", value: "calc(1px + 1%)", matched: true},
+		{kind: "type", name: "percentage", value: "calc(10% + 1%)", matched: true},
+		{kind: "type", name: "percentage", value: "calc(10% + 1px)"},
+		{kind: "type", name: "number", value: "calc(1)", matched: true},
+		{kind: "type", name: "number", value: "calc(1px / 1px)", matched: true},
+		{kind: "type", name: "number", value: "calc(1% / 1%)"},
+		{kind: "type", name: "number", value: "round(down, 1px, 2px)"},
+		{kind: "type", name: "number", value: "mod(1px, 2px)"},
+		{kind: "type", name: "number", value: "sign(-1px)", matched: true},
+		{kind: "type", name: "number-percentage", value: "calc(1% / 1%)", matched: true},
+		{kind: "type", name: "integer", value: "calc(1.5)", matched: true},
+		{kind: "type", name: "integer", value: "calc(1px)"},
+		{kind: "type", name: "angle", value: "calc(1deg + 1grad)", matched: true},
+		{kind: "type", name: "angle", value: "calc(1deg + 0)"},
+		{kind: "type", name: "angle-percentage", value: "calc(1deg + 10%)", matched: true},
+		{kind: "type", name: "time", value: "calc(1s - 1ms)", matched: true},
+		{kind: "type", name: "time-percentage", value: "calc(1s - 10%)", matched: true},
+		{kind: "type", name: "frequency", value: "calc(1hz + 1khz)", matched: true},
+		{kind: "type", name: "frequency", value: "calc(1 / 1s)"},
+		{kind: "type", name: "frequency-percentage", value: "calc(1khz * 10%)"},
+		{kind: "type", name: "resolution", value: "calc(1dppx * 2)", matched: true},
+		{kind: "type", name: "resolution", value: "calc(1x + 1dpi)", matched: true},
+		{kind: "type", name: "dimension", value: "calc(1px)", matched: true},
+		{kind: "type", name: "dimension", value: "calc(1deg * 2)", matched: true},
+		{kind: "type", name: "dimension", value: "calc(1)"},
+		{kind: "type", name: "dimension", value: "calc(1%)"},
+		{kind: "type", name: "dimension", value: "calc(1foo)"},
 		// <flex>, <decibel> and <semitones> are not math function types
-		{"flex", "calc(1fr)", false},
-		{"flex", "calc(2 * 1fr)", false},
-		{"decibel", "calc(2 * 1db)", false},
-		{"semitones", "calc(2 * 1st)", false},
+		{kind: "type", name: "flex", value: "calc(1fr)"},
+		{kind: "type", name: "flex", value: "calc(2 * 1fr)"},
+		{kind: "type", name: "decibel", value: "calc(2 * 1db)"},
+		{kind: "type", name: "semitones", value: "calc(2 * 1st)"},
 		// <zero> takes a literal 0 only
-		{"zero", "calc(0)", false},
+		{kind: "type", name: "zero", value: "calc(0)"},
 		// non-numeric types still do not take math functions
-		{"custom-ident", "calc(1)", false},
-		{"any-value", "calc(red)", true},
+		{kind: "type", name: "custom-ident", value: "calc(1)"},
+		{kind: "type", name: "any-value", value: "calc(red)", matched: true},
 		// an unclosed function at the end of the value is closed, as in
 		// CSS Syntax 3 §5.4.9
-		{"length", "calc(1px + (2px", true},
-		{"length", "calc(1px +", false},
+		{kind: "type", name: "length", value: "calc(1px + (2px", matched: true},
+		{kind: "type", name: "length", value: "calc(1px +"},
 	}
 
-	lexer := DefaultLexer()
-	for _, tc := range cases {
-		result := lexer.MatchTypeString(tc.name, tc.value)
-		if got := result.Matched != nil; got != tc.want {
-			t.Errorf("MatchTypeString(%q, %q) matched = %t, want %t (error: %v)", tc.name, tc.value, got, tc.want, result.Error)
-		}
-	}
+	runMatchCases(t, DefaultLexer(), cases)
 }
 
 func TestSpecMathMatchSyntax(t *testing.T) {
-	cases := []struct {
-		syntax string
-		value  string
-		want   bool
-	}{
+	cases := []matchCase{
 		// a <percentage> alternative of a numeric type lets percentages
 		// mix with that type, as in <length-percentage>
-		{"<length> | <percentage>", "calc(1px + 10%)", true},
-		{"<percentage> | <length>", "calc(1px + 10%)", true},
-		{"<length> | <percentage> | auto", "calc(1px + 10%)", true},
-		{"[ <length> | <percentage> ]{2}", "calc(1px + 10%) calc(10% - 1em)", true},
-		{"<length> <percentage>", "calc(1px + 10%) 1%", false},
-		{"<length> || <percentage>", "calc(1px + 10%)", false},
-		{"<length>", "calc(1px + 10%)", false},
-		{"<time> | <percentage>", "calc(1s + 10%)", true},
-		{"<angle> | <percentage>", "calc(1deg + 10%)", true},
-		{"<frequency> | <percentage>", "calc(1hz + 10%)", true},
-		{"<resolution> | <percentage>", "calc(1dppx + 10%)", false},
+		{kind: "syntax", name: "<length> | <percentage>", value: "calc(1px + 10%)", matched: true},
+		{kind: "syntax", name: "<percentage> | <length>", value: "calc(1px + 10%)", matched: true},
+		{kind: "syntax", name: "<length> | <percentage> | auto", value: "calc(1px + 10%)", matched: true},
+		{kind: "syntax", name: "[ <length> | <percentage> ]{2}", value: "calc(1px + 10%) calc(10% - 1em)", matched: true},
+		{kind: "syntax", name: "<length> <percentage>", value: "calc(1px + 10%) 1%"},
+		{kind: "syntax", name: "<length> || <percentage>", value: "calc(1px + 10%)"},
+		{kind: "syntax", name: "<length>", value: "calc(1px + 10%)"},
+		{kind: "syntax", name: "<time> | <percentage>", value: "calc(1s + 10%)", matched: true},
+		{kind: "syntax", name: "<angle> | <percentage>", value: "calc(1deg + 10%)", matched: true},
+		{kind: "syntax", name: "<frequency> | <percentage>", value: "calc(1hz + 10%)", matched: true},
+		{kind: "syntax", name: "<resolution> | <percentage>", value: "calc(1dppx + 10%)"},
 		// §10.12 ranges are not checked for math functions
-		{"<length [0,∞]>", "calc(-1px)", true},
-		{"<integer [1,∞]>", "calc(0)", true},
-		{"<number [0,1]>", "calc(2)", true},
+		{kind: "syntax", name: "<length [0,∞]>", value: "calc(-1px)", matched: true},
+		{kind: "syntax", name: "<integer [1,∞]>", value: "calc(0)", matched: true},
+		{kind: "syntax", name: "<number [0,1]>", value: "calc(2)", matched: true},
 	}
 
-	lexer := DefaultLexer()
-	for _, tc := range cases {
-		result := lexer.MatchString(tc.syntax, tc.value)
-		if got := result.Matched != nil; got != tc.want {
-			t.Errorf("MatchString(%q, %q) matched = %t, want %t (error: %v)", tc.syntax, tc.value, got, tc.want, result.Error)
-		}
-	}
+	runMatchCases(t, DefaultLexer(), cases)
 }
 
 // TestSpecMathTrace checks that a math function is matched as one token
@@ -511,61 +471,4 @@ func TestSpecMathFixtureOverrides(t *testing.T) {
 			}
 		}
 	}
-}
-
-// FuzzMathFunction matches arbitrary math functions against properties
-// taking numeric types: it must never panic, a mismatch must come with an
-// error, and nesting a valid math function in calc() keeps it valid.
-func FuzzMathFunction(f *testing.F) {
-	for _, seed := range []struct{ property, value string }{
-		{"width", "calc(100% / 3 - 2 * 1em - 2 * 1px)"},
-		{"width", "clamp(none, 5%, 100px)"},
-		{"width", "round(line-width, 1.5px)"},
-		{"width", "calc(1px * pow(10% / 1px, 2))"},
-		{"width", "calc((1px + 2px) / (1 + 1))"},
-		{"width", "calc(1px + env(x))"},
-		{"opacity", "calc(50% / 1%)"},
-		{"rotate", "atan2(1px, 1%)"},
-		{"z-index", "round(down, 1.5, 1)"},
-		{"line-height", "calc(1em + 10%)"},
-		{"grid-template-columns", "repeat(2, calc(10% + 1px))"},
-		{"transition-duration", "min(1s, 500ms), 2s"},
-	} {
-		f.Add(seed.property, seed.value)
-	}
-
-	f.Fuzz(func(t *testing.T, property, value string) {
-		lexer := DefaultLexer()
-		result := lexer.MatchPropertyString(property, value)
-		if (result.Matched == nil) == (result.Error == nil) {
-			t.Fatalf("MatchPropertyString(%q, %q) matched = %t, error = %v", property, value, result.Matched != nil, result.Error)
-		}
-
-		if result.Matched == nil || !isSingleMathFunction(value) || strings.Count(value, "(") >= maxCalcDepth/2 {
-			return
-		}
-		nested := "calc(" + value + ")"
-		if lexer.MatchPropertyString(property, nested).Matched == nil {
-			t.Errorf("MatchPropertyString(%q, %q) matched, but not %q", property, value, nested)
-		}
-	})
-}
-
-// isSingleMathFunction reports whether value is one math function closed
-// by its ) and nothing else, without substitution functions.
-func isSingleMathFunction(value string) bool {
-	tokens := stringToTokens(value)
-	if len(tokens) == 0 || tokens[0].typ != tokenizer.Function || !isMathFunctionName(tokenName(&tokens[0])) {
-		return false
-	}
-	if tokens[len(tokens)-1].typ != tokenizer.RightParenthesis {
-		return false
-	}
-	for _, token := range tokens {
-		// a function with substitution functions is matched as upstream
-		if token.typ == tokenizer.Function && isSubstitutionFunctionName(tokenName(&token)) {
-			return false
-		}
-	}
-	return consumeFunction(tokens) == len(tokens)
 }

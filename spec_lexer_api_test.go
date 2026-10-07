@@ -33,23 +33,23 @@ func TestNewLexerCustomUnits(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	runLexerEdgeCases(t, lexer, []lexerEdgeCase{
-		{kind: "type", name: "length", value: "1foo", matched: true, iterations: 3},
-		{kind: "type", name: "length", value: "1FOO", matched: true, iterations: 3},
-		{kind: "type", name: "length", value: "1bar", iterations: 3},
-		{kind: "type", name: "length", value: "1px", iterations: 3},
-		{kind: "type", name: "length", value: "0", matched: true, iterations: 3},
-		{kind: "type", name: "length", value: "1deg", iterations: 3},
-		{kind: "type", name: "a", value: "1foo", matched: true, iterations: 5},
-		{kind: "type", name: "angle", value: "1deg", matched: true, iterations: 3},
-		{kind: "type", name: "time", value: "1s", iterations: 3},
-		{kind: "type", name: "time", value: "1ms", iterations: 3},
-		{kind: "syntax", name: "<attr-unit>", value: "foo", matched: true, iterations: 5},
-		{kind: "syntax", name: "<attr-unit>", value: "BAR", matched: true, iterations: 5},
-		{kind: "syntax", name: "<attr-unit>", value: "px", iterations: 5},
-		{kind: "syntax", name: "<attr-unit>", value: "deg", matched: true, iterations: 5},
-		{kind: "syntax", name: "<attr-unit>", value: "%", matched: true, iterations: 5},
-		{kind: "syntax", name: "<attr-unit>", value: "s", iterations: 5},
+	runMatchCases(t, lexer, []matchCase{
+		{kind: "type", name: "length", value: "1foo", matched: true},
+		{kind: "type", name: "length", value: "1FOO", matched: true},
+		{kind: "type", name: "length", value: "1bar"},
+		{kind: "type", name: "length", value: "1px"},
+		{kind: "type", name: "length", value: "0", matched: true},
+		{kind: "type", name: "length", value: "1deg"},
+		{kind: "type", name: "a", value: "1foo", matched: true},
+		{kind: "type", name: "angle", value: "1deg", matched: true},
+		{kind: "type", name: "time", value: "1s"},
+		{kind: "type", name: "time", value: "1ms"},
+		{kind: "syntax", name: "<attr-unit>", value: "foo", matched: true},
+		{kind: "syntax", name: "<attr-unit>", value: "BAR", matched: true},
+		{kind: "syntax", name: "<attr-unit>", value: "px"},
+		{kind: "syntax", name: "<attr-unit>", value: "deg", matched: true},
+		{kind: "syntax", name: "<attr-unit>", value: "%", matched: true},
+		{kind: "syntax", name: "<attr-unit>", value: "s"},
 	})
 
 	want := defaultUnits()
@@ -275,11 +275,11 @@ type tokenizerPosition struct {
 // number whose text is not a number (Number("+") is NaN, which is out of
 // any range) and <attr-unit> without a token.
 func TestLexerGenericEdges(t *testing.T) {
-	runLexerEdgeCases(t, DefaultLexer(), []lexerEdgeCase{
-		{kind: "syntax", name: "<number [0,∞]>", value: "+", iterations: 5},
-		{kind: "syntax", name: "<number [0,∞]>", value: "e5", iterations: 5},
-		{kind: "syntax", name: "<number [-∞,∞]>", value: "-", iterations: 5},
-		{kind: "syntax", name: "<attr-unit>", value: "", iterations: 5},
+	runMatchCases(t, DefaultLexer(), []matchCase{
+		{kind: "syntax", name: "<number [0,∞]>", value: "+"},
+		{kind: "syntax", name: "<number [0,∞]>", value: "e5"},
+		{kind: "syntax", name: "<number [-∞,∞]>", value: "-"},
+		{kind: "syntax", name: "<attr-unit>", value: ""},
 	})
 }
 

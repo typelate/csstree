@@ -5,116 +5,81 @@ import (
 	"testing"
 )
 
-// specMatchCase is a value matched against a property, a type or a
-// definition syntax, with whether the spec says it matches.
-type specMatchCase struct {
-	kind  string // "property", "type" or "syntax"
-	name  string
-	value string
-	want  bool
-}
-
-func runSpecMatchCases(t *testing.T, cases []specMatchCase) {
-	t.Helper()
-
-	lexer := DefaultLexer()
-	for _, c := range cases {
-		var (
-			result *MatchResult
-			call   string
-		)
-		switch c.kind {
-		case "property":
-			result, call = lexer.MatchPropertyString(c.name, c.value), "MatchPropertyString"
-		case "type":
-			result, call = lexer.MatchTypeString(c.name, c.value), "MatchTypeString"
-		case "syntax":
-			result, call = lexer.MatchString(c.name, c.value), "MatchString"
-		default:
-			t.Fatalf("unknown kind %q", c.kind)
-		}
-
-		if got := result.Matched != nil; got != c.want {
-			t.Errorf("%s(%q, %q) = %v, want %v (error: %v)", call, c.name, c.value, got, c.want, result.Error)
-		}
-	}
-}
-
 // TestSpecEscapedKeywords checks that keywords, units and function names
 // are compared by the value of the identifier with its escapes decoded,
 // ASCII case-insensitively (CSS Syntax 3 §4.3.11 consume a name, §8
 // "Tokens match if their value is a match"; CSS Values 4 §2.1, §4).
 func TestSpecEscapedKeywords(t *testing.T) {
-	runSpecMatchCases(t, []specMatchCase{
+	runMatchCases(t, DefaultLexer(), []matchCase{
 		// keywords (Keyword and Enum)
 		// \ed is the hex escape of U+00ED (í), so r\ed is rí, not red
-		{"property", "color", `r\ed`, false},
-		{"property", "color", `r\65 d`, true},
-		{"property", "color", `r\45 D`, true},
-		{"property", "color", `\72 ed`, true},
-		{"property", "color", `\52 ED`, true},
-		{"property", "color", `re\64`, true},
-		{"property", "color", `\000072 ed`, true},
-		{"property", "display", `\62lock`, true},
-		{"property", "display", `\62 lock`, true},
-		{"property", "display", `\62 lock\9`, true},
-		{"syntax", "a", `\61`, true},
-		{"syntax", "a", `\41`, true},
-		{"syntax", "a | b", `\62`, true},
-		{"syntax", "a", `\62`, false},
-		{"property", "color", `'red'`, false},
-		{"property", "color", `r\65 d x`, false},
+		{kind: "property", name: "color", value: `r\ed`},
+		{kind: "property", name: "color", value: `r\65 d`, matched: true},
+		{kind: "property", name: "color", value: `r\45 D`, matched: true},
+		{kind: "property", name: "color", value: `\72 ed`, matched: true},
+		{kind: "property", name: "color", value: `\52 ED`, matched: true},
+		{kind: "property", name: "color", value: `re\64`, matched: true},
+		{kind: "property", name: "color", value: `\000072 ed`, matched: true},
+		{kind: "property", name: "display", value: `\62lock`, matched: true},
+		{kind: "property", name: "display", value: `\62 lock`, matched: true},
+		{kind: "property", name: "display", value: `\62 lock\9`, matched: true},
+		{kind: "syntax", name: "a", value: `\61`, matched: true},
+		{kind: "syntax", name: "a", value: `\41`, matched: true},
+		{kind: "syntax", name: "a | b", value: `\62`, matched: true},
+		{kind: "syntax", name: "a", value: `\62`},
+		{kind: "property", name: "color", value: `'red'`},
+		{kind: "property", name: "color", value: `r\65 d x`},
 		// the \0 and \9 hacks are still dropped
-		{"property", "color", `red\9`, true},
-		{"property", "color", `red\0`, true},
+		{kind: "property", name: "color", value: `red\9`, matched: true},
+		{kind: "property", name: "color", value: `red\0`, matched: true},
 		// CSS-wide keywords
-		{"property", "color", `\69nherit`, true},
-		{"property", "color", `\49 NITIAL`, true},
+		{kind: "property", name: "color", value: `\69nherit`, matched: true},
+		{kind: "property", name: "color", value: `\49 NITIAL`, matched: true},
 		// ASCII case-insensitive only: U+212A KELVIN SIGN is not k
-		{"property", "display", "blocK", false},
-		{"property", "display", `bloc\212A`, false},
-		{"syntax", "k", "K", false},
+		{kind: "property", name: "display", value: "blocK"},
+		{kind: "property", name: "display", value: `bloc\212A`},
+		{kind: "syntax", name: "k", value: "K"},
 		// units
-		{"property", "width", `1p\x`, true},
-		{"property", "width", `1\70 x`, true},
-		{"property", "width", `1P\58`, true},
-		{"property", "width", `1p\x\9`, true},
-		{"property", "width", `1px\9`, true},
-		{"property", "width", `1p\y`, false},
-		{"type", "frequency", "1Khz", false},
-		{"type", "frequency", `1\212A hz`, false},
-		{"type", "frequency", `1\6B hz`, true},
-		{"syntax", "<attr-unit>", `p\x`, true},
-		{"syntax", "<attr-unit>", `\25`, false}, // an ident %, not the delim %
-		{"syntax", "<attr-unit>", "Khz", false},
+		{kind: "property", name: "width", value: `1p\x`, matched: true},
+		{kind: "property", name: "width", value: `1\70 x`, matched: true},
+		{kind: "property", name: "width", value: `1P\58`, matched: true},
+		{kind: "property", name: "width", value: `1p\x\9`, matched: true},
+		{kind: "property", name: "width", value: `1px\9`, matched: true},
+		{kind: "property", name: "width", value: `1p\y`},
+		{kind: "type", name: "frequency", value: "1Khz"},
+		{kind: "type", name: "frequency", value: `1\212A hz`},
+		{kind: "type", name: "frequency", value: `1\6B hz`, matched: true},
+		{kind: "syntax", name: "<attr-unit>", value: `p\x`, matched: true},
+		{kind: "syntax", name: "<attr-unit>", value: `\25`}, // an ident %, not the delim %
+		{kind: "syntax", name: "<attr-unit>", value: "Khz"},
 		// function names
-		{"property", "color", `\72 gb(0 0 0)`, true},
-		{"property", "color", `RG\42 (0 0 0)`, true},
-		{"property", "width", `c\61lc(1px)`, true},
-		{"property", "width", `\63 alc(1px)`, true},
-		{"syntax", "fn( <number> )", `f\6e(1)`, true},
-		{"syntax", "fn( <number> )", `f\6f(1)`, false},
+		{kind: "property", name: "color", value: `\72 gb(0 0 0)`, matched: true},
+		{kind: "property", name: "color", value: `RG\42 (0 0 0)`, matched: true},
+		{kind: "property", name: "width", value: `c\61lc(1px)`, matched: true},
+		{kind: "property", name: "width", value: `\63 alc(1px)`, matched: true},
+		{kind: "syntax", name: "fn( <number> )", value: `f\6e(1)`, matched: true},
+		{kind: "syntax", name: "fn( <number> )", value: `f\6f(1)`},
 		// at-keywords
-		{"syntax", "@foo", `@f\6fo`, true},
-		{"syntax", "@foo", `@f\6f`, false},
+		{kind: "syntax", name: "@foo", value: `@f\6fo`, matched: true},
+		{kind: "syntax", name: "@foo", value: `@f\6f`},
 		// <custom-ident> excludes the CSS-wide keywords and default after
 		// decoding
-		{"type", "custom-ident", `\69nherit`, false},
-		{"type", "custom-ident", `\64 efault`, false},
-		{"type", "custom-ident", `\44 EFAULT`, false},
-		{"type", "custom-ident", `unse\74`, false},
-		{"type", "custom-ident", `\66oo`, true},
-		{"type", "custom-ident", `inherit\9`, true},
+		{kind: "type", name: "custom-ident", value: `\69nherit`},
+		{kind: "type", name: "custom-ident", value: `\64 efault`},
+		{kind: "type", name: "custom-ident", value: `\44 EFAULT`},
+		{kind: "type", name: "custom-ident", value: `unse\74`},
+		{kind: "type", name: "custom-ident", value: `\66oo`, matched: true},
+		{kind: "type", name: "custom-ident", value: `inherit\9`, matched: true},
 		// an escaped backslash is part of the value: \\initial is \initial
-		{"type", "custom-ident", `\\initial`, true},
-		{"type", "custom-ident", `\\default`, true},
+		{kind: "type", name: "custom-ident", value: `\\initial`, matched: true},
+		{kind: "type", name: "custom-ident", value: `\\default`, matched: true},
 		// <dashed-ident> and <custom-property-name> check the decoded value
-		{"type", "dashed-ident", `\2d-foo`, true},
-		{"type", "dashed-ident", `-\2d foo`, true},
-		{"type", "dashed-ident", `\2d foo`, false},
-		{"type", "custom-property-name", `\2d-foo`, true},
-		{"type", "custom-property-name", `-\2d`, false},
-		{"type", "custom-property-name", `\2d\2d`, false},
+		{kind: "type", name: "dashed-ident", value: `\2d-foo`, matched: true},
+		{kind: "type", name: "dashed-ident", value: `-\2d foo`, matched: true},
+		{kind: "type", name: "dashed-ident", value: `\2d foo`},
+		{kind: "type", name: "custom-property-name", value: `\2d-foo`, matched: true},
+		{kind: "type", name: "custom-property-name", value: `-\2d`},
+		{kind: "type", name: "custom-property-name", value: `\2d\2d`},
 	})
 }
 
@@ -133,40 +98,40 @@ func TestSpecEscapedVar(t *testing.T) {
 // <integer> a <number-token> of digits (CSS Values 4 §5.2, §5.3): delims
 // and idents whose text reads as a number are not numbers.
 func TestSpecNumberTokens(t *testing.T) {
-	runSpecMatchCases(t, []specMatchCase{
-		{"type", "number", "+", false},
-		{"type", "number", "-", false},
-		{"type", "number", "e5", false},
-		{"type", "number", "-E3", false},
-		{"type", "number", "e-5", false},
-		{"type", "number", "+e5", false},
-		{"property", "opacity", "e5", false},
-		{"property", "opacity", "+", false},
-		{"property", "line-height", "e5", false},
-		{"syntax", "<number [0,∞]>", "e5", false},
-		{"type", "number", "1", true},
-		{"type", "number", "+.5", true},
-		{"type", "number", "-1e-3", true},
-		{"type", "number", "1e309", true},
-		{"property", "opacity", ".5", true},
-		{"property", "line-height", "1.5", true},
+	runMatchCases(t, DefaultLexer(), []matchCase{
+		{kind: "type", name: "number", value: "+"},
+		{kind: "type", name: "number", value: "-"},
+		{kind: "type", name: "number", value: "e5"},
+		{kind: "type", name: "number", value: "-E3"},
+		{kind: "type", name: "number", value: "e-5"},
+		{kind: "type", name: "number", value: "+e5"},
+		{kind: "property", name: "opacity", value: "e5"},
+		{kind: "property", name: "opacity", value: "+"},
+		{kind: "property", name: "line-height", value: "e5"},
+		{kind: "syntax", name: "<number [0,∞]>", value: "e5"},
+		{kind: "type", name: "number", value: "1", matched: true},
+		{kind: "type", name: "number", value: "+.5", matched: true},
+		{kind: "type", name: "number", value: "-1e-3", matched: true},
+		{kind: "type", name: "number", value: "1e309", matched: true},
+		{kind: "property", name: "opacity", value: ".5", matched: true},
+		{kind: "property", name: "line-height", value: "1.5", matched: true},
 		// the IE postfix hack is still taken
-		{"type", "number", `1\9`, true},
-		{"type", "number", `1\0`, true},
-		{"type", "number", `1px`, false},
-		{"type", "number", `1%`, false},
+		{kind: "type", name: "number", value: `1\9`, matched: true},
+		{kind: "type", name: "number", value: `1\0`, matched: true},
+		{kind: "type", name: "number", value: `1px`},
+		{kind: "type", name: "number", value: `1%`},
 		// an integer is written with digits only
-		{"type", "integer", "1", true},
-		{"type", "integer", "-1", true},
-		{"type", "integer", "+0", true},
-		{"type", "integer", "1.0", false},
-		{"type", "integer", "1e3", false},
-		{"type", "integer", "1E0", false},
-		{"type", "integer", "e5", false},
-		{"type", "integer", "+", false},
-		{"property", "z-index", "1e3", false},
-		{"property", "z-index", "1.0", false},
-		{"property", "z-index", "10", true},
+		{kind: "type", name: "integer", value: "1", matched: true},
+		{kind: "type", name: "integer", value: "-1", matched: true},
+		{kind: "type", name: "integer", value: "+0", matched: true},
+		{kind: "type", name: "integer", value: "1.0"},
+		{kind: "type", name: "integer", value: "1e3"},
+		{kind: "type", name: "integer", value: "1E0"},
+		{kind: "type", name: "integer", value: "e5"},
+		{kind: "type", name: "integer", value: "+"},
+		{kind: "property", name: "z-index", value: "1e3"},
+		{kind: "property", name: "z-index", value: "1.0"},
+		{kind: "property", name: "z-index", value: "10", matched: true},
 	})
 }
 
@@ -175,83 +140,83 @@ func TestSpecNumberTokens(t *testing.T) {
 // the unit of the bound are compared in a canonical unit, and relative
 // units are compared only by sign.
 func TestSpecRangesWithUnits(t *testing.T) {
-	runSpecMatchCases(t, []specMatchCase{
-		{"syntax", "<angle [0deg,360deg]>", "0deg", true},
-		{"syntax", "<angle [0deg,360deg]>", "360deg", true},
-		{"syntax", "<angle [0deg,360deg]>", "360DEG", true},
-		{"syntax", "<angle [0deg,360deg]>", "400deg", false},
-		{"syntax", "<angle [0deg,360deg]>", "-1deg", false},
-		{"syntax", "<angle [0deg,360deg]>", "-0deg", true},
-		{"syntax", "<angle [0deg,360deg]>", "1turn", true},
-		{"syntax", "<angle [0deg,360deg]>", "1.01turn", false},
-		{"syntax", "<angle [0deg,360deg]>", "400grad", true},
-		{"syntax", "<angle [0deg,360deg]>", "401grad", false},
-		{"syntax", "<angle [0deg,360deg]>", "6.28rad", true},
-		{"syntax", "<angle [0deg,360deg]>", "6.3rad", false},
-		{"syntax", "<angle [0deg,360deg]>", `400d\65 g`, false},
-		{"syntax", "<time [0s,∞]>", "0s", true},
-		{"syntax", "<time [0s,∞]>", "1ms", true},
-		{"syntax", "<time [0s,∞]>", "-1s", false},
-		{"syntax", "<time [0s,∞]>", "-1ms", false},
-		{"syntax", "<time [0s,∞]>", "1e309s", true},
-		{"syntax", "<time [100ms,1s]>", "0.1s", true},
-		{"syntax", "<time [100ms,1s]>", "99ms", false},
-		{"syntax", "<time [100ms,1s]>", "1000ms", true},
-		{"syntax", "<time [100ms,1s]>", "1001ms", false},
-		{"syntax", "<time [100ms,1s]>", "1s", true},
-		{"property", "animation-duration", "-1s", false},
-		{"property", "animation-duration", "1s, -1ms", false},
-		{"property", "animation-duration", "1s, 0ms", true},
-		{"syntax", "<length [0,1in]>", "96px", true},
-		{"syntax", "<length [0,1in]>", "97px", false},
-		{"syntax", "<length [0,1in]>", "2.54cm", true},
-		{"syntax", "<length [0,1in]>", "2.6cm", false},
-		{"syntax", "<length [0,1in]>", "25.4mm", true},
-		{"syntax", "<length [0,1in]>", "101.6q", true},
-		{"syntax", "<length [0,1in]>", "102Q", false},
-		{"syntax", "<length [0,1in]>", "72pt", true},
-		{"syntax", "<length [0,1in]>", "73pt", false},
-		{"syntax", "<length [0,1in]>", "6pc", true},
-		{"syntax", "<length [0,1in]>", "7pc", false},
-		{"syntax", "<length [0,1in]>", "0", true},
+	runMatchCases(t, DefaultLexer(), []matchCase{
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "0deg", matched: true},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "360deg", matched: true},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "360DEG", matched: true},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "400deg"},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "-1deg"},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "-0deg", matched: true},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "1turn", matched: true},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "1.01turn"},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "400grad", matched: true},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "401grad"},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "6.28rad", matched: true},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "6.3rad"},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: `400d\65 g`},
+		{kind: "syntax", name: "<time [0s,∞]>", value: "0s", matched: true},
+		{kind: "syntax", name: "<time [0s,∞]>", value: "1ms", matched: true},
+		{kind: "syntax", name: "<time [0s,∞]>", value: "-1s"},
+		{kind: "syntax", name: "<time [0s,∞]>", value: "-1ms"},
+		{kind: "syntax", name: "<time [0s,∞]>", value: "1e309s", matched: true},
+		{kind: "syntax", name: "<time [100ms,1s]>", value: "0.1s", matched: true},
+		{kind: "syntax", name: "<time [100ms,1s]>", value: "99ms"},
+		{kind: "syntax", name: "<time [100ms,1s]>", value: "1000ms", matched: true},
+		{kind: "syntax", name: "<time [100ms,1s]>", value: "1001ms"},
+		{kind: "syntax", name: "<time [100ms,1s]>", value: "1s", matched: true},
+		{kind: "property", name: "animation-duration", value: "-1s"},
+		{kind: "property", name: "animation-duration", value: "1s, -1ms"},
+		{kind: "property", name: "animation-duration", value: "1s, 0ms", matched: true},
+		{kind: "syntax", name: "<length [0,1in]>", value: "96px", matched: true},
+		{kind: "syntax", name: "<length [0,1in]>", value: "97px"},
+		{kind: "syntax", name: "<length [0,1in]>", value: "2.54cm", matched: true},
+		{kind: "syntax", name: "<length [0,1in]>", value: "2.6cm"},
+		{kind: "syntax", name: "<length [0,1in]>", value: "25.4mm", matched: true},
+		{kind: "syntax", name: "<length [0,1in]>", value: "101.6q", matched: true},
+		{kind: "syntax", name: "<length [0,1in]>", value: "102Q"},
+		{kind: "syntax", name: "<length [0,1in]>", value: "72pt", matched: true},
+		{kind: "syntax", name: "<length [0,1in]>", value: "73pt"},
+		{kind: "syntax", name: "<length [0,1in]>", value: "6pc", matched: true},
+		{kind: "syntax", name: "<length [0,1in]>", value: "7pc"},
+		{kind: "syntax", name: "<length [0,1in]>", value: "0", matched: true},
 		// relative lengths are not comparable at parse time, except by
 		// sign: every unit is a non-negative multiple of the canonical one
-		{"syntax", "<length [0,1in]>", "100em", true},
-		{"syntax", "<length [0,1in]>", "100vw", true},
-		{"syntax", "<length [0,1in]>", "-1em", false},
-		{"syntax", "<length [1px,∞]>", "1px", true},
-		{"syntax", "<length [1px,∞]>", "0.5px", false},
-		{"syntax", "<length [1px,∞]>", "0", false},
-		{"syntax", "<length [1px,∞]>", "0em", false},
-		{"syntax", "<length [1px,∞]>", "-1em", false},
-		{"syntax", "<length [1px,∞]>", "0.01em", true},
-		{"syntax", "<length [1em,2em]>", "1.5em", true},
-		{"syntax", "<length [1em,2em]>", "3em", false},
-		{"syntax", "<length [1em,2em]>", "3px", true},
-		{"syntax", "<length [0,∞]>", "-1px", false},
-		{"syntax", "<length [0,∞]>", "-1vw", false},
-		{"syntax", "<length-percentage [0,∞]>", "-1%", false},
-		{"syntax", "<resolution [0dpi,∞]>", "-1x", false},
-		{"syntax", "<resolution [0dpi,∞]>", "0x", true},
-		{"syntax", "<resolution [1dppx,192dpi]>", "1x", true},
-		{"syntax", "<resolution [1dppx,192dpi]>", "96dpi", true},
-		{"syntax", "<resolution [1dppx,192dpi]>", "95dpi", false},
-		{"syntax", "<resolution [1dppx,192dpi]>", "37.8dpcm", true},
-		{"syntax", "<resolution [1dppx,192dpi]>", "37.7dpcm", false},
-		{"syntax", "<resolution [1dppx,192dpi]>", "2dppx", true},
-		{"syntax", "<resolution [1dppx,192dpi]>", "2.1dppx", false},
-		{"syntax", "<frequency [0hz,1khz]>", "1000Hz", true},
-		{"syntax", "<frequency [0hz,1khz]>", "1001hz", false},
-		{"syntax", "<frequency [0hz,1khz]>", "-1khz", false},
-		{"syntax", "<flex [0,∞]>", "-1fr", false},
-		{"syntax", "<flex [1fr,∞]>", "0.5fr", false},
-		{"syntax", "<percentage [0,100]>", "101%", false},
-		{"syntax", "<dimension [0px,1in]>", "97px", false},
-		{"syntax", "<dimension [0px,1in]>", "1foo", true},
-		{"syntax", "<dimension [0px,1in]>", "-1foo", false},
+		{kind: "syntax", name: "<length [0,1in]>", value: "100em", matched: true},
+		{kind: "syntax", name: "<length [0,1in]>", value: "100vw", matched: true},
+		{kind: "syntax", name: "<length [0,1in]>", value: "-1em"},
+		{kind: "syntax", name: "<length [1px,∞]>", value: "1px", matched: true},
+		{kind: "syntax", name: "<length [1px,∞]>", value: "0.5px"},
+		{kind: "syntax", name: "<length [1px,∞]>", value: "0"},
+		{kind: "syntax", name: "<length [1px,∞]>", value: "0em"},
+		{kind: "syntax", name: "<length [1px,∞]>", value: "-1em"},
+		{kind: "syntax", name: "<length [1px,∞]>", value: "0.01em", matched: true},
+		{kind: "syntax", name: "<length [1em,2em]>", value: "1.5em", matched: true},
+		{kind: "syntax", name: "<length [1em,2em]>", value: "3em"},
+		{kind: "syntax", name: "<length [1em,2em]>", value: "3px", matched: true},
+		{kind: "syntax", name: "<length [0,∞]>", value: "-1px"},
+		{kind: "syntax", name: "<length [0,∞]>", value: "-1vw"},
+		{kind: "syntax", name: "<length-percentage [0,∞]>", value: "-1%"},
+		{kind: "syntax", name: "<resolution [0dpi,∞]>", value: "-1x"},
+		{kind: "syntax", name: "<resolution [0dpi,∞]>", value: "0x", matched: true},
+		{kind: "syntax", name: "<resolution [1dppx,192dpi]>", value: "1x", matched: true},
+		{kind: "syntax", name: "<resolution [1dppx,192dpi]>", value: "96dpi", matched: true},
+		{kind: "syntax", name: "<resolution [1dppx,192dpi]>", value: "95dpi"},
+		{kind: "syntax", name: "<resolution [1dppx,192dpi]>", value: "37.8dpcm", matched: true},
+		{kind: "syntax", name: "<resolution [1dppx,192dpi]>", value: "37.7dpcm"},
+		{kind: "syntax", name: "<resolution [1dppx,192dpi]>", value: "2dppx", matched: true},
+		{kind: "syntax", name: "<resolution [1dppx,192dpi]>", value: "2.1dppx"},
+		{kind: "syntax", name: "<frequency [0hz,1khz]>", value: "1000Hz", matched: true},
+		{kind: "syntax", name: "<frequency [0hz,1khz]>", value: "1001hz"},
+		{kind: "syntax", name: "<frequency [0hz,1khz]>", value: "-1khz"},
+		{kind: "syntax", name: "<flex [0,∞]>", value: "-1fr"},
+		{kind: "syntax", name: "<flex [1fr,∞]>", value: "0.5fr"},
+		{kind: "syntax", name: "<percentage [0,100]>", value: "101%"},
+		{kind: "syntax", name: "<dimension [0px,1in]>", value: "97px"},
+		{kind: "syntax", name: "<dimension [0px,1in]>", value: "1foo", matched: true},
+		{kind: "syntax", name: "<dimension [0px,1in]>", value: "-1foo"},
 		// the IE postfix hack is not part of the unit
-		{"syntax", "<time [0s,∞]>", `-1s\9`, false},
-		{"syntax", "<time [0s,∞]>", `1s\9`, true},
+		{kind: "syntax", name: "<time [0s,∞]>", value: `-1s\9`},
+		{kind: "syntax", name: "<time [0s,∞]>", value: `1s\9`, matched: true},
 	})
 }
 
@@ -259,52 +224,44 @@ func TestSpecRangesWithUnits(t *testing.T) {
 // Recommendation Draft, 24 December 2021): the first token is an ident u,
 // the representations of the other tokens are interpreted as a range, and
 // the range is invalid when its end is above U+10FFFF or below its start.
+// Upstream checks the token forms and digit counts only, so it takes
+// ranges the spec rejects, such as U+FF-00, U+1-zz and ua+1.
 func TestSpecURange(t *testing.T) {
-	runSpecMatchCases(t, []specMatchCase{
-		{"type", "urange", "U+0-10FFFF", true},
-		{"type", "urange", "U+10FFFF", true},
-		{"type", "urange", "U+110000", false},
-		{"type", "urange", "U+0-110000", false},
-		{"type", "urange", "U+10FFF?", true},
-		{"type", "urange", "U+11????", false},
-		{"type", "urange", "U+??????", false},
-		{"type", "urange", "U+0?????", true},
-		{"type", "urange", "U+FF-00", false},
-		{"type", "urange", "U+FF-FF", true},
-		{"type", "urange", "U+1-zz", false},
-		{"type", "urange", "u+a-", false},
-		{"type", "urange", "U+1e-3", false},
-		{"type", "urange", "U+1e-1e", true},
-		{"type", "urange", "U+1e3", true},
-		{"type", "urange", "u+12e-130", true},
-		{"type", "urange", "ua+1", false},
-		{"type", "urange", "Ua+1", false},
-		{"type", "urange", "UU+1", false},
-		{"type", "urange", `\75+1`, true},
-		{"type", "urange", `\55 +1`, true},
-		{"type", "urange", "U+1?-2", false},
-		{"type", "urange", "u+?", true},
-		{"type", "urange", "U+0-7F", true},
-		{"type", "urange", "u+0025-00FF", true},
-		{"type", "urange", "U+4??", true},
-		{"syntax", "<urange>#", "U+0-7F, U+110000", false},
-		{"property", "unicode-range", "U+0-7F", false}, // a descriptor, not a property
+	runMatchCases(t, DefaultLexer(), []matchCase{
+		{kind: "type", name: "urange", value: "U+0-10FFFF", matched: true},
+		{kind: "type", name: "urange", value: "U+10FFFF", matched: true},
+		{kind: "type", name: "urange", value: "U+110000"},
+		{kind: "type", name: "urange", value: "U+0-110000"},
+		{kind: "type", name: "urange", value: "U+10FFF?", matched: true},
+		{kind: "type", name: "urange", value: "U+11????"},
+		{kind: "type", name: "urange", value: "U+??????"},
+		{kind: "type", name: "urange", value: "U+0?????", matched: true},
+		{kind: "type", name: "urange", value: "U+FF-00"},
+		{kind: "type", name: "urange", value: "U+FF-FF", matched: true},
+		{kind: "type", name: "urange", value: "U+1-zz"},
+		{kind: "type", name: "urange", value: "u+a-"},
+		{kind: "type", name: "urange", value: "U+1e-3"},
+		{kind: "type", name: "urange", value: "U+1e-1e", matched: true},
+		{kind: "type", name: "urange", value: "U+1e3", matched: true},
+		{kind: "type", name: "urange", value: "u+12e-130", matched: true},
+		{kind: "type", name: "urange", value: "ua+1"},
+		{kind: "type", name: "urange", value: "Ua+1"},
+		{kind: "type", name: "urange", value: "UU+1"},
+		{kind: "type", name: "urange", value: `\75+1`, matched: true},
+		{kind: "type", name: "urange", value: `\55 +1`, matched: true},
+		{kind: "type", name: "urange", value: "U+1?-2"},
+		{kind: "type", name: "urange", value: "u+?", matched: true},
+		{kind: "type", name: "urange", value: "U+0-7F", matched: true},
+		{kind: "type", name: "urange", value: "u+0025-00FF", matched: true},
+		{kind: "type", name: "urange", value: "U+4??", matched: true},
+		{kind: "type", name: "urange", value: "U+1-1234567"},
+		{kind: "type", name: "urange", value: "U+??-1", mismatchOffset: 4},
+		{kind: "syntax", name: "<urange>#", value: "U+0-7F, U+110000"},
+		{kind: "property", name: "unicode-range", value: "U+0-7F"}, // a descriptor, not a property
+		{kind: "descriptor", parent: "font-face", name: "unicode-range", value: "U+0-7F, U+0400-04FF", matched: true},
+		{kind: "descriptor", parent: "font-face", name: "unicode-range", value: "U+0-7F, U+FF-00"},
+		{kind: "descriptor", parent: "font-face", name: "unicode-range", value: "U+110000"},
 	})
-
-	lexer := DefaultLexer()
-	for _, c := range []struct {
-		value string
-		want  bool
-	}{
-		{"U+0-7F, U+0400-04FF", true},
-		{"U+0-7F, U+FF-00", false},
-		{"U+110000", false},
-	} {
-		result := lexer.MatchAtruleDescriptorString("font-face", "unicode-range", c.value)
-		if got := result.Matched != nil; got != c.want {
-			t.Errorf("MatchAtruleDescriptorString(%q, %q, %q) = %v, want %v (error: %v)", "font-face", "unicode-range", c.value, got, c.want, result.Error)
-		}
-	}
 }
 
 // TestSpecAnPlusBOddEven checks where odd and even of the An+B grammar
@@ -314,16 +271,16 @@ func TestSpecURange(t *testing.T) {
 // only (the parser keeps odd and even in an Identifier of the Nth node),
 // so it leaves odd and even to the syntaxes using it, as upstream does.
 func TestSpecAnPlusBOddEven(t *testing.T) {
-	runSpecMatchCases(t, []specMatchCase{
-		{"type", "an+b", "odd", true},
-		{"type", "an+b", "EVEN", true},
-		{"type", "an+b", `\6f dd`, true},
-		{"type", "an+b", "2n+1", true},
-		{"type", "an-plus-b", "2n+1", true},
-		{"type", "an-plus-b", "odd", false},
-		{"type", "an-plus-b", "even", false},
-		{"syntax", "<an-plus-b> | odd | even", "odd", true},
-		{"syntax", "<an-plus-b> | odd | even", "Even", true},
+	runMatchCases(t, DefaultLexer(), []matchCase{
+		{kind: "type", name: "an+b", value: "odd", matched: true},
+		{kind: "type", name: "an+b", value: "EVEN", matched: true},
+		{kind: "type", name: "an+b", value: `\6f dd`, matched: true},
+		{kind: "type", name: "an+b", value: "2n+1", matched: true},
+		{kind: "type", name: "an-plus-b", value: "2n+1", matched: true},
+		{kind: "type", name: "an-plus-b", value: "odd"},
+		{kind: "type", name: "an-plus-b", value: "even"},
+		{kind: "syntax", name: "<an-plus-b> | odd | even", value: "odd", matched: true},
+		{kind: "syntax", name: "<an-plus-b> | odd | even", value: "Even", matched: true},
 	})
 }
 
@@ -331,9 +288,9 @@ func TestSpecAnPlusBOddEven(t *testing.T) {
 // REPLACEMENT CHARACTER (CSS Syntax 3 §3.3 preprocessing), a name code
 // point, as the tokenizer reads it: #\x00a is an <id-selector>.
 func TestSpecNullInHash(t *testing.T) {
-	runSpecMatchCases(t, []specMatchCase{
-		{"type", "id-selector", "#\x00a", true},
-		{"type", "id-selector", "#a\x00", true},
-		{"type", "hex-color", "#\x00ab", false},
+	runMatchCases(t, DefaultLexer(), []matchCase{
+		{kind: "type", name: "id-selector", value: "#\x00a", matched: true},
+		{kind: "type", name: "id-selector", value: "#a\x00", matched: true},
+		{kind: "type", name: "hex-color", value: "#\x00ab"},
 	})
 }

@@ -1,8 +1,10 @@
 package csstree
 
 import (
-	"sync"
+	"strings"
 	"testing"
+
+	"github.com/typelate/csstree/tokenizer"
 )
 
 // FuzzMatchProperty matches arbitrary values, as text and as parsed ASTs,
@@ -51,33 +53,64 @@ func FuzzMatchProperty(f *testing.F) {
 	})
 }
 
-// TestLexerConcurrentMatch checks that the shared default lexer can match
-// from several goroutines while its syntaxes are parsed on first use (Go
-// only; run with -race).
-func TestLexerConcurrentMatch(t *testing.T) {
-	lexer, err := CreateLexer(&Config{
-		Generic: new(true),
-		Types: map[string]string{
-			"foo": "<bar>#",
-			"bar": "[ 1 | 2 | 3 ] | <length>",
-		},
-		Properties: map[string]string{
-			"test":  "<foo> && <'other'>?",
-			"other": "a | b",
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
+// FuzzMathFunction matches arbitrary math functions against properties
+// taking numeric types: it must never panic, a mismatch must come with an
+// error, and nesting a valid math function in calc() keeps it valid.
+func FuzzMathFunction(f *testing.F) {
+	for _, seed := range []struct{ property, value string }{
+		{"width", "calc(100% / 3 - 2 * 1em - 2 * 1px)"},
+		{"width", "clamp(none, 5%, 100px)"},
+		{"width", "round(line-width, 1.5px)"},
+		{"width", "calc(1px * pow(10% / 1px, 2))"},
+		{"width", "calc((1px + 2px) / (1 + 1))"},
+		{"width", "calc(1px + env(x))"},
+		{"opacity", "calc(50% / 1%)"},
+		{"rotate", "atan2(1px, 1%)"},
+		{"z-index", "round(down, 1.5, 1)"},
+		{"line-height", "calc(1em + 10%)"},
+		{"grid-template-columns", "repeat(2, calc(10% + 1px))"},
+		{"transition-duration", "min(1s, 500ms), 2s"},
+		// found by fuzzing (testdata/fuzz/FuzzMathFunction): an unclosed
+		// calc() with a substitution function in an unclosed block,
+		// which is taken unchecked and is not one closed math function
+		{"width", "CAlC([env()"},
+		{"width", "CAlC(env({"},
+	} {
+		f.Add(seed.property, seed.value)
 	}
 
-	var wg sync.WaitGroup
-	for range 8 {
-		wg.Go(func() {
-			for _, value := range []string{"1, 2px", "1 a", "b 3", "x"} {
-				lexer.MatchPropertyString("test", value)
-				DefaultLexer().MatchPropertyString("background", value)
-			}
-		})
+	f.Fuzz(func(t *testing.T, property, value string) {
+		lexer := DefaultLexer()
+		result := lexer.MatchPropertyString(property, value)
+		if (result.Matched == nil) == (result.Error == nil) {
+			t.Fatalf("MatchPropertyString(%q, %q) matched = %t, error = %v", property, value, result.Matched != nil, result.Error)
+		}
+
+		if result.Matched == nil || !isSingleMathFunction(value) || strings.Count(value, "(") >= maxCalcDepth/2 {
+			return
+		}
+		nested := "calc(" + value + ")"
+		if lexer.MatchPropertyString(property, nested).Matched == nil {
+			t.Errorf("MatchPropertyString(%q, %q) matched, but not %q", property, value, nested)
+		}
+	})
+}
+
+// isSingleMathFunction reports whether value is one math function closed
+// by its ) and nothing else, without substitution functions.
+func isSingleMathFunction(value string) bool {
+	tokens := stringToTokens(value)
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Function || !isMathFunctionName(tokenName(&tokens[0])) {
+		return false
 	}
-	wg.Wait()
+	if tokens[len(tokens)-1].typ != tokenizer.RightParenthesis {
+		return false
+	}
+	for _, token := range tokens {
+		// a function with substitution functions is matched as upstream
+		if token.typ == tokenizer.Function && isSubstitutionFunctionName(tokenName(&token)) {
+			return false
+		}
+	}
+	return consumeFunction(tokens) == len(tokens)
 }
