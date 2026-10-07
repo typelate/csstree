@@ -91,7 +91,7 @@ func (c *WalkContext) set(name string, node Node) {
 // (or the root).
 type WalkHandler func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction
 
-// WalkOptions configures Walker.Walk (upstream walk(ast, fn | options); a
+// WalkOptions configures Syntax.Walk (upstream walk(ast, fn | options); a
 // lone function is Enter).
 type WalkOptions struct {
 	// Enter is called before the children of a node are visited.
@@ -221,11 +221,11 @@ func createFastTraveralMap(iterators map[string]typeIterator) map[string]map[str
 	}
 }
 
-// Walker traverses ASTs of the node types of a config (upstream walk, the
+// walker traverses ASTs of the node types of a config (upstream walk, the
 // function createWalker returns, with its find, findLast and findAll
-// properties). A Walker is safe for concurrent use; see Walk for the ASTs
-// it walks.
-type Walker struct {
+// properties). A walker is safe for concurrent use; see Syntax.Walk for
+// the ASTs it walks.
+type walker struct {
 	types                         map[string]*walkerType
 	iteratorsNatural              map[string]typeIterator
 	iteratorsReverse              map[string]typeIterator
@@ -233,9 +233,9 @@ type Walker struct {
 	fastTraversalIteratorsReverse map[string]map[string]typeIterator
 }
 
-// CreateWalker returns a walker for the node types of config (upstream
+// createWalker returns a walker for the node types of config (upstream
 // createWalker). It fails when a node type has no Structure.
-func CreateWalker(config *Config) (*Walker, error) {
+func createWalker(config *Config) (*walker, error) {
 	if config == nil {
 		config = new(Config)
 	}
@@ -253,7 +253,7 @@ func CreateWalker(config *Config) (*Walker, error) {
 		}
 	}
 
-	return &Walker{
+	return &walker{
 		types:                         types,
 		iteratorsNatural:              iteratorsNatural,
 		iteratorsReverse:              iteratorsReverse,
@@ -262,22 +262,13 @@ func CreateWalker(config *Config) (*Walker, error) {
 	}, nil
 }
 
-// Walk traverses root depth-first, calling options.Enter before and
-// options.Leave after the children of each node. It fails when neither
-// handler is set or options.Visit names an unknown node type. Nil nodes
-// (a nil root or nil list data) are not visited.
-//
-// The handlers may change the list holding the current node (insert or
-// remove items, as List.ForEach allows), which is why Walk records its
-// position in each list it walks: it must not run concurrently with any
-// other use of the same AST, not even a read-only one such as Generate or
-// Find.
-func (w *Walker) Walk(root Node, options WalkOptions) error {
+// Walk is Syntax.Walk.
+func (w *walker) Walk(root Node, options WalkOptions) error {
 	return w.walk(root, options, true)
 }
 
 // walk is Walk; mutable is walkAST's.
-func (w *Walker) walk(root Node, options WalkOptions, mutable bool) error {
+func (w *walker) walk(root Node, options WalkOptions, mutable bool) error {
 	enter := WalkHandler(noopWalkHandler)
 	leave := WalkHandler(noopWalkHandler)
 	enterIsNoop := true
@@ -404,10 +395,8 @@ func walkAST(root Node, enter, leave WalkHandler, iterators map[string]typeItera
 	walkNode(root, nil, nil)
 }
 
-// Find returns the first node, in natural walk order, for which fn returns
-// true, or nil. fn must not change the AST: Find, FindLast and FindAll only
-// read it, so they may run concurrently with other reads of the same AST.
-func (w *Walker) Find(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
+// Find is Syntax.Find.
+func (w *walker) Find(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
 	var found Node
 
 	walkAST(ast, func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction {
@@ -421,9 +410,8 @@ func (w *Walker) Find(ast Node, fn func(context *WalkContext, node Node, item *L
 	return found
 }
 
-// FindLast returns the first node, in reverse walk order, for which fn
-// returns true, or nil.
-func (w *Walker) FindLast(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
+// FindLast is Syntax.FindLast.
+func (w *walker) FindLast(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
 	var found Node
 
 	walkAST(ast, func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction {
@@ -437,9 +425,8 @@ func (w *Walker) FindLast(ast Node, fn func(context *WalkContext, node Node, ite
 	return found
 }
 
-// FindAll returns every node, in natural walk order, for which fn returns
-// true.
-func (w *Walker) FindAll(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) []Node {
+// FindAll is Syntax.FindAll.
+func (w *walker) FindAll(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) []Node {
 	var found []Node
 
 	walkAST(ast, func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction {

@@ -104,9 +104,9 @@ type generateFailure struct {
 	err error
 }
 
-// CreateGenerator returns a generate function for the node types of
+// createGenerator returns a generate function for the node types of
 // config (upstream createGenerator).
-func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (string, error) {
+func createGenerator(config *Config) func(node Node, options GenerateOptions) (string, error) {
 	types := make(map[string]GenerateFunc)
 
 	if config != nil {

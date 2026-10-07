@@ -16,15 +16,15 @@ import (
 	"github.com/typelate/csstree/tokenizer"
 )
 
-// Convertor converts between ASTs and their plain object form (upstream
+// convertor converts between ASTs and their plain object form (upstream
 // createConvertor's { fromPlainObject, toPlainObject }).
-type Convertor struct {
+type convertor struct {
 	types map[string]FromPlainObjectFunc
 }
 
-// CreateConvertor returns a convertor for the node types of config
+// createConvertor returns a convertor for the node types of config
 // (upstream createConvertor(walk) takes the walker of the config).
-func CreateConvertor(config *Config) *Convertor {
+func createConvertor(config *Config) *convertor {
 	types := make(map[string]FromPlainObjectFunc)
 
 	if config != nil {
@@ -35,14 +35,11 @@ func CreateConvertor(config *Config) *Convertor {
 		}
 	}
 
-	return &Convertor{types: types}
+	return &convertor{types: types}
 }
 
-// FromPlainObject builds an AST from its plain object form, such as the
-// result of ToPlainObject or of decoding the JSON of an AST into an any. It
-// fails on a value of the wrong kind or a node of a type without a
-// FromPlainObject function.
-func (c *Convertor) FromPlainObject(ast map[string]any) (Node, error) {
+// FromPlainObject is Syntax.FromPlainObject.
+func (c *convertor) FromPlainObject(ast map[string]any) (Node, error) {
 	r := &PlainObjectReader{types: c.types}
 	node := r.node(ast)
 	if r.err != nil {
@@ -51,12 +48,8 @@ func (c *Convertor) FromPlainObject(ast map[string]any) (Node, error) {
 	return node, nil
 }
 
-// ToPlainObject returns the plain object form of ast: the value of
-// JSON.parse(JSON.stringify(ast)), a map per node with "type", "loc" and
-// the node fields, and a slice per list. Nodes are encoded with
-// encoding/json, so a node type added through Syntax.Fork needs a
-// MarshalJSON method writing "type".
-func (c *Convertor) ToPlainObject(ast Node) (map[string]any, error) {
+// ToPlainObject is Syntax.ToPlainObject.
+func (c *convertor) ToPlainObject(ast Node) (map[string]any, error) {
 	data, err := json.Marshal(ast)
 	if err != nil {
 		return nil, err

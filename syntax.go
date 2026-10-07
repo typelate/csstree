@@ -2,11 +2,7 @@
 
 package csstree
 
-import (
-	"sync"
-
-	"github.com/typelate/csstree/tokenizer"
-)
+import "sync"
 
 // Syntax is a CSS syntax: the parser, generator, walker, convertor and
 // lexer of one configuration (upstream the object createSyntax returns).
@@ -17,10 +13,10 @@ import (
 type Syntax struct {
 	lexer     *Lexer
 	config    *Config
-	parse     ParseFunc
-	walker    *Walker
+	parse     parseFunc
+	walker    *walker
 	generate  func(node Node, options GenerateOptions) (string, error)
-	convertor *Convertor
+	convertor *convertor
 	clone     func(node Node) Node
 }
 
@@ -49,13 +45,13 @@ func createSyntax(config *Config) (*Syntax, error) {
 	if config == nil {
 		config = new(Config)
 	}
-	parse := CreateParser(config)
-	walker, err := CreateWalker(config)
+	parse := createParser(config)
+	walker, err := createWalker(config)
 	if err != nil {
 		return nil, err
 	}
-	generate := CreateGenerator(config)
-	convertor := CreateConvertor(config)
+	generate := createGenerator(config)
+	convertor := createConvertor(config)
 
 	syntax := &Syntax{
 		config:    config,
@@ -97,29 +93,40 @@ func (s *Syntax) CreateLexer(config *Config) (*Lexer, error) {
 	return newLexer(config, s, s.lexer.structure)
 }
 
-// CreateSyntax returns the syntax of a copy of config (upstream
+// NewSyntax returns the syntax of a copy of config (upstream
 // createSyntax). It fails when a node type has no Structure or a bad one,
 // or when the CSS-wide keywords do not parse as a definition syntax.
-func CreateSyntax(config *Config) (*Syntax, error) {
+func NewSyntax(config *Config) (*Syntax, error) {
 	return createSyntax(mix(nil, config))
 }
 
-// Tokenize splits source into tokens, calling onToken for each.
-func (s *Syntax) Tokenize(source string, onToken func(tokenType tokenizer.TokenType, start, end int)) {
-	tokenizer.Tokenize(source, onToken)
-}
-
-// Parse parses source into an AST.
+// Parse parses source into an AST, whose root is the node of the parse
+// context options.Context. It fails with an *UnknownContextError for a
+// context the syntax does not define, with a *SyntaxError the parser does
+// not recover from, with the error OnParseError returns, or with an
+// *InternalError when a parse function or callback panics.
 func (s *Syntax) Parse(source string, options ParseOptions) (Node, error) {
 	return s.parse(source, options)
 }
 
-// Generate turns an AST into CSS text.
+// Generate turns an AST into CSS text. It fails with an
+// *UnknownNodeTypeError for a node (or a nil node) whose type has no
+// generate function, or with an *InternalError when a generate function
+// panics, e.g. on a hand-built node missing a required field.
 func (s *Syntax) Generate(node Node, options GenerateOptions) (string, error) {
 	return s.generate(node, options)
 }
 
-// Walk traverses an AST (see Walker.Walk).
+// Walk traverses root depth-first, calling options.Enter before and
+// options.Leave after the children of each node. It fails when neither
+// handler is set or options.Visit names an unknown node type. Nil nodes
+// (a nil root or nil list data) are not visited.
+//
+// The handlers may change the list holding the current node (insert or
+// remove items, as List.ForEach allows), which is why Walk records its
+// position in each list it walks: it must not run concurrently with any
+// other use of the same AST, not even a read-only one such as Generate or
+// Find.
 func (s *Syntax) Walk(root Node, options WalkOptions) error {
 	return s.walker.Walk(root, options)
 }
@@ -131,32 +138,38 @@ func (s *Syntax) walkReadOnly(root Node, options WalkOptions) error {
 	return s.walker.walk(root, options, false)
 }
 
-// Find returns the first node for which fn returns true, or nil (see
-// Walker.Find).
+// Find returns the first node, in natural walk order, for which fn returns
+// true, or nil. fn must not change the AST: Find, FindLast and FindAll only
+// read it, so they may run concurrently with other reads of the same AST.
 func (s *Syntax) Find(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
 	return s.walker.Find(ast, fn)
 }
 
-// FindLast returns the last node for which fn returns true, or nil (see
-// Walker.FindLast).
+// FindLast returns the first node, in reverse walk order, for which fn
+// returns true, or nil (see Find).
 func (s *Syntax) FindLast(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
 	return s.walker.FindLast(ast, fn)
 }
 
-// FindAll returns every node for which fn returns true (see
-// Walker.FindAll).
+// FindAll returns every node, in natural walk order, for which fn returns
+// true (see Find).
 func (s *Syntax) FindAll(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) []Node {
 	return s.walker.FindAll(ast, fn)
 }
 
-// FromPlainObject builds an AST from its plain object form (see
-// Convertor.FromPlainObject).
+// FromPlainObject builds an AST from its plain object form, such as the
+// result of ToPlainObject or of decoding the JSON of an AST into an any. It
+// fails on a value of the wrong kind or a node of a type without a
+// FromPlainObject function.
 func (s *Syntax) FromPlainObject(ast map[string]any) (Node, error) {
 	return s.convertor.FromPlainObject(ast)
 }
 
-// ToPlainObject returns the plain object form of an AST (see
-// Convertor.ToPlainObject).
+// ToPlainObject returns the plain object form of ast: the value of
+// JSON.parse(JSON.stringify(ast)), a map per node with "type", "loc" and
+// the node fields, and a slice per list. Nodes are encoded with
+// encoding/json, so a node type added through Fork needs a MarshalJSON
+// method writing "type".
 func (s *Syntax) ToPlainObject(ast Node) (map[string]any, error) {
 	return s.convertor.ToPlainObject(ast)
 }
@@ -195,7 +208,7 @@ var defaultSyntax = sync.OnceValue(func() *Syntax {
 
 // defaultParseSyntax is defaultSyntax without the definitions of data.go
 // (types, properties, at-rules): the package-level Parse, Generate, Walk,
-// Find, FindLast, FindAll, ToPlainObject, FromPlainObject and Tokenize use
+// Find, FindLast, FindAll, ToPlainObject and FromPlainObject use
 // it, so that a program that only parses does not decode mdn-data. It
 // parses, generates and walks exactly as defaultSyntax does.
 var defaultParseSyntax = sync.OnceValue(func() *Syntax {
@@ -206,7 +219,7 @@ func createDefaultSyntax(lexer *Config) *Syntax {
 	parser := parserConfig()
 	walker := walkerConfig()
 
-	syntax, err := CreateSyntax(&Config{
+	syntax, err := NewSyntax(&Config{
 		ParseContext: parser.ParseContext,
 		Features:     parser.Features,
 		Scope:        parser.Scope,
@@ -247,18 +260,13 @@ func CreateLexer(config *Config) (*Lexer, error) {
 	return defaultSyntax().CreateLexer(config)
 }
 
-// Tokenize splits source into tokens with the default syntax.
-func Tokenize(source string, onToken func(tokenType tokenizer.TokenType, start, end int)) {
-	defaultParseSyntax().Tokenize(source, onToken)
-}
-
-// Walk traverses an AST with the default syntax (see Walker.Walk).
+// Walk traverses an AST with the default syntax (see Syntax.Walk).
 func Walk(root Node, options WalkOptions) error {
 	return defaultParseSyntax().Walk(root, options)
 }
 
 // Find returns the first node for which fn returns true, or nil, with the
-// default syntax.
+// default syntax (see Syntax.Find).
 func Find(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
 	return defaultParseSyntax().Find(ast, fn)
 }

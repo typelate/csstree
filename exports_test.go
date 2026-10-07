@@ -143,25 +143,10 @@ func TestExports(t *testing.T) {
 			}
 		})
 
-		t.Run("generator", func(t *testing.T) {
-			generate := CreateGenerator(generatorConfig())
-			got, err := generate(expectedAST, GenerateOptions{})
-			if err != nil {
-				t.Fatalf("generate(expectedAST, GenerateOptions{}): %v", err)
-			}
-			want, err := Generate(expectedAST, GenerateOptions{})
-			if err != nil {
-				t.Fatalf("Generate(expectedAST, GenerateOptions{}): %v", err)
-			}
-			if got != want {
-				t.Errorf("generator Generate(stringify.ast) = %q, want %q", got, want)
-			}
-		})
-
 		t.Run("walker", func(t *testing.T) {
-			walker, err := CreateWalker(walkerConfig())
+			walker, err := createWalker(walkerConfig())
 			if err != nil {
-				t.Fatalf("CreateWalker(walkerConfig()): %v", err)
+				t.Fatalf("createWalker(walkerConfig()): %v", err)
 			}
 			var actualTypes []string
 			var expectedTypes []string
@@ -222,8 +207,6 @@ func TestExports(t *testing.T) {
 			if back.(*StyleSheet).Children == nil || findFirstAtrule(back).Prelude.(*AtrulePrelude).Children == nil {
 				t.Errorf("FromPlainObject() children are not lists")
 			}
-
-			_ = []any{(*Convertor).FromPlainObject, (*Convertor).ToPlainObject}
 		})
 
 		t.Run("lexer", func(t *testing.T) {

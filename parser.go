@@ -194,14 +194,14 @@ func processConfig(config *Config) *Config {
 	return parseConfig
 }
 
-// ParseFunc parses source and returns the root node of the context named
+// parseFunc parses source and returns the root node of the context named
 // by options.Context.
-type ParseFunc func(source string, options ParseOptions) (Node, error)
+type parseFunc func(source string, options ParseOptions) (Node, error)
 
-// CreateParser returns a parse function for config (upstream
+// createParser returns a parse function for config (upstream
 // createParser). The function is safe for concurrent use: every call
 // uses a new Parser.
-func CreateParser(config *Config) ParseFunc {
+func createParser(config *Config) parseFunc {
 	if config == nil {
 		config = new(Config)
 	}
@@ -667,8 +667,8 @@ func substring(s string, start, end int) string {
 }
 
 // selectorParse is upstream lib/parser/parse-selector.js.
-var selectorParse = sync.OnceValue(func() ParseFunc {
-	return CreateParser(parserSelectorConfig())
+var selectorParse = sync.OnceValue(func() parseFunc {
+	return createParser(parserSelectorConfig())
 })
 
 // Parse parses source with the default syntax (upstream parse).
