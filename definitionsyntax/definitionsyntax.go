@@ -30,14 +30,15 @@ import (
 // Node is a definition syntax AST node. The set of node types is closed: it
 // is implemented only by the pointer types in this package.
 type Node interface {
-	// Type returns the upstream node.type, e.g. "Group".
+	// Type returns the name of the node type, such as "Group". It is the
+	// "type" key of the node's JSON.
 	Type() string
 
 	node()
 }
 
 // Combinator is how the terms of a Group combine (CSS Values 4 §2.2,
-// Component Value Combinators). Its value is the upstream string.
+// Component Value Combinators). Its value is the combinator as written.
 type Combinator string
 
 // The combinators, from the tightest binding to the loosest.
@@ -65,10 +66,11 @@ type Group struct {
 const Unbounded = -1
 
 // Multiplier repeats Term from Min to Max times. Max is Unbounded when there
-// is no upper bound; a Max of 0, as in `{0}`, means exactly zero times
-// (upstream uses max 0 for "no upper bound", so it reads `{0}` as `*`).
-// Comma is set for the "#" multiplier.
+// is no upper bound; a Max of 0, as in `{0}`, means exactly zero times.
+// (Upstream uses max 0 for "no upper bound", so it reads `{0}` as `*`.)
 type Multiplier struct {
+	// Comma is set for the "#" multiplier, whose repetitions are
+	// separated by commas.
 	Comma bool
 	Min   int
 	Max   int
@@ -88,17 +90,18 @@ type Type struct {
 }
 
 // Range is a bracketed range restriction on a numeric Type. A nil Min or Max
-// is an infinite end (upstream null).
+// is an infinite end.
 type Range struct {
 	Min *RangeBound
 	Max *RangeBound
 }
 
-// RangeBound is a finite end of a Range. Upstream holds a number, or a string
-// such as "0s" when a unit follows the number; Unit is that suffix.
+// RangeBound is a finite end of a Range, such as 0 or 0s.
 type RangeBound struct {
+	// Value is the number.
 	Value float64
-	Unit  string
+	// Unit is the unit after the number, such as "s", or "".
+	Unit string
 }
 
 // Property is a reference to a property's value syntax, such as `<'width'>`.
@@ -136,18 +139,41 @@ type Token struct {
 // Comma is a `,`.
 type Comma struct{}
 
-func (*Group) Type() string      { return "Group" }
+// Type returns "Group".
+func (*Group) Type() string { return "Group" }
+
+// Type returns "Multiplier".
 func (*Multiplier) Type() string { return "Multiplier" }
-func (*Boolean) Type() string    { return "Boolean" }
-func (*Type) Type() string       { return "Type" }
-func (*Range) Type() string      { return "Range" }
-func (*Property) Type() string   { return "Property" }
-func (*Keyword) Type() string    { return "Keyword" }
-func (*AtKeyword) Type() string  { return "AtKeyword" }
-func (*Function) Type() string   { return "Function" }
-func (*String) Type() string     { return "String" }
-func (*Token) Type() string      { return "Token" }
-func (*Comma) Type() string      { return "Comma" }
+
+// Type returns "Boolean".
+func (*Boolean) Type() string { return "Boolean" }
+
+// Type returns "Type".
+func (*Type) Type() string { return "Type" }
+
+// Type returns "Range".
+func (*Range) Type() string { return "Range" }
+
+// Type returns "Property".
+func (*Property) Type() string { return "Property" }
+
+// Type returns "Keyword".
+func (*Keyword) Type() string { return "Keyword" }
+
+// Type returns "AtKeyword".
+func (*AtKeyword) Type() string { return "AtKeyword" }
+
+// Type returns "Function".
+func (*Function) Type() string { return "Function" }
+
+// Type returns "String".
+func (*String) Type() string { return "String" }
+
+// Type returns "Token".
+func (*Token) Type() string { return "Token" }
+
+// Type returns "Comma".
+func (*Comma) Type() string { return "Comma" }
 
 func (*Group) node()      {}
 func (*Multiplier) node() {}
@@ -162,7 +188,8 @@ func (*String) node()     {}
 func (*Token) node()      {}
 func (*Comma) node()      {}
 
-// String formats b as JavaScript's String(value) does upstream.
+// String returns b as text: the number, formatted as JavaScript formats
+// numbers, followed by the unit.
 func (b RangeBound) String() string {
 	return formatNumber(b.Value) + b.Unit
 }
@@ -178,6 +205,7 @@ func formatNumber(v float64) string {
 // The MarshalJSON methods match upstream JSON.stringify(ast): "type" first,
 // then the fields in the order parse.js creates them.
 
+// MarshalJSON encodes n as a JSON object with "type", "terms", "combinator", "disallowEmpty" and "explicit".
 func (n *Group) MarshalJSON() ([]byte, error) {
 	terms := n.Terms
 	if terms == nil {
@@ -192,9 +220,10 @@ func (n *Group) MarshalJSON() ([]byte, error) {
 	}{n.Type(), terms, n.Combinator, n.DisallowEmpty, n.Explicit})
 }
 
-// MarshalJSON writes max 0 for Unbounded, as upstream does. An exact zero
-// max, which upstream cannot represent, is written as null: upstream's
-// matcher reads a null max as no repetitions, never as unbounded.
+// MarshalJSON encodes n as a JSON object with "type", "comma", "min",
+// "max" and "term". It writes a max of 0 for Unbounded, as upstream does,
+// and null for an exact zero Max, which upstream cannot represent:
+// upstream's matcher reads a null max as no repetitions.
 func (n *Multiplier) MarshalJSON() ([]byte, error) {
 	var maxValue *int
 	switch n.Max {
@@ -214,6 +243,7 @@ func (n *Multiplier) MarshalJSON() ([]byte, error) {
 	}{n.Type(), n.Comma, n.Min, maxValue, n.Term})
 }
 
+// MarshalJSON encodes n as a JSON object with "type" and "term".
 func (n *Boolean) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Type string `json:"type"`
@@ -221,6 +251,7 @@ func (n *Boolean) MarshalJSON() ([]byte, error) {
 	}{n.Type(), n.Term})
 }
 
+// MarshalJSON encodes n as a JSON object with "type", "name" and "opts".
 func (n *Type) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Type string `json:"type"`
@@ -229,6 +260,7 @@ func (n *Type) MarshalJSON() ([]byte, error) {
 	}{n.Type(), n.Name, n.Opts})
 }
 
+// MarshalJSON encodes n as a JSON object with "type", "min" and "max".
 func (n *Range) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Type string      `json:"type"`
@@ -248,30 +280,37 @@ func (b RangeBound) MarshalJSON() ([]byte, error) {
 	return []byte(formatNumber(b.Value)), nil
 }
 
+// MarshalJSON encodes n as a JSON object with "type" and "name".
 func (n *Property) MarshalJSON() ([]byte, error) {
 	return marshalName(n.Type(), n.Name)
 }
 
+// MarshalJSON encodes n as a JSON object with "type" and "name".
 func (n *Keyword) MarshalJSON() ([]byte, error) {
 	return marshalName(n.Type(), n.Name)
 }
 
+// MarshalJSON encodes n as a JSON object with "type" and "name".
 func (n *AtKeyword) MarshalJSON() ([]byte, error) {
 	return marshalName(n.Type(), n.Name)
 }
 
+// MarshalJSON encodes n as a JSON object with "type" and "name".
 func (n *Function) MarshalJSON() ([]byte, error) {
 	return marshalName(n.Type(), n.Name)
 }
 
+// MarshalJSON encodes n as a JSON object with "type" and "value".
 func (n *String) MarshalJSON() ([]byte, error) {
 	return marshalValue(n.Type(), n.Value)
 }
 
+// MarshalJSON encodes n as a JSON object with "type" and "value".
 func (n *Token) MarshalJSON() ([]byte, error) {
 	return marshalValue(n.Type(), n.Value)
 }
 
+// MarshalJSON encodes n as a JSON object with "type".
 func (n *Comma) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Type string `json:"type"`

@@ -4,11 +4,11 @@ package definitionsyntax
 
 import "strings"
 
-// SyntaxError reports a malformed value definition syntax. Upstream builds it
-// with createCustomError('SyntaxError', message); its name is the Go type.
+// SyntaxError reports a malformed value definition syntax.
 type SyntaxError struct {
-	// Message is the raw message followed by the input and a caret line
-	// pointing at Offset.
+	// Message is RawMessage followed by the input and a caret line
+	// pointing at Offset, or at the end of the input when Offset is 0 (as
+	// upstream does).
 	Message string
 	// RawMessage is the message without the input excerpt.
 	RawMessage string
@@ -35,7 +35,7 @@ func newSyntaxError(message, input string, offset int) *SyntaxError {
 	}
 }
 
-// Error returns Message, the same text as upstream's error.message.
+// Error returns Message, which is upstream's error message.
 func (e *SyntaxError) Error() string {
 	return e.Message
 }

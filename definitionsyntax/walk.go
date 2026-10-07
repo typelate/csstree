@@ -4,9 +4,7 @@ package definitionsyntax
 
 import "errors"
 
-// WalkOptions holds the walk handlers. Upstream also accepts a single
-// function, which is Enter here, and a context for `this`, which Go closures
-// make unnecessary.
+// WalkOptions holds the walk handlers. At least one must be set.
 type WalkOptions struct {
 	// Enter is called for a node before its children.
 	Enter func(node Node)
