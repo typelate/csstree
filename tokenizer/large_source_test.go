@@ -11,7 +11,7 @@ func TestTokenStreamLargeSource(t *testing.T) {
 	const size = 1<<24 + 10
 	source := strings.Repeat(" ", size-1) + "a"
 
-	ts := NewTokenStream(source, Tokenize)
+	ts := NewTokenStream(source)
 	ts.Next() // past the whitespace token
 
 	if ts.TokenType != Ident || ts.TokenStart != size-1 || ts.TokenEnd != size {

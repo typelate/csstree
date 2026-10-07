@@ -93,11 +93,11 @@ type TokenStream struct {
 	offsetAndType   []uint64
 }
 
-// NewTokenStream tokenizes source with tokenize and positions the stream on
-// the first token. A nil tokenize produces no tokens.
-func NewTokenStream(source string, tokenize func(source string, onToken func(tokenType TokenType, start, end int))) *TokenStream {
+// NewTokenStream tokenizes source and positions the stream on the first
+// token.
+func NewTokenStream(source string) *TokenStream {
 	ts := new(TokenStream)
-	ts.SetSource(source, tokenize)
+	ts.SetSource(source)
 	return ts
 }
 
@@ -110,14 +110,9 @@ func (ts *TokenStream) Reset() {
 	ts.TokenEnd = ts.firstCharOffset
 }
 
-// SetSource tokenizes source with tokenize (usually Tokenize), reusing the
-// stream's buffers, and positions the stream on the first token. A nil
-// tokenize produces no tokens.
-func (ts *TokenStream) SetSource(source string, tokenize func(source string, onToken func(tokenType TokenType, start, end int))) {
-	if tokenize == nil {
-		tokenize = func(string, func(TokenType, int, int)) {}
-	}
-
+// SetSource tokenizes source, reusing the stream's buffers, and positions
+// the stream on the first token.
+func (ts *TokenStream) SetSource(source string) {
 	sourceLength := len(source)
 	offsetAndType := adoptBuffer(ts.offsetAndType, len(source)+1) // +1 because of eof-token
 	balance := adoptBuffer(ts.Balance, len(source)+1)
@@ -131,7 +126,7 @@ func (ts *TokenStream) SetSource(source string, tokenize func(source string, onT
 	ts.Balance = nil
 	clear(balance)
 
-	tokenize(source, func(tokenType TokenType, start, end int) {
+	Tokenize(source, func(tokenType TokenType, start, end int) {
 		index := tokenCount
 		tokenCount++
 

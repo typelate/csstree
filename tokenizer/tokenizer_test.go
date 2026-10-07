@@ -26,7 +26,7 @@ type testToken struct {
 func TestTokenizeStream(t *testing.T) {
 	t.Run("tokenize/stream", func(t *testing.T) {
 		createStream := func(source string) *TokenStream {
-			return NewTokenStream(source, Tokenize)
+			return NewTokenStream(source)
 		}
 		const css = ".test\n{\n  prop: url(foo/bar.jpg) url( a\\(\\33 \\).\\ \\\"\\'test ) calc(1 + 1) \\x \\aa ;\n}<!--<-->\\\n"
 		tokens := []testToken{
@@ -78,7 +78,7 @@ func TestTokenizeStream(t *testing.T) {
 		}
 
 		t.Run("edge case: no arguments", func(t *testing.T) {
-			stream := NewTokenStream("", nil)
+			stream := NewTokenStream("")
 
 			if !stream.EOF {
 				t.Errorf("stream.EOF = false, want true")

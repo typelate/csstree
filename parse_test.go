@@ -576,7 +576,7 @@ func TestParse(t *testing.T) {
 		t.Run("as function with API", func(t *testing.T) {
 			const filename = "test.css"
 			offsetToLocation := tokenizer.NewOffsetToLocation(source, 0, 1, 1)
-			tokenStream := tokenizer.NewTokenStream(source, tokenizer.Tokenize)
+			tokenStream := tokenizer.NewTokenStream(source)
 			type apiToken struct {
 				Index                  int
 				Filename               string

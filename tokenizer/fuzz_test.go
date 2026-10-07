@@ -24,7 +24,7 @@ func FuzzTokenize(f *testing.F) {
 			t.Fatalf("Tokenize(%q) ended at %d, want %d", source, prevEnd, len(source))
 		}
 
-		ts := NewTokenStream(source, Tokenize)
+		ts := NewTokenStream(source)
 		for !ts.EOF {
 			ts.Next()
 		}

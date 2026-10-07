@@ -95,7 +95,7 @@ func TestTokenizeSpecEdges(t *testing.T) {
 func TestTokenStreamDeepNesting(t *testing.T) {
 	const depth = 100000
 	source := strings.Repeat("(", depth) + strings.Repeat(")", depth)
-	ts := NewTokenStream(source, Tokenize)
+	ts := NewTokenStream(source)
 
 	for _, tt := range []struct{ index, want int }{
 		{0, 2*depth - 1},
@@ -469,7 +469,7 @@ func TestTokenStreamLookups(t *testing.T) {
 		{index: 26, lookupType: [4]TokenType{9, 13, 0, 0}, lookupTypeNonSC: [3]TokenType{0, 0, 0}, lookupOffset: [4]int{30, 31, 32, 32}, lookupOffsetNonSC: [3]int{0, 0, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)} ."},
 		{index: 27, lookupType: [4]TokenType{13, 0, 0, 0}, lookupTypeNonSC: [3]TokenType{0, 0, 0}, lookupOffset: [4]int{31, 32, 32, 32}, lookupOffsetNonSC: [3]int{0, 0, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, true, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)} . "},
 	} {
-		ts := NewTokenStream(tokenStreamSource, Tokenize)
+		ts := NewTokenStream(tokenStreamSource)
 		ts.Skip(tt.index)
 		if ts.TokenIndex != tt.index {
 			t.Fatalf("after Skip(%d) TokenIndex = %d", tt.index, ts.TokenIndex)
@@ -510,7 +510,7 @@ func TestTokenStreamLookups(t *testing.T) {
 }
 
 func TestTokenStreamAccessors(t *testing.T) {
-	ts := NewTokenStream(tokenStreamSource, Tokenize)
+	ts := NewTokenStream(tokenStreamSource)
 	for _, tt := range []struct {
 		index, start, end int
 		tokenType         TokenType
@@ -572,9 +572,9 @@ func TestTokenStreamAccessors(t *testing.T) {
 
 // Next and Skip report the same start and end for every token.
 func TestTokenStreamNextAndSkip(t *testing.T) {
-	ts := NewTokenStream(tokenStreamSource, Tokenize)
+	ts := NewTokenStream(tokenStreamSource)
 	for index := 0; !ts.EOF; index++ {
-		skipped := NewTokenStream(tokenStreamSource, Tokenize)
+		skipped := NewTokenStream(tokenStreamSource)
 		skipped.Skip(index)
 		if ts.TokenStart != skipped.TokenStart || ts.TokenEnd != skipped.TokenEnd || ts.TokenType != skipped.TokenType {
 			t.Errorf("Next to %d = %v [%d, %d), Skip(%d) = %v [%d, %d)", index, ts.TokenType, ts.TokenStart, ts.TokenEnd, index, skipped.TokenType, skipped.TokenStart, skipped.TokenEnd)
@@ -592,7 +592,7 @@ func TestTokenStreamNextAndSkip(t *testing.T) {
 // After Reset the cursor is before the first token; upstream answers
 // lookups there (reading the missing cell -1 as type 0) instead of failing.
 func TestTokenStreamLookupsAfterReset(t *testing.T) {
-	ts := NewTokenStream(tokenStreamSource, Tokenize)
+	ts := NewTokenStream(tokenStreamSource)
 	ts.Reset()
 
 	if got := ts.LookupTypeNonSC(0); got != EOF {
@@ -631,7 +631,7 @@ func TestTokenStreamLookupsAfterReset(t *testing.T) {
 // balance cell -1 and finds no pair.
 func TestTokenStreamPairOfNegativeIndex(t *testing.T) {
 	for _, source := range []string{"(a)", ")a("} {
-		ts := NewTokenStream(source, Tokenize)
+		ts := NewTokenStream(source)
 		ts.Next()
 		if got := ts.GetBlockTokenPairIndex(-1); got != -1 {
 			t.Errorf("NewTokenStream(%q).GetBlockTokenPairIndex(-1) = %d, want -1", source, got)
@@ -641,7 +641,7 @@ func TestTokenStreamPairOfNegativeIndex(t *testing.T) {
 
 // SubstrToCursor swaps its ends as String.prototype.substring does.
 func TestSubstrToCursorAfterCursor(t *testing.T) {
-	ts := NewTokenStream(tokenStreamSource, Tokenize)
+	ts := NewTokenStream(tokenStreamSource)
 	ts.Skip(2)
 	if got, want := ts.SubstrToCursor(5), "( ["; got != want {
 		t.Errorf("SubstrToCursor(5) at offset %d = %q, want %q", ts.TokenStart, got, want)
@@ -660,7 +660,7 @@ func TestTokenStreamUnbalanced(t *testing.T) {
 		{"(([)]", []int{5, 5, 4, 4, 2}, []int{-1, -1, 4, -1, 2, -1}},
 		{")]}{[(", []int{6, 6, 6, 6, 6, 6}, []int{-1, -1, -1, -1, -1, -1, -1}},
 	} {
-		ts := NewTokenStream(tt.source, Tokenize)
+		ts := NewTokenStream(tt.source)
 		var balance []int
 		for _, token := range ts.Dump() {
 			balance = append(balance, token.Balance)
@@ -689,7 +689,7 @@ func TestSkipUntilBalanced(t *testing.T) {
 		{"end of the enclosing block", 2, 2, func(int) StopMode { return NoStop }, 4},
 		{"nil stop", 2, 2, nil, 4},
 	} {
-		ts := NewTokenStream(source, Tokenize)
+		ts := NewTokenStream(source)
 		ts.Skip(tt.skip)
 		ts.SkipUntilBalanced(tt.start, tt.stop)
 		if ts.TokenIndex != tt.want {
@@ -709,7 +709,7 @@ func stopAt(code int, mode StopMode) StopFunc {
 }
 
 func TestSkipSC(t *testing.T) {
-	ts := NewTokenStream(" /* a */ \n/**/b", Tokenize)
+	ts := NewTokenStream(" /* a */ \n/**/b")
 	ts.SkipSC()
 	if ts.TokenType != Ident || ts.TokenStart != 14 {
 		t.Errorf("SkipSC() stopped at %v %d, want %v 14", ts.TokenType, ts.TokenStart, Ident)
@@ -721,7 +721,7 @@ func TestSkipSC(t *testing.T) {
 }
 
 func TestTokenStreamBOM(t *testing.T) {
-	ts := NewTokenStream("\ufeffa b", Tokenize)
+	ts := NewTokenStream("\ufeffa b")
 	want := []DumpToken{
 		{Idx: 0, Type: "ident-token", Chunk: "a", Balance: 3},
 		{Idx: 1, Type: "whitespace-token", Chunk: " ", Balance: 3},
@@ -755,9 +755,9 @@ func TestOffsetToLocationNewlines(t *testing.T) {
 // A stream reuses its buffers; one exactly as long as a source with a token
 // per char has no room for the EOF entry, so SetSource must grow it.
 func TestTokenStreamReuseBuffers(t *testing.T) {
-	ts := NewTokenStream("a", Tokenize)
+	ts := NewTokenStream("a")
 	source := strings.Repeat(",", len(ts.offsetAndType))
-	ts.SetSource(source, Tokenize)
+	ts.SetSource(source)
 	if ts.TokenCount != len(source) {
 		t.Fatalf("TokenCount = %d, want %d", ts.TokenCount, len(source))
 	}
@@ -772,7 +772,7 @@ func TestTokenStreamReuseBuffers(t *testing.T) {
 // Offsets around a source with no tokens or only a BOM. Upstream counts the
 // BOM as one code unit, so its offsets here are 2 less.
 func TestTokenStreamEmptyAndBOM(t *testing.T) {
-	empty := NewTokenStream("", Tokenize)
+	empty := NewTokenStream("")
 	if got := empty.GetTokenStart(-1); got != 0 {
 		t.Errorf(`NewTokenStream("").GetTokenStart(-1) = %d, want 0`, got)
 	}
@@ -783,7 +783,7 @@ func TestTokenStreamEmptyAndBOM(t *testing.T) {
 		t.Errorf(`NewTokenStream("").LookupValue(0, "") = true, want false`)
 	}
 
-	bomOnly := NewTokenStream("\ufeff", Tokenize)
+	bomOnly := NewTokenStream("\ufeff")
 	if got := bomOnly.LookupOffset(0); got != 3 {
 		t.Errorf(`NewTokenStream("\ufeff").LookupOffset(0) = %d, want 3`, got)
 	}
@@ -791,7 +791,7 @@ func TestTokenStreamEmptyAndBOM(t *testing.T) {
 		t.Errorf(`NewTokenStream("\ufeff").LookupValue(0, "") = true, want false`)
 	}
 
-	bom := NewTokenStream("\ufeffa b", Tokenize)
+	bom := NewTokenStream("\ufeffa b")
 	bom.Skip(2)
 	for _, tt := range []struct {
 		name      string

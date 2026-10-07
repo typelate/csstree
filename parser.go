@@ -221,7 +221,7 @@ func CreateParser(config *Config) ParseFunc {
 }
 
 func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error) {
-	p.SetSource(source, tokenizer.Tokenize)
+	p.SetSource(source)
 	line, column := options.Line, options.Column
 	if line == 0 {
 		line = 1
