@@ -239,7 +239,7 @@ func createTypeIterator(config *walkerType, reverse bool) typeIterator {
 	}
 }
 
-func createFastTraveralMap(iterators map[string]typeIterator) map[string]map[string]typeIterator {
+func createFastTraversalMap(iterators map[string]typeIterator) map[string]map[string]typeIterator {
 	pick := func(names ...string) map[string]typeIterator {
 		result := make(map[string]typeIterator)
 		for _, name := range names {
@@ -293,8 +293,8 @@ func createWalker(config *Config) (*walker, error) {
 		types:                         types,
 		iteratorsNatural:              iteratorsNatural,
 		iteratorsReverse:              iteratorsReverse,
-		fastTraversalIteratorsNatural: createFastTraveralMap(iteratorsNatural),
-		fastTraversalIteratorsReverse: createFastTraveralMap(iteratorsReverse),
+		fastTraversalIteratorsNatural: createFastTraversalMap(iteratorsNatural),
+		fastTraversalIteratorsReverse: createFastTraversalMap(iteratorsReverse),
 	}, nil
 }
 
