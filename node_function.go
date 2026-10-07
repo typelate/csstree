@@ -3,8 +3,6 @@
 package csstree
 
 import (
-	"strings"
-
 	"github.com/typelate/csstree/tokenizer"
 )
 
@@ -66,7 +64,7 @@ func fromPlainObjectFunction(r *PlainObjectReader, object map[string]any) Node {
 func (p *Parser) Function(readSequence func(recognizer *Recognizer) *List[Node], recognizer *Recognizer) *Function {
 	start := p.TokenStart
 	name := p.ConsumeFunctionName()
-	nameLowerCase := strings.ToLower(name)
+	nameLowerCase := toLowerCase(name)
 	var children *List[Node]
 
 	if fn, ok := recognizer.Functions[nameLowerCase]; ok {

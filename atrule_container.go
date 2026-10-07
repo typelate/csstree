@@ -3,8 +3,6 @@
 package csstree
 
 import (
-	"strings"
-
 	"github.com/typelate/csstree/tokenizer"
 )
 
@@ -26,7 +24,7 @@ func containerAtrule() AtruleParser {
 			if p.TokenType == tokenizer.Ident {
 				name := p.Substring(p.TokenStart, p.TokenEnd)
 
-				if !isNonContainerNameKeyword(strings.ToLower(name)) {
+				if !isNonContainerNameKeyword(toLowerCase(name)) {
 					children.Push(p.Identifier())
 				}
 			}

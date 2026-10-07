@@ -3,8 +3,6 @@
 package csstree
 
 import (
-	"strings"
-
 	"github.com/typelate/csstree/tokenizer"
 )
 
@@ -85,7 +83,7 @@ func (p *Parser) FeatureFunction(kind string) *FeatureFunction {
 	}
 	start := p.TokenStart
 	functionName := p.ConsumeFunctionName()
-	valueParser := getFeatureParser(p, kind, strings.ToLower(functionName))
+	valueParser := getFeatureParser(p, kind, toLowerCase(functionName))
 
 	p.SkipSC()
 

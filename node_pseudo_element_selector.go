@@ -3,8 +3,6 @@
 package csstree
 
 import (
-	"strings"
-
 	"github.com/typelate/csstree/tokenizer"
 )
 
@@ -73,7 +71,7 @@ func (p *Parser) PseudoElementSelector() *PseudoElementSelector {
 
 	if p.TokenType == tokenizer.Function {
 		name = p.ConsumeFunctionName()
-		nameLowerCase := strings.ToLower(name)
+		nameLowerCase := toLowerCase(name)
 
 		if p.LookupNonWSType(0) == tokenizer.RightParenthesis {
 			children = p.CreateList()

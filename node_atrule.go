@@ -3,8 +3,6 @@
 package csstree
 
 import (
-	"strings"
-
 	"github.com/typelate/csstree/tokenizer"
 )
 
@@ -108,7 +106,7 @@ func (p *Parser) Atrule(isDeclaration bool) *Atrule {
 	p.Eat(tokenizer.AtKeyword)
 
 	name := p.SubstrToCursor(start + 1)
-	nameLowerCase := strings.ToLower(name)
+	nameLowerCase := toLowerCase(name)
 	p.SkipSC()
 
 	// parse prelude

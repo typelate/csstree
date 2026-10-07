@@ -2,7 +2,11 @@
 
 package csstree
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
 
 // Upstream memoizes descriptors in two unbounded Maps keyed by every name it
 // has seen; this port computes them on each call to avoid package-level state.
@@ -76,7 +80,7 @@ func getVendorPrefix(str string, offset int) string {
 }
 
 func getKeywordDescriptor(keyword string) KeywordDescriptor {
-	name := strings.ToLower(keyword)
+	name := toLowerCase(keyword)
 
 	custom := IsCustomProperty(name, 0)
 	vendor := ""
@@ -117,7 +121,7 @@ func getPropertyDescriptor(property string) PropertyDescriptor {
 	custom := IsCustomProperty(name, len(hack))
 
 	if !custom {
-		name = strings.ToLower(name)
+		name = toLowerCase(name)
 	}
 
 	vendor := ""
@@ -133,4 +137,75 @@ func getPropertyDescriptor(property string) PropertyDescriptor {
 		Prefix:   prefix,
 		Custom:   custom,
 	}
+}
+
+// toLowerCase lowercases s as JavaScript's String.prototype.toLowerCase
+// does, which upstream uses for names. strings.ToLower maps each rune on its
+// own; JavaScript also applies the rules of SpecialCasing.txt that do not
+// depend on a language: U+0130 (İ) becomes i followed by U+0307 COMBINING
+// DOT ABOVE, not i alone, and a capital sigma ending a word becomes a final
+// sigma (ς).
+func toLowerCase(s string) string {
+	if !strings.ContainsAny(s, "\u0130\u03a3") {
+		return strings.ToLower(s)
+	}
+
+	var b strings.Builder
+	b.Grow(len(s) + 1)
+	for i, r := range s {
+		switch r {
+		case '\u0130':
+			b.WriteString("i\u0307")
+		case '\u03a3':
+			if isFinalSigma(s, i) {
+				b.WriteRune('\u03c2')
+			} else {
+				b.WriteRune('\u03c3')
+			}
+		default:
+			b.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return b.String()
+}
+
+// isFinalSigma reports whether the capital sigma at s[i] is preceded by a
+// cased letter and not followed by one, skipping case-ignorable runes on
+// both sides. This is the Final_Sigma condition as ICU (used by V8) tests
+// it: a rune that is both cased and case-ignorable is skipped.
+func isFinalSigma(s string, i int) bool {
+	for before := s[:i]; before != ""; {
+		r, size := utf8.DecodeLastRuneInString(before)
+		before = before[:len(before)-size]
+		if isCaseIgnorable(r) {
+			continue
+		}
+		if !isCased(r) {
+			return false
+		}
+		for _, r := range s[i+len("\u03a3"):] {
+			if !isCaseIgnorable(r) {
+				return !isCased(r)
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// isCased reports whether r has the Unicode Cased property.
+func isCased(r rune) bool {
+	return unicode.In(r, unicode.Lu, unicode.Ll, unicode.Lt, unicode.Other_Lowercase, unicode.Other_Uppercase)
+}
+
+// isCaseIgnorable reports whether r has the Unicode Case_Ignorable property:
+// a nonspacing, enclosing or format mark, a modifier, or a Word_Break
+// MidLetter, MidNumLet or Single_Quote character.
+func isCaseIgnorable(r rune) bool {
+	switch r {
+	case '\'', '.', ':', '\u00b7', '\u0387', '\u055f', '\u05f4', '\u2018', '\u2019',
+		'\u2024', '\u2027', '\ufe13', '\ufe52', '\ufe55', '\uff07', '\uff0e', '\uff1a':
+		return true
+	}
+	return unicode.In(r, unicode.Mn, unicode.Me, unicode.Cf, unicode.Lm, unicode.Sk)
 }

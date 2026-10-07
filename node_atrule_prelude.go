@@ -3,8 +3,6 @@
 package csstree
 
 import (
-	"strings"
-
 	"github.com/typelate/csstree/tokenizer"
 )
 
@@ -62,7 +60,7 @@ func fromPlainObjectAtrulePrelude(r *PlainObjectReader, object map[string]any) N
 func (p *Parser) AtrulePrelude(name string) *AtrulePrelude {
 	var children *List[Node]
 
-	name = strings.ToLower(name)
+	name = toLowerCase(name)
 
 	p.SkipSC()
 

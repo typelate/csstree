@@ -3,8 +3,6 @@
 package csstree
 
 import (
-	"strings"
-
 	"github.com/typelate/csstree/tokenizer"
 )
 
@@ -79,7 +77,7 @@ func (p *Parser) MediaQuery() *MediaQuery {
 	if p.TokenType == tokenizer.Ident && p.LookupTypeNonSC(1) != tokenizer.LeftParenthesis {
 		// [ not | only ]? <media-type>
 		ident := p.Consume(tokenizer.Ident)
-		identLowerCase := strings.ToLower(ident)
+		identLowerCase := toLowerCase(ident)
 
 		if identLowerCase == "not" || identLowerCase == "only" {
 			p.SkipSC()
