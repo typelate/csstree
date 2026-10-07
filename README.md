@@ -34,5 +34,7 @@ See `Example` in [example_test.go](example_test.go) for walking an AST.
 
 ## License
 
-MIT, like upstream; see [LICENSE](LICENSE). The embedded data in `data/mdn` is
+MIT, like upstream; see [LICENSE](LICENSE). The port is copyright Christopher
+Hunter; the csstree code it is ported from is copyright Roman Dvornov, whose
+notice the MIT license requires keeping. The embedded data in `data/mdn` is
 from mdn-data (CC0, see `data/mdn/LICENSE`).
