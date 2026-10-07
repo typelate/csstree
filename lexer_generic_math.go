@@ -845,7 +845,7 @@ func (p *calcParser) round() (calcType, bool) {
 // among them resolves percentages against that type (§10.9.1 calculation
 // contexts; see calcTarget.percentCtx).
 func markPercentSiblings(group *definitionsyntax.Group, terms []*matchGraphNode) {
-	if group.Combinator != "|" {
+	if group.Combinator != definitionsyntax.SingleBar {
 		return
 	}
 
