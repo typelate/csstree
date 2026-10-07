@@ -119,17 +119,39 @@ type MatchResult struct {
 // Its definition syntax is parsed and its match graph built on first use;
 // a Descriptor is safe for concurrent use.
 type Descriptor struct {
-	Kind SyntaxKind
-	Name string
-	// Parent is the at-rule name of an AtruleDescriptor, else "".
-	Parent string
-	// Serializable reports whether the syntax has a definition syntax
+	kind SyntaxKind
+	name string
+	// parent is the at-rule name of an AtruleDescriptor, else "".
+	parent string
+	// serializable reports whether the syntax has a definition syntax
 	// (false for generic types).
-	Serializable bool
+	serializable bool
 
 	syntax   func() (definitionsyntax.Node, error)
 	match    func() (*matchGraphNode, error)
 	matchRef func() (*matchGraphNode, error)
+}
+
+// Kind returns the kind of syntax the descriptor is.
+func (d *Descriptor) Kind() SyntaxKind {
+	return d.kind
+}
+
+// Name returns the name of the type, property or at-rule descriptor, or of
+// the at-rule of a prelude.
+func (d *Descriptor) Name() string {
+	return d.name
+}
+
+// Parent returns the at-rule name of a KindAtruleDescriptor, else "".
+func (d *Descriptor) Parent() string {
+	return d.parent
+}
+
+// Serializable reports whether the syntax has a definition syntax (false
+// for generic types).
+func (d *Descriptor) Serializable() bool {
+	return d.serializable
 }
 
 // Syntax returns the definition syntax tree, parsing it on first use; it
@@ -138,12 +160,42 @@ func (d *Descriptor) Syntax() (definitionsyntax.Node, error) {
 	return d.syntax()
 }
 
-// AtruleSyntax is the syntax of an at-rule: its prelude (nil when it has
-// none) and descriptors (nil when it has no known descriptors).
+// AtruleSyntax is the syntax of an at-rule: its prelude and descriptors.
+// It is safe for concurrent use.
 type AtruleSyntax struct {
-	Name        string
-	Prelude     *Descriptor
-	Descriptors map[string]*Descriptor
+	name    string
+	prelude *Descriptor
+	// descriptors is nil when the at-rule has no known descriptors
+	descriptors     map[string]*Descriptor
+	descriptorNames []string
+}
+
+// Name returns the name of the at-rule.
+func (a *AtruleSyntax) Name() string {
+	return a.name
+}
+
+// Prelude returns the prelude syntax, nil when the at-rule has none.
+func (a *AtruleSyntax) Prelude() *Descriptor {
+	return a.prelude
+}
+
+// Descriptor returns the syntax of the descriptor name, nil when the
+// at-rule has no such descriptor. The name must match exactly; the Match
+// and Check methods of Lexer also accept a vendor-prefixed name.
+func (a *AtruleSyntax) Descriptor(name string) *Descriptor {
+	return a.descriptors[name]
+}
+
+// Descriptors returns the descriptors in name order.
+func (a *AtruleSyntax) Descriptors() iter.Seq2[string, *Descriptor] {
+	return func(yield func(string, *Descriptor) bool) {
+		for _, name := range a.descriptorNames {
+			if !yield(name, a.descriptors[name]) {
+				return
+			}
+		}
+	}
 }
 
 // LexerDump is the lexer's configuration with syntaxes as definition
@@ -187,8 +239,8 @@ func dumpAtruleMapSyntax(names []string, dict map[string]*AtruleSyntax, compact 
 		atrule := dict[name]
 		var definition AtruleDefinition
 
-		if atrule.Prelude != nil {
-			syntax, err := atrule.Prelude.Syntax()
+		if atrule.prelude != nil {
+			syntax, err := atrule.prelude.Syntax()
 			if err != nil {
 				return nil, err
 			}
@@ -197,8 +249,8 @@ func dumpAtruleMapSyntax(names []string, dict map[string]*AtruleSyntax, compact 
 			}
 		}
 
-		if atrule.Descriptors != nil {
-			descriptors, err := dumpMapSyntax(sortedKeys(atrule.Descriptors), atrule.Descriptors, compact)
+		if atrule.descriptors != nil {
+			descriptors, err := dumpMapSyntax(atrule.descriptorNames, atrule.descriptors, compact)
 			if err != nil {
 				return nil, err
 			}
@@ -278,9 +330,9 @@ func matchSyntax(lexer *Lexer, syntax *Descriptor, value matchInput, useCSSWideK
 }
 
 // Lexer matches CSS values against the syntaxes of types, properties and
-// at-rules (upstream class Lexer). Its matching, checking and getter
-// methods are safe for concurrent use; AddAtrule_, AddProperty_ and
-// AddType_ are not, and must not run concurrently with any other method.
+// at-rules (upstream class Lexer). A Lexer does not change once created
+// and is safe for concurrent use; for other syntaxes, create a lexer with
+// Syntax.NewLexer or fork a syntax with Syntax.Fork.
 //
 // Values to match are ASTs (a nil Node is upstream null); the methods with
 // a String suffix take CSS text instead, which is tokenized rather than
@@ -322,20 +374,20 @@ func newLexer(config *Config, syntax *Syntax, structure map[string]*nodeStructur
 
 	if config != nil {
 		if config.CSSWideKeywords != nil {
-			l.cssWideKeywords = config.CSSWideKeywords
+			l.cssWideKeywords = slices.Clone(config.CSSWideKeywords)
 		}
 
 		if config.Units != nil {
 			for group := range unitGroupCount {
 				if units, ok := config.Units[group.name()]; ok && units != nil {
-					l.units[group.name()] = units
+					l.units[group.name()] = slices.Clone(units)
 				}
 			}
 		}
 
 		if config.Types != nil {
 			for _, name := range sortedKeys(config.Types) {
-				l.AddType_(name, config.Types[name])
+				l.addType(name, config.Types[name])
 			}
 		}
 
@@ -348,13 +400,13 @@ func newLexer(config *Config, syntax *Syntax, structure map[string]*nodeStructur
 
 		if config.Atrules != nil {
 			for _, name := range sortedKeys(config.Atrules) {
-				l.AddAtrule_(name, config.Atrules[name])
+				l.addAtrule(name, config.Atrules[name])
 			}
 		}
 
 		if config.Properties != nil {
 			for _, name := range sortedKeys(config.Properties) {
-				l.AddProperty_(name, config.Properties[name])
+				l.addProperty(name, config.Properties[name])
 			}
 		}
 	}
@@ -484,10 +536,10 @@ func (l *Lexer) createDescriptor(source descriptorSource, kind SyntaxKind, name,
 		Name: name,
 	}
 	descriptor := &Descriptor{
-		Kind:         kind,
-		Name:         name,
-		Parent:       parent,
-		Serializable: source.isText || source.tree != nil,
+		kind:         kind,
+		name:         name,
+		parent:       parent,
+		serializable: source.isText || source.tree != nil,
 	}
 
 	if source.generic.fn != nil {
@@ -563,18 +615,19 @@ func (l *Lexer) CreateDescriptorFromTree(syntax definitionsyntax.Node, kind Synt
 	return l.createDescriptor(descriptorSource{tree: syntax}, kind, name, parent)
 }
 
-// AddAtrule_ adds or replaces the syntax of the at-rule name.
-func (l *Lexer) AddAtrule_(name string, syntax AtruleDefinition) {
+// addAtrule adds or replaces the syntax of the at-rule name.
+func (l *Lexer) addAtrule(name string, syntax AtruleDefinition) {
 	atrule := &AtruleSyntax{
-		Name: name,
+		name: name,
 	}
 	if syntax.Prelude != "" {
-		atrule.Prelude = l.CreateDescriptor(syntax.Prelude, KindAtrulePrelude, name, "")
+		atrule.prelude = l.CreateDescriptor(syntax.Prelude, KindAtrulePrelude, name, "")
 	}
 	if syntax.Descriptors != nil {
-		atrule.Descriptors = make(map[string]*Descriptor)
-		for _, descName := range sortedKeys(syntax.Descriptors) {
-			atrule.Descriptors[descName] = l.createDescriptor(
+		atrule.descriptors = make(map[string]*Descriptor)
+		atrule.descriptorNames = sortedKeys(syntax.Descriptors)
+		for _, descName := range atrule.descriptorNames {
+			atrule.descriptors[descName] = l.createDescriptor(
 				descriptorSourceFromText(syntax.Descriptors[descName]),
 				KindAtruleDescriptor,
 				descName,
@@ -598,9 +651,9 @@ func descriptorSourceFromText(syntax string) descriptorSource {
 	return descriptorSource{text: syntax, isText: true}
 }
 
-// AddProperty_ adds or replaces the syntax of the property name; an empty
+// addProperty adds or replaces the syntax of the property name; an empty
 // syntax is ignored.
-func (l *Lexer) AddProperty_(name, syntax string) {
+func (l *Lexer) addProperty(name, syntax string) {
 	if syntax == "" {
 		return
 	}
@@ -611,21 +664,21 @@ func (l *Lexer) AddProperty_(name, syntax string) {
 	l.properties[name] = l.CreateDescriptor(syntax, KindProperty, name, "")
 }
 
-// AddType_ adds or replaces the syntax of the type name; an empty syntax
+// addType adds or replaces the syntax of the type name; an empty syntax
 // is ignored.
-func (l *Lexer) AddType_(name, syntax string) {
+func (l *Lexer) addType(name, syntax string) {
 	if syntax == "" {
 		return
 	}
 
-	l.addType(name, l.CreateDescriptor(syntax, KindType, name, ""))
+	l.setType(name, l.CreateDescriptor(syntax, KindType, name, ""))
 }
 
 func (l *Lexer) addGenericType(generic genericType) {
-	l.addType(generic.name, l.createDescriptor(descriptorSource{generic: generic}, KindType, generic.name, ""))
+	l.setType(generic.name, l.createDescriptor(descriptorSource{generic: generic}, KindType, generic.name, ""))
 }
 
-func (l *Lexer) addType(name string, descriptor *Descriptor) {
+func (l *Lexer) setType(name string, descriptor *Descriptor) {
 	if _, ok := l.types[name]; !ok {
 		l.typeNames = append(l.typeNames, name)
 	}
@@ -662,14 +715,14 @@ func (l *Lexer) checkAtrulePrelude(atruleName string, prelude matchInput) error 
 
 	atrule := l.GetAtrule(atruleName, true)
 
-	if atrule.Prelude == nil && prelude.truthy() {
+	if atrule.prelude == nil && prelude.truthy() {
 		return &AtruleSyntaxError{Message: "At-rule `@" + atruleName + "` should not contain a prelude"}
 	}
 
-	if atrule.Prelude != nil && !prelude.truthy() {
+	if atrule.prelude != nil && !prelude.truthy() {
 		// upstream reads only the match: failing to match is a missing
 		// prelude whatever the error
-		result, err := matchSyntax(l, atrule.Prelude, cssInput(""), false)
+		result, err := matchSyntax(l, atrule.prelude, cssInput(""), false)
 		if err != nil || result.Matched == nil {
 			return &AtruleSyntaxError{Message: "At-rule `@" + atruleName + "` should contain a prelude"}
 		}
@@ -688,12 +741,12 @@ func (l *Lexer) CheckAtruleDescriptorName(atruleName, descriptorName string) err
 	atrule := l.GetAtrule(atruleName, true)
 	descriptor := Keyword(descriptorName)
 
-	if atrule.Descriptors == nil {
+	if atrule.descriptors == nil {
 		return &AtruleSyntaxError{Message: "At-rule `@" + atruleName + "` has no known descriptors"}
 	}
 
-	if atrule.Descriptors[descriptor.Name] == nil &&
-		atrule.Descriptors[descriptor.Basename] == nil {
+	if atrule.descriptors[descriptor.Name] == nil &&
+		atrule.descriptors[descriptor.Basename] == nil {
 		return newSyntaxReferenceError("Unknown at-rule descriptor", descriptorName)
 	}
 
@@ -729,7 +782,7 @@ func (l *Lexer) matchAtrulePrelude(atruleName string, prelude matchInput) (*Matc
 
 	atrule := l.GetAtrule(atruleName, true)
 
-	if atrule.Prelude == nil {
+	if atrule.prelude == nil {
 		return &MatchResult{}, nil
 	}
 
@@ -737,7 +790,7 @@ func (l *Lexer) matchAtrulePrelude(atruleName string, prelude matchInput) (*Matc
 		prelude = cssInput("")
 	}
 
-	return matchSyntax(l, atrule.Prelude, prelude, false)
+	return matchSyntax(l, atrule.prelude, prelude, false)
 }
 
 // MatchAtruleDescriptor matches the value of an at-rule descriptor.
@@ -758,9 +811,9 @@ func (l *Lexer) matchAtruleDescriptor(atruleName, descriptorName string, value m
 	atrule := l.GetAtrule(atruleName, true)
 	descriptor := Keyword(descriptorName)
 
-	syntax := atrule.Descriptors[descriptor.Name]
+	syntax := atrule.descriptors[descriptor.Name]
 	if syntax == nil {
-		syntax = atrule.Descriptors[descriptor.Basename]
+		syntax = atrule.descriptors[descriptor.Basename]
 	}
 
 	return matchSyntax(l, syntax, value, false)
@@ -937,15 +990,7 @@ func (l *Lexer) GetAtrulePrelude(atruleName string, fallbackBasename bool) *Desc
 		return nil
 	}
 
-	return atrule.Prelude
-}
-
-// GetAtruleDescriptor returns nil. Upstream calls hasOwnProperty on its
-// prototype-less at-rule map, which throws a TypeError, and would read
-// `this.atrules.declarators`, a field that does not exist, after it; the
-// method is kept for the API (see AtruleSyntax Descriptors instead).
-func (l *Lexer) GetAtruleDescriptor(atruleName, name string) *Descriptor {
-	return nil
+	return atrule.prelude
 }
 
 // GetProperty returns the syntax of a property, nil when it is unknown.

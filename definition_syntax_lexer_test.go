@@ -6,6 +6,7 @@
 package csstree
 
 import (
+	"maps"
 	"reflect"
 	"testing"
 
@@ -25,7 +26,7 @@ func forEachLexerDictionarySyntax(t *testing.T, fn func(t *testing.T, definition
 			dict = lexer.Types()
 		}
 		for name, definition := range dict {
-			if definition.Serializable {
+			if definition.Serializable() {
 				t.Run(section+"/"+name, func(t *testing.T) {
 					t.Parallel()
 					fn(t, definition)
@@ -37,17 +38,18 @@ func forEachLexerDictionarySyntax(t *testing.T, fn func(t *testing.T, definition
 	for name, definition := range lexer.Atrules() {
 		t.Run("atrules/"+name, func(t *testing.T) {
 			t.Parallel()
-			if definition.Prelude != nil {
+			if prelude := definition.Prelude(); prelude != nil {
 				t.Run("prelude", func(t *testing.T) {
-					fn(t, definition.Prelude)
+					fn(t, prelude)
 				})
 			}
 
-			if definition.Descriptors != nil {
+			descriptors := maps.Collect(definition.Descriptors())
+			if len(descriptors) > 0 {
 				t.Run("definitions", func(t *testing.T) {
-					for _, name := range sortedKeys(definition.Descriptors) {
+					for _, name := range sortedKeys(descriptors) {
 						t.Run(name, func(t *testing.T) {
-							fn(t, definition.Descriptors[name])
+							fn(t, descriptors[name])
 						})
 					}
 				})
@@ -60,7 +62,7 @@ func mustDescriptorSyntax(t *testing.T, definition *Descriptor) definitionsyntax
 	t.Helper()
 	syntax, err := definition.Syntax()
 	if err != nil {
-		t.Fatalf("%s %s: Syntax() error = %v", definition.Kind, definition.Name, err)
+		t.Fatalf("%s %s: Syntax() error = %v", definition.Kind(), definition.Name(), err)
 	}
 	return syntax
 }
@@ -77,7 +79,7 @@ func TestDefinitionSyntaxParseLexer(t *testing.T) {
 		forEachLexerDictionarySyntax(t, func(t *testing.T, definition *Descriptor) {
 			syntax := mustDescriptorSyntax(t, definition)
 			if syntax == nil || syntax.Type() != "Group" {
-				t.Errorf("%s %s: Syntax() = %v, want a Group", definition.Kind, definition.Name, syntax)
+				t.Errorf("%s %s: Syntax() = %v, want a Group", definition.Kind(), definition.Name(), syntax)
 			}
 		})
 	})

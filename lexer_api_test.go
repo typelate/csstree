@@ -98,16 +98,9 @@ func TestLexerAccessors(t *testing.T) {
 			if got := prelude != nil; got != test.want {
 				t.Errorf("GetAtrulePrelude(%q, %v) = %v, want a prelude: %v", test.name, test.fallback, prelude, test.want)
 			}
-			if prelude != nil && (prelude.Kind != KindAtrulePrelude || prelude.Name != "media") {
-				t.Errorf("GetAtrulePrelude(%q, %v) = %s %s, want AtrulePrelude media", test.name, test.fallback, prelude.Kind, prelude.Name)
+			if prelude != nil && (prelude.Kind() != KindAtrulePrelude || prelude.Name() != "media") {
+				t.Errorf("GetAtrulePrelude(%q, %v) = %s %s, want AtrulePrelude media", test.name, test.fallback, prelude.Kind(), prelude.Name())
 			}
-		}
-	})
-
-	t.Run("GetAtruleDescriptor", func(t *testing.T) {
-		// upstream throws a TypeError for every call
-		if got := lexer.GetAtruleDescriptor("font-face", "src"); got != nil {
-			t.Errorf("GetAtruleDescriptor(font-face, src) = %v, want nil", got)
 		}
 	})
 
