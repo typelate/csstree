@@ -322,7 +322,9 @@ func TestLexerSpecEdgeCases(t *testing.T) {
 		{kind: "type", name: "hex-color", value: "#abcde", iterations: 3},
 
 		// Syntax 3 §6.2 the <an+b> grammar includes odd and even, which
-		// upstream's <an-plus-b> leaves to the syntaxes using it
+		// <an-plus-b> (the AnPlusB node's production) leaves to the
+		// syntaxes using it; mdn-data's <an+b> has them, see
+		// TestSpecAnPlusBOddEven
 		{kind: "type", name: "an-plus-b", value: "odd", iterations: 3},
 		{kind: "type", name: "an-plus-b", value: "even", iterations: 3},
 

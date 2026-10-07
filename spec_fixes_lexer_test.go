@@ -303,3 +303,23 @@ func TestSpecURange(t *testing.T) {
 		}
 	}
 }
+
+// TestSpecAnPlusBOddEven checks where odd and even of the An+B grammar
+// (CSS Syntax 3 §6.2) match. <an+b>, mdn-data's syntax of the spec's
+// production, takes them, in any ASCII case and with escapes. The generic
+// <an-plus-b> is the production of the AnPlusB node, which holds A and B
+// only (the parser keeps odd and even in an Identifier of the Nth node),
+// so it leaves odd and even to the syntaxes using it, as upstream does.
+func TestSpecAnPlusBOddEven(t *testing.T) {
+	runSpecMatchCases(t, []specMatchCase{
+		{"type", "an+b", "odd", true},
+		{"type", "an+b", "EVEN", true},
+		{"type", "an+b", `\6f dd`, true},
+		{"type", "an+b", "2n+1", true},
+		{"type", "an-plus-b", "2n+1", true},
+		{"type", "an-plus-b", "odd", false},
+		{"type", "an-plus-b", "even", false},
+		{"syntax", "<an-plus-b> | odd | even", "odd", true},
+		{"syntax", "<an-plus-b> | odd | even", "Even", true},
+	})
+}
