@@ -47,7 +47,6 @@ func TestTokenizeSpecEdges(t *testing.T) {
 		{"§4.3.6 url( is ASCII case-insensitive", "URL(a)uRl(b)", []tokenChunk{{"url-token", "URL(a)"}, {"url-token", "uRl(b)"}}},
 		{"§4.3.6 an empty url", "url()", []tokenChunk{{"url-token", "url()"}}},
 		{"§4.3.14 bad url remnants stop at )", "url(a\"b)c)d", []tokenChunk{{"bad-url-token", "url(a\"b)"}, {"ident-token", "c"}, {")-token", ")"}, {"ident-token", "d"}}},
-		{"§4.3.14 an escape in bad url remnants (upstream skips the code point after it)", "url(a\"\\a)b)c", []tokenChunk{{"bad-url-token", "url(a\"\\a)b)"}, {"ident-token", "c"}}},
 		{"§4.3.14 an escape after a newline in bad url remnants", "url(a\"\n\\)b)c", []tokenChunk{{"bad-url-token", "url(a\"\n\\)b)"}, {"ident-token", "c"}}},
 		{"§4.3.14 an escaped ) in bad url remnants", "url(a\"\\)b)c", []tokenChunk{{"bad-url-token", "url(a\"\\)b)"}, {"ident-token", "c"}}},
 		{"§4.3.12 digits", "123 4.56 .7 +.8 -.9", []tokenChunk{{"number-token", "123"}, {"whitespace-token", " "}, {"number-token", "4.56"}, {"whitespace-token", " "}, {"number-token", ".7"}, {"whitespace-token", " "}, {"number-token", "+.8"}, {"whitespace-token", " "}, {"number-token", "-.9"}}},
@@ -383,8 +382,8 @@ func TestConsumeHelpers(t *testing.T) {
 		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\\)a)b", 4},
 		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\\", 1},
 		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "a\\", 2},
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\\aa)b)", 6}, // upstream skips the ) after an escape
-		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\\a)b)", 5},
+		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\\aa)b)", 4}, // upstream 6: it skips the ) after an escape
+		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\\a)b)", 3},  // upstream 5
 		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "\n\\)b)c", 5},
 		{"ConsumeBadURLRemnants", ConsumeBadURLRemnants, "", 0},
 	} {

@@ -253,13 +253,13 @@ func ConsumeBadURLRemnants(source string, offset int) int {
 			// Note: This allows an escaped right parenthesis ("\)") to be encountered
 			// without ending the <bad-url-token>. This is otherwise identical to
 			// the "anything else" clause.
-			offset = ConsumeEscaped(source, offset)
+			// (upstream does not subtract one, so the loop skips the code
+			// point after the escape)
+			offset = ConsumeEscaped(source, offset) - 1
 		}
 	}
 
-	// Go only: an escape at the very end makes the loop step one past the end
-	// (upstream returns len+1 and relies on JavaScript slicing to clamp it).
-	return min(offset, len(source))
+	return offset
 }
 
 // DecodeEscaped returns the code point an escape stands for, as a string.
