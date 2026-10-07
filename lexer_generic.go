@@ -5,6 +5,7 @@ package csstree
 import (
 	"errors"
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
 
@@ -163,6 +164,16 @@ func charCodeAt(str string, index int) int {
 	return 0
 }
 
+// lowerCaseJS lowercases str as JavaScript's toLowerCase does where it
+// matters to the lexer, which compares the result with ASCII keywords and
+// units: strings.ToLower maps U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE
+// to an ASCII "i", toLowerCase to "i" followed by U+0307 COMBINING DOT
+// ABOVE (SpecialCasing.txt). (toLowerCase also lowercases a final sigma to
+// ς, which no ASCII name contains either way.)
+func lowerCaseJS(str string) string {
+	return strings.ToLower(strings.ReplaceAll(str, "\u0130", "i\u0307"))
+}
+
 func eqStr(actual, expected string) bool {
 	return tokenizer.CmpStr(actual, 0, len(actual), expected)
 }
@@ -223,16 +234,14 @@ func jsNumber(str string) float64 {
 					return math.NaN()
 				}
 			}
-			value, err := strconv.ParseUint(digits, base, 64)
-			if err != nil {
-				// too large for 64 bits: accumulate as a float
-				value := 0.0
-				for i := 0; i < len(digits); i++ {
-					value = value*float64(base) + float64(digitValue(digits[i]))
-				}
-				return value
+			// the exact integer rounded once to the nearest float64, as
+			// JavaScript rounds the value of the literal
+			value, ok := new(big.Int).SetString(digits, base)
+			if !ok {
+				return math.NaN()
 			}
-			return float64(value)
+			f, _ := new(big.Float).SetInt(value).Float64()
+			return f
 		}
 	}
 
@@ -435,7 +444,7 @@ func customIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitio
 		return 0
 	}
 
-	name := strings.ToLower(token.value)
+	name := lowerCaseJS(token.value)
 
 	// The CSS-wide keywords are not valid <custom-ident>s
 	if eqStrAny(name, cssWideKeywords()) {
@@ -655,7 +664,7 @@ func dimension(units []string) genericFunc {
 				unit = token.value[numberEnd:reverseSolidusOffset]
 			}
 
-			if !unitSet[strings.ToLower(unit)] {
+			if !unitSet[lowerCaseJS(unit)] {
 				return 0
 			}
 		}
@@ -880,7 +889,7 @@ func createAttrUnit(units map[string][]string) genericFunc {
 	for _, group := range unitGroups() {
 		if groupUnits, ok := units[group]; ok && groupUnits != nil {
 			for _, unit := range groupUnits {
-				unitSet[strings.ToLower(unit)] = true
+				unitSet[lowerCaseJS(unit)] = true
 			}
 		}
 	}
@@ -894,7 +903,7 @@ func createAttrUnit(units map[string][]string) genericFunc {
 			return 1
 		}
 
-		if token.typ == tokenizer.Ident && unitSet[strings.ToLower(token.value)] {
+		if token.typ == tokenizer.Ident && unitSet[lowerCaseJS(token.value)] {
 			return 1
 		}
 

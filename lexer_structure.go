@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -165,8 +166,76 @@ func jsString(value any) string {
 		return "null"
 	case string:
 		return value
+	case bool:
+		return strconv.FormatBool(value)
+	case float64:
+		return jsNumberString(value)
+	case int:
+		return strconv.Itoa(value)
+	case map[string]any:
+		return "[object Object]"
+	case []any:
+		// Array.prototype.join: null items are empty
+		items := make([]string, len(value))
+		for i, item := range value {
+			if item != nil {
+				items[i] = jsString(item)
+			}
+		}
+		return strings.Join(items, ",")
 	}
 	return fmt.Sprint(value)
+}
+
+// jsNumberString formats v as JavaScript's Number.prototype.toString does:
+// the shortest digits that round-trip, written as a decimal unless the
+// exponent is below -6 or above 20.
+func jsNumberString(v float64) string {
+	switch {
+	case math.IsNaN(v):
+		return "NaN"
+	case v == 0:
+		return "0" // also for -0
+	case math.IsInf(v, 1):
+		return "Infinity"
+	case math.IsInf(v, -1):
+		return "-Infinity"
+	}
+
+	sign := ""
+	if v < 0 {
+		sign = "-"
+		v = -v
+	}
+
+	// d.ddde±x: the digits and the position n of the decimal point
+	mantissa, exponent, _ := strings.Cut(strconv.FormatFloat(v, 'e', -1, 64), "e")
+	e, err := strconv.Atoi(exponent)
+	if err != nil {
+		return sign + strconv.FormatFloat(v, 'g', -1, 64)
+	}
+	digits := strings.Replace(mantissa, ".", "", 1)
+	k := len(digits)
+	n := e + 1
+
+	switch {
+	case k <= n && n <= 21:
+		return sign + digits + strings.Repeat("0", n-k)
+	case 0 < n && n <= 21:
+		return sign + digits[:n] + "." + digits[n:]
+	case -6 < n && n <= 0:
+		return sign + "0." + strings.Repeat("0", -n) + digits
+	}
+
+	exponentSign := "+"
+	if e < 0 {
+		exponentSign = "-"
+		e = -e
+	}
+	if k > 1 {
+		digits = digits[:1] + "." + digits[1:]
+	}
+	return sign + digits + "e" + exponentSign + strconv.Itoa(e)
 }
 
 func genTypesList(fieldTypes []FieldType, path string) (string, error) {

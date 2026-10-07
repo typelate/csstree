@@ -207,7 +207,7 @@ func sortedKeys[V any](m map[string]V) []string {
 
 func valueHasVar(tokens []matchToken) bool {
 	for i := 0; i < len(tokens); i++ {
-		if strings.ToLower(tokens[i].value) == "var(" {
+		if lowerCaseJS(tokens[i].value) == "var(" {
 			return true
 		}
 	}
@@ -414,7 +414,9 @@ func (l *Lexer) CheckPlainObjectStructure(ast map[string]any) []StructureWarning
 	l.walkPlainObject(ast, func(node any) {
 		nodeType := "undefined"
 		if object, ok := node.(map[string]any); ok {
-			nodeType = jsString(object["type"])
+			if typ, ok := object["type"]; ok {
+				nodeType = jsString(typ)
+			}
 		}
 
 		if nodeStructure, ok := structure[nodeType]; ok {
@@ -943,10 +945,10 @@ func (l *Lexer) GetAtrulePrelude(atruleName string, fallbackBasename bool) *Desc
 	return atrule.Prelude
 }
 
-// GetAtruleDescriptor returns nil. Upstream reads
-// `this.atrules.declarators`, a field that does not exist, so it always
-// returns null; the method is kept for the API (see AtruleSyntax
-// Descriptors instead).
+// GetAtruleDescriptor returns nil. Upstream calls hasOwnProperty on its
+// prototype-less at-rule map, which throws a TypeError, and would read
+// `this.atrules.declarators`, a field that does not exist, after it; the
+// method is kept for the API (see AtruleSyntax Descriptors instead).
 func (l *Lexer) GetAtruleDescriptor(atruleName, name string) *Descriptor {
 	return nil
 }

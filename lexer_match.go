@@ -28,8 +28,10 @@ const (
 
 const iterationLimit = 15000
 
-// keywordHack matches the \0 and \9 hacks at the end of a keyword.
-var keywordHack = regexp.MustCompile(`\\[09].*$`)
+// keywordHack matches the \0 and \9 hacks at the end of a keyword: upstream
+// /\\[09].*$/, where "." matches no line terminator and "$" only matches at
+// the end of the value.
+var keywordHack = regexp.MustCompile(`\\[09][^\n\r\x{2028}\x{2029}]*$`)
 
 // matchSyntaxes resolves the types and properties a match graph refers to
 // (upstream the syntaxes argument: an object with types and properties
@@ -456,7 +458,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 		case "Enum":
 			if token != nil {
-				name := strings.ToLower(token.value)
+				name := lowerCaseJS(token.value)
 
 				// drop \0 and \9 hack from keyword name
 				if strings.Contains(name, `\`) {
