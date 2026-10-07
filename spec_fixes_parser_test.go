@@ -208,3 +208,77 @@ func TestSpecAttributeSelectorFlags(t *testing.T) {
 		},
 	})
 }
+
+// A \ delim is followed by a newline in generated CSS (\ and a newline is
+// not an escape), but no newline is added when the next token starts with
+// one, so parse and generate reach a fixed point.
+// https://drafts.csswg.org/css-syntax-3/#starts-with-a-valid-escape
+func TestSpecGenerateReverseSolidusFixedPoint(t *testing.T) {
+	for _, source := range []string{
+		"a{--x:a\\\n}",
+		"a{--x:\\\n}",
+		"a{--x:a\\\nb}",
+		"a{--x:a\\\r\nb}",
+		"a{--x:a\\\fb}",
+		"a{--x:a\\\n\\\n\\\n}",
+		"a{--x:a\\\n  \n}",
+		"a{--x:a\\\n/**/b}",
+		"a{b:c\\\n}",
+		"@a b\\\n;",
+		"a\\\n{}",
+	} {
+		t.Run(source, func(t *testing.T) {
+			ast, err := Parse(source, ParseOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			first := mustGenerate(t, ast)
+			if first != source {
+				t.Errorf("Generate(Parse(%q)) = %q, want the source", source, first)
+			}
+			ast, err = Parse(first, ParseOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if second := mustGenerate(t, ast); second != first {
+				t.Errorf("Generate(Parse(%q)) = %q, want %q", first, second, first)
+			}
+		})
+	}
+}
+
+// A \ delim not followed by a newline still gets one.
+func TestSpecGenerateReverseSolidusNewline(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		node Node
+		want string
+	}{
+		{
+			name: "before an identifier",
+			node: &Value{Children: new(List[Node]).AppendData(&Raw{Value: `\`}).AppendData(&Identifier{Name: "b"})},
+			want: "\\\nb",
+		},
+		{
+			name: "before a space",
+			node: &Value{Children: new(List[Node]).AppendData(&Raw{Value: `\`}).AppendData(&Raw{Value: " b"})},
+			want: "\\\n b",
+		},
+		{
+			name: "at the end",
+			node: &Value{Children: new(List[Node]).AppendData(&Raw{Value: `a\`})},
+			want: "a\\\n",
+		},
+		{
+			name: "before a newline",
+			node: &Value{Children: new(List[Node]).AppendData(&Raw{Value: `\`}).AppendData(&Raw{Value: "\nb"})},
+			want: "\\\nb",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := mustGenerate(t, tt.node); got != tt.want {
+				t.Errorf("Generate(%s) = %q, want %q", tt.name, got, tt.want)
+			}
+		})
+	}
+}

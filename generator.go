@@ -128,6 +128,9 @@ func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (s
 	return func(node Node, options GenerateOptions) (result string, err error) {
 		var buffer strings.Builder
 		prevCode := 0
+		// a \ delim was emitted: \ and a newline is not an escape, so a
+		// newline goes before the next text unless that text starts with one
+		newlineDue := false
 		var publicAPI *Generator
 		handlers := GenerateHandlers{
 			Node: func(_ *GenerateHandlers, node Node) {
@@ -144,15 +147,23 @@ func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (s
 			TokenBefore: safeTokenBefore(),
 			Token: func(h *GenerateHandlers, tokenType tokenizer.TokenType, value string, suppressAutoWhiteSpace bool) {
 				prevCode = h.TokenBefore(prevCode, tokenType, value)
+				space := !suppressAutoWhiteSpace && prevCode&1 != 0
 
-				if !suppressAutoWhiteSpace && prevCode&1 != 0 {
+				if newlineDue && (space || value != "") {
+					newlineDue = false
+					if space || !startsWithNewline(value) {
+						h.Emit(h, "\n", tokenizer.WhiteSpace, true)
+					}
+				}
+
+				if space {
 					h.Emit(h, " ", tokenizer.WhiteSpace, true)
 				}
 
 				h.Emit(h, value, tokenType, false)
 
 				if tokenType == tokenizer.Delim && tokenizer.CharCodeAt(value, 0) == reverseSolidus {
-					h.Emit(h, "\n", tokenizer.WhiteSpace, true)
+					newlineDue = true
 				}
 			},
 			Emit: func(_ *GenerateHandlers, value string, _ tokenizer.TokenType, _ bool) {
@@ -193,6 +204,10 @@ func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (s
 
 		handlers.Node(&handlers, node)
 
+		if newlineDue {
+			handlers.Emit(&handlers, "\n", tokenizer.WhiteSpace, true)
+		}
+
 		return handlers.Result(&handlers), nil
 	}
 }
@@ -201,4 +216,10 @@ func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (s
 // generate).
 func Generate(node Node, options GenerateOptions) (string, error) {
 	return defaultParseSyntax().Generate(node, options)
+}
+
+// startsWithNewline reports whether text starts with a newline (LF, CR or
+// FF; https://drafts.csswg.org/css-syntax-3/#newline).
+func startsWithNewline(text string) bool {
+	return text != "" && (text[0] == '\n' || text[0] == '\r' || text[0] == '\f')
 }
