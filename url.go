@@ -26,7 +26,6 @@ func DecodeURL(str string) string {
 	if tokenizer.CharCodeAt(str, length-1) == rightParenthesis {
 		end = length - 2
 	}
-	var decoded strings.Builder
 
 	for start < end && tokenizer.IsWhiteSpace(tokenizer.CharCodeAt(str, start)) {
 		start++
@@ -36,43 +35,13 @@ func DecodeURL(str string) string {
 		end--
 	}
 
-	for i := start; i <= end; i++ {
-		code := tokenizer.CharCodeAt(str, i)
-
-		if code == reverseSolidus {
-			// special case at the ending
-			if i == end {
-				// if the next input code point is EOF, do nothing
-				// otherwise include last left parenthesis as escaped
-				if i != length-1 {
-					decoded.Reset()
-					decoded.WriteString(str[i+1:])
-				}
-				break
-			}
-
-			i++
-			code = tokenizer.CharCodeAt(str, i)
-
-			// consume escaped
-			if tokenizer.IsValidEscape(reverseSolidus, code) {
-				escapeStart := i - 1
-				escapeEnd := tokenizer.ConsumeEscaped(str, escapeStart)
-
-				i = escapeEnd - 1
-				decoded.WriteString(tokenizer.DecodeEscaped(str[escapeStart+1 : escapeEnd]))
-			} else {
-				// \r\n
-				if code == 0x000d && tokenizer.CharCodeAt(str, i+1) == 0x000a {
-					i++
-				}
-			}
-		} else {
-			i += writeCodePoint(&decoded, str, i) - 1
-		}
+	decoded, trailingBackslash := decodeEscapes(str, start, end)
+	if trailingBackslash && end != length-1 {
+		// upstream: include the last right parenthesis as escaped
+		return str[end+1:]
 	}
 
-	return decoded.String()
+	return decoded
 }
 
 // EncodeURL serializes str as a CSS url token `url(...)` (upstream

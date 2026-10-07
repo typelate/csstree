@@ -30,45 +30,53 @@ func DecodeString(str string) string {
 	if start == 1 && length > 1 && tokenizer.CharCodeAt(str, length-1) == firstChar {
 		end = length - 2
 	}
-	var decoded strings.Builder
+
+	decoded, trailingBackslash := decodeEscapes(str, start, end)
+	if trailingBackslash && end != length-1 {
+		// upstream: include the last quote as escaped
+		return str[end+1:]
+	}
+
+	return decoded
+}
+
+// decodeEscapes returns str[start:end+1] with escapes resolved, an escaped
+// newline removed, and NUL and invalid UTF-8 read as U+FFFD (CSS Syntax
+// §3.3 preprocessing). trailingBackslash reports a \ at end, which escapes
+// nothing and is dropped (upstream: the input ends there).
+func decodeEscapes(str string, start, end int) (decoded string, trailingBackslash bool) {
+	var b strings.Builder
 
 	for i := start; i <= end; i++ {
 		code := tokenizer.CharCodeAt(str, i)
 
-		if code == reverseSolidus {
-			// special case at the ending
-			if i == end {
-				// if the next input code point is EOF, do nothing
-				// otherwise include last quote as escaped
-				if i != length-1 {
-					decoded.Reset()
-					decoded.WriteString(str[i+1:])
-				}
-				break
-			}
+		if code != reverseSolidus {
+			i += writeCodePoint(&b, str, i) - 1
+			continue
+		}
 
+		// special case at the ending
+		if i == end {
+			return b.String(), true
+		}
+
+		i++
+		code = tokenizer.CharCodeAt(str, i)
+
+		// consume escaped
+		if tokenizer.IsValidEscape(reverseSolidus, code) {
+			escapeStart := i - 1
+			escapeEnd := tokenizer.ConsumeEscaped(str, escapeStart)
+
+			i = escapeEnd - 1
+			b.WriteString(tokenizer.DecodeEscaped(str[escapeStart+1 : escapeEnd]))
+		} else if code == 0x000d && tokenizer.CharCodeAt(str, i+1) == 0x000a {
+			// \r\n
 			i++
-			code = tokenizer.CharCodeAt(str, i)
-
-			// consume escaped
-			if tokenizer.IsValidEscape(reverseSolidus, code) {
-				escapeStart := i - 1
-				escapeEnd := tokenizer.ConsumeEscaped(str, escapeStart)
-
-				i = escapeEnd - 1
-				decoded.WriteString(tokenizer.DecodeEscaped(str[escapeStart+1 : escapeEnd]))
-			} else {
-				// \r\n
-				if code == 0x000d && tokenizer.CharCodeAt(str, i+1) == 0x000a {
-					i++
-				}
-			}
-		} else {
-			i += writeCodePoint(&decoded, str, i) - 1
 		}
 	}
 
-	return decoded.String()
+	return b.String(), false
 }
 
 // writeCodePoint writes the code point at str[i:] to decoded as CSS Syntax

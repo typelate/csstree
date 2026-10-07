@@ -26,17 +26,7 @@ func varFunction(p *Parser, _ *Recognizer) *List[Node] {
 			value = p.Raw(p.ConsumeUntilExclamationMarkOrSemicolon, false)
 		}
 
-		if value, ok := value.(*Value); ok && value.Children.IsEmpty() {
-			for offset := startIndex - p.TokenIndex; offset <= 0; offset++ {
-				if p.LookupType(offset) == tokenizer.WhiteSpace {
-					value.Children.AppendData(&WhiteSpace{
-						Loc:   nil,
-						Value: " ",
-					})
-					break
-				}
-			}
-		}
+		keepCustomPropertyWhiteSpace(p, value, startIndex)
 
 		children.AppendData(value)
 	}

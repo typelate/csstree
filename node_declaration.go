@@ -21,6 +21,23 @@ func consumeValueRaw(p *Parser, end int, excludeWhiteSpace bool) *Raw {
 	}
 }
 
+// keepCustomPropertyWhiteSpace adds a WhiteSpace node to value when it is
+// an empty Value and whitespace was read since the token index start: the
+// value of a custom property (or of var()'s fallback) is then one space.
+func keepCustomPropertyWhiteSpace(p *Parser, value Node, start int) {
+	v, ok := value.(*Value)
+	if !ok || !v.Children.IsEmpty() {
+		return
+	}
+
+	for offset := start - p.TokenIndex; offset <= 0; offset++ {
+		if p.LookupType(offset) == tokenizer.WhiteSpace {
+			v.Children.AppendData(&WhiteSpace{Value: " "})
+			return
+		}
+	}
+}
+
 // consumeValue parses the tokens up to the token index end as a Value.
 func consumeValue(p *Parser, end int) Node {
 	value := p.Value()
@@ -187,16 +204,8 @@ func (p *Parser) Declaration() *Declaration {
 		value = consumeRaw()
 	}
 
-	if value, ok := value.(*Value); customProperty && ok && value.Children.IsEmpty() {
-		for offset := valueStart - p.TokenIndex; offset <= 0; offset++ {
-			if p.LookupType(offset) == tokenizer.WhiteSpace {
-				value.Children.AppendData(&WhiteSpace{
-					Loc:   nil,
-					Value: " ",
-				})
-				break
-			}
-		}
+	if customProperty {
+		keepCustomPropertyWhiteSpace(p, value, valueStart)
 	}
 
 	if hasImportant {

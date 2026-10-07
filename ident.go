@@ -13,41 +13,8 @@ import (
 // (upstream ident.decode). NUL and invalid UTF-8, escaped or not, decode to
 // U+FFFD as CSS Syntax §3.3 preprocessing replaces them.
 func DecodeIdent(str string) string {
-	end := len(str) - 1
-	var decoded strings.Builder
-
-	for i := 0; i < len(str); i++ {
-		code := tokenizer.CharCodeAt(str, i)
-
-		if code == reverseSolidus {
-			// special case at the ending
-			if i == end {
-				// if the next input code point is EOF, do nothing
-				break
-			}
-
-			i++
-			code = tokenizer.CharCodeAt(str, i)
-
-			// consume escaped
-			if tokenizer.IsValidEscape(reverseSolidus, code) {
-				escapeStart := i - 1
-				escapeEnd := tokenizer.ConsumeEscaped(str, escapeStart)
-
-				i = escapeEnd - 1
-				decoded.WriteString(tokenizer.DecodeEscaped(str[escapeStart+1 : escapeEnd]))
-			} else {
-				// \r\n
-				if code == 0x000d && tokenizer.CharCodeAt(str, i+1) == 0x000a {
-					i++
-				}
-			}
-		} else {
-			i += writeCodePoint(&decoded, str, i) - 1
-		}
-	}
-
-	return decoded.String()
+	decoded, _ := decodeEscapes(str, 0, len(str)-1)
+	return decoded
 }
 
 // EncodeIdent serializes str as a CSS identifier (upstream ident.encode).
