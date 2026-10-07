@@ -35,15 +35,15 @@ func mergeRecognizer(base, ext *Recognizer) *Recognizer {
 		result.Functions = maps.Clone(base.Functions)
 	}
 
-	if ext.GetNode != nil {
-		result.GetNode = ext.GetNode
+	if ext.Node != nil {
+		result.Node = ext.Node
 	}
 	if ext.OnWhiteSpace != nil {
 		result.OnWhiteSpace = ext.OnWhiteSpace
 	}
 	if len(ext.Functions) > 0 {
 		if result.Functions == nil {
-			result.Functions = make(map[string]func(p *Parser, recognizer *Recognizer) *List[Node])
+			result.Functions = make(map[string]FunctionParser)
 		}
 		maps.Copy(result.Functions, ext.Functions)
 	}
@@ -188,12 +188,12 @@ func mix(dest, src *Config) *Config {
 	if src.Features != nil {
 		result.Features = maps.Clone(dest.Features)
 		if result.Features == nil {
-			result.Features = make(map[string]map[string]func(p *Parser) Node)
+			result.Features = make(map[string]map[string]FeatureParser)
 		}
 		for key, props := range src.Features {
 			merged := maps.Clone(result.Features[key])
 			if merged == nil {
-				merged = make(map[string]func(p *Parser) Node)
+				merged = make(map[string]FeatureParser)
 			}
 			maps.Copy(merged, props)
 			result.Features[key] = merged
@@ -211,7 +211,7 @@ func mix(dest, src *Config) *Config {
 	if src.Pseudo != nil {
 		result.Pseudo = maps.Clone(dest.Pseudo)
 		if result.Pseudo == nil {
-			result.Pseudo = make(map[string]func(p *Parser) *List[Node])
+			result.Pseudo = make(map[string]PseudoParser)
 		}
 		maps.Copy(result.Pseudo, src.Pseudo)
 	}

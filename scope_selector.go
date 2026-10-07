@@ -83,6 +83,6 @@ func selectorGetNode(p *Parser, _ *SequenceContext) Node {
 func selectorScope() *Recognizer {
 	return &Recognizer{
 		OnWhiteSpace: selectorOnWhiteSpace,
-		GetNode:      selectorGetNode,
+		Node:         selectorGetNode,
 	}
 }

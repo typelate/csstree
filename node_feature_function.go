@@ -64,7 +64,7 @@ func fromPlainObjectFeatureFunction(r *PlainObjectReader, object map[string]any)
 	}
 }
 
-func getFeatureParser(p *Parser, kind, name string) func(p *Parser) Node {
+func getFeatureParser(p *Parser, kind, name string) FeatureParser {
 	featuresOfKind := p.Config.Features[kind]
 	parser := featuresOfKind[name]
 

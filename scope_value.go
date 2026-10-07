@@ -22,9 +22,9 @@ func valueOnWhiteSpace(_ *Parser, next Node, children *List[Node], _ *SequenceCo
 
 func valueScope() *Recognizer {
 	return &Recognizer{
-		GetNode:      defaultRecognizer,
+		Node:         defaultRecognizer,
 		OnWhiteSpace: valueOnWhiteSpace,
-		Functions: map[string]func(p *Parser, recognizer *Recognizer) *List[Node]{
+		Functions: map[string]FunctionParser{
 			"expression": expressionFunction,
 			"var":        varFunction,
 		},

@@ -156,19 +156,19 @@ func (s *Syntax) walkReadOnly(root Node, options WalkOptions) error {
 // Find returns the first node, in natural walk order, for which fn returns
 // true, or nil. fn must not change the AST: Find, FindLast and FindAll only
 // read it, so they may run concurrently with other reads of the same AST.
-func (s *Syntax) Find(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
+func (s *Syntax) Find(ast Node, fn FindFunc) Node {
 	return s.walker.Find(ast, fn)
 }
 
 // FindLast returns the first node, in reverse walk order, for which fn
 // returns true, or nil (see Find).
-func (s *Syntax) FindLast(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
+func (s *Syntax) FindLast(ast Node, fn FindFunc) Node {
 	return s.walker.FindLast(ast, fn)
 }
 
 // FindAll returns every node, in natural walk order, for which fn returns
 // true (see Find).
-func (s *Syntax) FindAll(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) []Node {
+func (s *Syntax) FindAll(ast Node, fn FindFunc) []Node {
 	return s.walker.FindAll(ast, fn)
 }
 
@@ -282,19 +282,19 @@ func Walk(root Node, options WalkOptions) error {
 
 // Find returns the first node for which fn returns true, or nil, with the
 // default syntax (see Syntax.Find).
-func Find(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
+func Find(ast Node, fn FindFunc) Node {
 	return defaultParseSyntax().Find(ast, fn)
 }
 
 // FindLast returns the last node for which fn returns true, or nil, with
 // the default syntax.
-func FindLast(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
+func FindLast(ast Node, fn FindFunc) Node {
 	return defaultParseSyntax().FindLast(ast, fn)
 }
 
 // FindAll returns every node for which fn returns true, with the default
 // syntax.
-func FindAll(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) []Node {
+func FindAll(ast Node, fn FindFunc) []Node {
 	return defaultParseSyntax().FindAll(ast, fn)
 }
 

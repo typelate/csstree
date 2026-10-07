@@ -4,6 +4,6 @@ package csstree
 
 func atrulePreludeScope() *Recognizer {
 	return &Recognizer{
-		GetNode: defaultRecognizer,
+		Node: defaultRecognizer,
 	}
 }

@@ -28,8 +28,8 @@ func nthPseudo(p *Parser) *List[Node] {
 
 // pseudos returns the pseudo-class and pseudo-element argument parsers of
 // the default syntax.
-func pseudos() map[string]func(p *Parser) *List[Node] {
-	return map[string]func(p *Parser) *List[Node]{
+func pseudos() map[string]PseudoParser {
+	return map[string]PseudoParser{
 		"dir":              identListPseudo,
 		"has":              selectorListPseudo,
 		"lang":             parseLanguageRangeList,

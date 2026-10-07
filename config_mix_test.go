@@ -99,15 +99,15 @@ func TestMix(t *testing.T) {
 
 	t.Run("fork copies scopes", func(t *testing.T) {
 		base := DefaultSyntax()
-		getNode := base.config.Scope["Value"].GetNode
+		getNode := base.config.Scope["Value"].Node
 		if _, err := base.Fork(ExtendFunc(func(config *Config) *Config {
-			config.Scope["Value"].GetNode = nil
+			config.Scope["Value"].Node = nil
 			config.Scope["Value"].Functions["var"] = nil
 			return config
 		})); err != nil {
 			t.Fatalf("base.Fork(...): %v", err)
 		}
-		if base.config.Scope["Value"].GetNode == nil || getNode == nil {
+		if base.config.Scope["Value"].Node == nil || getNode == nil {
 			t.Error("Fork() changed the scope of the base syntax")
 		}
 		if base.config.Scope["Value"].Functions["var"] == nil {

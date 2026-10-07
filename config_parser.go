@@ -27,7 +27,7 @@ func parserConfig() *Config {
 			ContextDeclaration:     func(p *Parser, _ ParseOptions) Node { return p.Declaration() },
 			ContextValue:           func(p *Parser, _ ParseOptions) Node { return p.Value() },
 		},
-		Features: map[string]map[string]func(p *Parser) Node{
+		Features: map[string]map[string]FeatureParser{
 			"supports": {
 				"selector": func(p *Parser) Node {
 					return p.Selector()

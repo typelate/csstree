@@ -15,7 +15,7 @@ type Config struct {
 	Contexts map[ParseContext]ContextParser
 	// Features maps a condition kind ("supports", "container") to the
 	// parsers of its functional features (e.g. supports selector()).
-	Features map[string]map[string]func(p *Parser) Node
+	Features map[string]map[string]FeatureParser
 	// Scope maps a scope name ("AtrulePrelude", "Selector", "Value") to its
 	// recognizer.
 	Scope map[string]*Recognizer
@@ -24,7 +24,7 @@ type Config struct {
 	Atrule map[string]AtruleParser
 	// Pseudo maps a lowercase pseudo-class or pseudo-element name to the
 	// parser of its arguments (upstream pseudo[name].parse).
-	Pseudo map[string]func(p *Parser) *List[Node]
+	Pseudo map[string]PseudoParser
 	// Node maps a node type name to its definition.
 	Node map[string]NodeConfig
 
@@ -42,6 +42,14 @@ type Config struct {
 
 // ContextParser parses the root node of a parse context.
 type ContextParser func(p *Parser, options ParseOptions) Node
+
+// FeatureParser parses the argument of a functional feature of a
+// condition, e.g. the selector of supports selector().
+type FeatureParser func(p *Parser) Node
+
+// PseudoParser parses the arguments of a functional pseudo-class or
+// pseudo-element into the children of its node.
+type PseudoParser func(p *Parser) *List[Node]
 
 // AtruleParser holds the parsers of an at-rule (upstream
 // atrule[name].parse = { prelude, block }). A nil field is upstream null.

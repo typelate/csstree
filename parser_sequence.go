@@ -8,17 +8,21 @@ import "github.com/typelate/csstree/tokenizer"
 // `recognizer` of readSequence): it turns the tokens of a sequence into
 // nodes.
 type Recognizer struct {
-	// GetNode parses the node at the current token, or returns nil
+	// Node parses the node at the current token, or returns nil
 	// (upstream undefined) to end the sequence.
-	GetNode func(p *Parser, context *SequenceContext) Node
+	Node func(p *Parser, context *SequenceContext) Node
 	// OnWhiteSpace, when set, is called when whitespace precedes next
 	// (nil at the end of the sequence).
 	OnWhiteSpace func(p *Parser, next Node, children *List[Node], context *SequenceContext)
 	// Functions maps lowercase function names to parsers of the function
 	// arguments; Function uses them instead of reading a sequence
 	// (upstream: any other key of the scope object, e.g. var, expression).
-	Functions map[string]func(p *Parser, recognizer *Recognizer) *List[Node]
+	Functions map[string]FunctionParser
 }
+
+// FunctionParser parses the arguments of a function of a scope (see
+// Recognizer.Functions) into the children of its Function node.
+type FunctionParser func(p *Parser, recognizer *Recognizer) *List[Node]
 
 // SequenceContext is the context object ReadSequence passes to a
 // Recognizer.
@@ -48,7 +52,7 @@ loop:
 			continue
 		}
 
-		child := recognizer.GetNode(p, context)
+		child := recognizer.Node(p, context)
 
 		if child == nil {
 			break loop

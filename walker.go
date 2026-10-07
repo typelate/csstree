@@ -91,6 +91,10 @@ func (c *WalkContext) set(name string, node Node) {
 // (or the root).
 type WalkHandler func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction
 
+// FindFunc reports whether node is the one Find, FindLast or FindAll look
+// for. Its arguments are those of a WalkHandler.
+type FindFunc func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool
+
 // WalkOptions configures Syntax.Walk (upstream walk(ast, fn | options); a
 // lone function is Enter).
 type WalkOptions struct {
@@ -396,7 +400,7 @@ func walkAST(root Node, enter, leave WalkHandler, iterators map[string]typeItera
 }
 
 // Find is Syntax.Find.
-func (w *walker) Find(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
+func (w *walker) Find(ast Node, fn FindFunc) Node {
 	var found Node
 
 	walkAST(ast, func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction {
@@ -411,7 +415,7 @@ func (w *walker) Find(ast Node, fn func(context *WalkContext, node Node, item *L
 }
 
 // FindLast is Syntax.FindLast.
-func (w *walker) FindLast(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
+func (w *walker) FindLast(ast Node, fn FindFunc) Node {
 	var found Node
 
 	walkAST(ast, func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction {
@@ -426,7 +430,7 @@ func (w *walker) FindLast(ast Node, fn func(context *WalkContext, node Node, ite
 }
 
 // FindAll is Syntax.FindAll.
-func (w *walker) FindAll(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) []Node {
+func (w *walker) FindAll(ast Node, fn FindFunc) []Node {
 	var found []Node
 
 	walkAST(ast, func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction {

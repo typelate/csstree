@@ -17,9 +17,9 @@ import (
 // caller.
 func TestParseReportsPanics(t *testing.T) {
 	extended, err := Fork(ExtendFunc(func(syntaxConfig *Config) *Config {
-		defaultGetNode := syntaxConfig.Scope["Value"].GetNode
+		defaultGetNode := syntaxConfig.Scope["Value"].Node
 
-		syntaxConfig.Scope["Value"].GetNode = func(p *Parser, context *SequenceContext) Node {
+		syntaxConfig.Scope["Value"].Node = func(p *Parser, context *SequenceContext) Node {
 			switch {
 			case p.IsDelim(dollarSign, 0):
 				var raw *Raw

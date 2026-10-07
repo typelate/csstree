@@ -32,7 +32,7 @@ func isEmptyRaw(node Node) bool {
 
 func importParseFunctions() *Recognizer {
 	return &Recognizer{
-		Functions: map[string]func(p *Parser, recognizer *Recognizer) *List[Node]{
+		Functions: map[string]FunctionParser{
 			"layer": func(p *Parser, _ *Recognizer) *List[Node] {
 				p.SkipSC()
 

@@ -69,9 +69,9 @@ func TestParseExtension(t *testing.T) {
 	t.Run("extension", func(t *testing.T) {
 		t.Run("value", func(t *testing.T) {
 			extended, err := Fork(ExtendFunc(func(syntaxConfig *Config) *Config {
-				defaultGetNode := syntaxConfig.Scope["Value"].GetNode
+				defaultGetNode := syntaxConfig.Scope["Value"].Node
 
-				syntaxConfig.Scope["Value"].GetNode = func(p *Parser, context *SequenceContext) Node {
+				syntaxConfig.Scope["Value"].Node = func(p *Parser, context *SequenceContext) Node {
 					if p.IsDelim(dollarSign, 0) {
 						start := p.TokenStart
 						p.Next()
@@ -116,9 +116,9 @@ func TestParseExtension(t *testing.T) {
 
 		t.Run("selector", func(t *testing.T) {
 			extended, err := Fork(ExtendFunc(func(syntaxConfig *Config) *Config {
-				defaultGetNode := syntaxConfig.Scope["Selector"].GetNode
+				defaultGetNode := syntaxConfig.Scope["Selector"].Node
 
-				syntaxConfig.Scope["Selector"].GetNode = func(p *Parser, context *SequenceContext) Node {
+				syntaxConfig.Scope["Selector"].Node = func(p *Parser, context *SequenceContext) Node {
 					if p.IsDelim(percentageSign, 0) {
 						start := p.TokenStart
 						p.Next()
