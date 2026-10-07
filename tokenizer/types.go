@@ -4,9 +4,8 @@ package tokenizer
 
 import "strconv"
 
-// TokenType identifies the kind of a token. Upstream token types are plain
-// numbers stored in the top 8 bits of a Uint32Array cell; TokenType is an int
-// so it can index the package's per-type tables directly.
+// TokenType identifies the kind of a token. Its values are upstream's
+// token type numbers.
 type TokenType int
 
 // CSS Syntax Module Level 3
@@ -37,7 +36,7 @@ const (
 	RightParenthesis   TokenType = 22 // <)-token>
 	LeftCurlyBracket   TokenType = 23 // <{-token>
 	RightCurlyBracket  TokenType = 24 // <}-token>
-	Comment            TokenType = 25
+	Comment            TokenType = 25 // a comment, which csstree keeps as a token
 )
 
 // String returns the token's name in CSS Syntax Module Level 3, e.g.

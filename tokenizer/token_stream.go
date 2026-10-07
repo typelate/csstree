@@ -80,9 +80,8 @@ func boundIndex(index, minimum, maximum int) int {
 // embeds the stream, so syntax extensions see them): change them with
 // SetSource, Reset, Next, Skip and the other methods.
 //
-// Tokens are stored packed as (type << 58 | end) in uint64 cells. Upstream
-// packs (type << 24 | end) into uint32 cells, which silently corrupts offsets
-// in sources of 16 MiB or more; 58 offset bits exceed any addressable source.
+// Sources of any length work. (Upstream packs token offsets into 24 bits,
+// which corrupts offsets in sources of 16 MiB or more.)
 type TokenStream struct {
 	// Source is the tokenized CSS text.
 	Source string
@@ -103,7 +102,9 @@ type TokenStream struct {
 	Balance []int
 
 	firstCharOffset int
-	offsetAndType   []uint64
+	// offsetAndType holds the tokens packed as (type << 58 | end); 58
+	// offset bits exceed any addressable source.
+	offsetAndType []uint64
 }
 
 // NewTokenStream tokenizes source and positions the stream on the first

@@ -4,28 +4,36 @@ package tokenizer
 
 import "slices"
 
-// Position is a point in a source: upstream's {offset, line, column}.
-// Offsets and columns count bytes; lines and columns start at 1 unless the
-// OffsetToLocation says otherwise.
+// Position is a point in a source. Offsets and columns count bytes; lines
+// and columns start at 1 unless the OffsetToLocation says otherwise. Its
+// JSON is upstream's {offset, line, column}.
 type Position struct {
+	// Offset is the byte offset from the start of the source.
 	Offset int `json:"offset"`
-	Line   int `json:"line"`
+	// Line is the line number.
+	Line int `json:"line"`
+	// Column is the column number, counting bytes.
 	Column int `json:"column"`
 }
 
-// SourcePosition is a Position in a named source: upstream's
+// SourcePosition is a Position in a named source. Its JSON is upstream's
 // {source, offset, line, column}.
 type SourcePosition struct {
+	// Filename names the source.
 	Filename string `json:"source"`
 	Position
 }
 
-// Location is a range in a named source, upstream's node.loc:
-// {source, start: {offset, line, column}, end: {offset, line, column}}.
+// Location is a range in a named source, from Start up to End. Its JSON
+// is upstream's node.loc: {source, start: {offset, line, column},
+// end: {offset, line, column}}.
 type Location struct {
-	Filename string   `json:"source"`
-	Start    Position `json:"start"`
-	End      Position `json:"end"`
+	// Filename names the source.
+	Filename string `json:"source"`
+	// Start is the first byte of the range.
+	Start Position `json:"start"`
+	// End is just past the last byte of the range.
+	End Position `json:"end"`
 }
 
 // OffsetToLocation converts byte offsets in Source to positions. The zero
@@ -83,8 +91,7 @@ func (l *OffsetToLocation) computeLineStarts() {
 }
 
 // Position returns the position of offset, clamped to [0, len(Source)].
-// Offsets inside a leading byte order mark have line and column 0, as
-// upstream's tables leave them.
+// Offsets inside a leading byte order mark have line and column 0.
 func (l *OffsetToLocation) Position(offset int) Position {
 	if !l.computed || l.indexed != l.Source {
 		l.computeLineStarts()

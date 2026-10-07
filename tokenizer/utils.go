@@ -7,17 +7,16 @@ import "unicode/utf8"
 // replacementCharacter is U+FFFD REPLACEMENT CHARACTER.
 const replacementCharacter = 0xFFFD
 
-// CharCodeAt is the Go form of source.charCodeAt(offset): the byte at offset,
-// or 0 when offset is out of range (where JavaScript returns NaN, which
-// compares unequal to every code these helpers test for). It is not an
-// upstream export.
+// CharCodeAt returns the byte at offset in source as a char code, or 0
+// when offset is out of range, so 0 always means out of range.
 //
 // A NUL byte reads as U+FFFD REPLACEMENT CHARACTER, as CSS Syntax §3.3
-// preprocessing replaces it (upstream returns 0, which its helpers then take
-// for EOF), so 0 always means out of range. Every other byte >= 0x80 is
-// returned as is: it is part of a non-ASCII code point, or of an invalid
-// UTF-8 sequence that decodes to U+FFFD, and either classifies as a name
-// code point.
+// preprocessing replaces it. Every other byte >= 0x80 is returned as is:
+// it is part of a non-ASCII code point, or of an invalid UTF-8 sequence
+// that decodes to U+FFFD, and either classifies as a name code point.
+//
+// It stands in for JavaScript's source.charCodeAt(offset), which reads
+// UTF-16 code units; upstream has no such export.
 func CharCodeAt(source string, offset int) int {
 	if offset < 0 || offset >= len(source) {
 		return 0
@@ -35,7 +34,7 @@ func CharCodeAt(source string, offset int) int {
 // U+FFFD, and so is each invalid UTF-8 sequence, measured as the WHATWG
 // Encoding Standard's UTF-8 decoder does (the longest prefix of a valid
 // sequence, at least one byte). It returns 0, 0 when offset is out of range.
-// Newlines are not normalized. It is not an upstream export.
+// Newlines are not normalized.
 func CodePointAt(source string, offset int) (rune, int) {
 	if offset < 0 || offset >= len(source) {
 		return 0, 0
