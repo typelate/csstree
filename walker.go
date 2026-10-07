@@ -102,7 +102,8 @@ type WalkOptions struct {
 	Reverse bool
 	// Visit, when set, calls Enter and Leave only for nodes of that type;
 	// for "Atrule", "Rule" and "Declaration" only the node types that can
-	// contain them are traversed.
+	// contain them are traversed. Their WalkBreak and WalkSkip still apply
+	// (upstream drops the return value of a handler when visit is set).
 	Visit string
 }
 

@@ -44,6 +44,9 @@ See `Example` in [example_test.go](example_test.go) for walking an AST.
   and node generators, but not replace a built-in node's parse function.
 - Upstream bugs that throw or overflow in JavaScript are fixed: sources over
   16 MiB, a bad `url(` ending in an escape, `an+b` matching a lone `+`.
+- A walk with `Visit` set honours `WalkBreak` and `WalkSkip` from its
+  handlers, as upstream's documentation says; upstream ignores `walk.break`
+  and `walk.skip` when `visit` is set.
 
 ## License
 
