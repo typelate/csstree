@@ -5,50 +5,11 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // Parentheses is a () block in a value.
+//
+//csstree:node
 type Parentheses struct {
 	Loc      *Location
-	Children *List[Node]
-}
-
-func (n *Parentheses) Type() string        { return "Parentheses" }
-func (n *Parentheses) Location() *Location { return n.Loc }
-
-func (n *Parentheses) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"children", n.Children},
-	)
-}
-
-func parenthesesNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Parentheses",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateParentheses,
-		Walk:            walkParentheses,
-		Clone:           cloneParentheses,
-		FromPlainObject: fromPlainObjectParentheses,
-	}
-}
-
-func walkParentheses(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*Parentheses)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func cloneParentheses(node Node, clone func(Node) Node) Node {
-	c := *node.(*Parentheses)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectParentheses(r *PlainObjectReader, object map[string]any) Node {
-	return &Parentheses{
-		Loc:      r.Location(object),
-		Children: r.List(object, "children"),
-	}
+	Children *List[Node] `css:"children,[]"`
 }
 
 // Parentheses parses a () block, reading its content with readSequence and

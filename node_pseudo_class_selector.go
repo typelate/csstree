@@ -7,57 +7,14 @@ import (
 )
 
 // PseudoClassSelector is : [ <ident> | <function-token> <any-value>? ) ].
+//
+//csstree:node walkContext=function
 type PseudoClassSelector struct {
 	Loc  *Location
-	Name string
+	Name string `css:"name,string"`
 	// Children holds the arguments of a functional pseudo-class; nil for a
 	// pseudo-class written without parentheses.
-	Children *List[Node]
-}
-
-func (n *PseudoClassSelector) Type() string        { return "PseudoClassSelector" }
-func (n *PseudoClassSelector) Location() *Location { return n.Loc }
-
-func (n *PseudoClassSelector) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"name", n.Name},
-		jsonField{"children", n.Children},
-	)
-}
-
-func pseudoClassSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "PseudoClassSelector",
-		WalkContext: "function",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-			{Name: "children", Types: []FieldType{listField("Raw"), nullField()}},
-		},
-		Generate:        generatePseudoClassSelector,
-		Walk:            walkPseudoClassSelector,
-		Clone:           clonePseudoClassSelector,
-		FromPlainObject: fromPlainObjectPseudoClassSelector,
-	}
-}
-
-func walkPseudoClassSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*PseudoClassSelector)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func clonePseudoClassSelector(node Node, clone func(Node) Node) Node {
-	c := *node.(*PseudoClassSelector)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectPseudoClassSelector(r *PlainObjectReader, object map[string]any) Node {
-	return &PseudoClassSelector{
-		Loc:      r.Location(object),
-		Name:     r.String(object, "name"),
-		Children: r.List(object, "children"),
-	}
+	Children *List[Node] `css:"children,[Raw]|null"`
 }
 
 // PseudoClassSelector parses : [ <ident> | <function-token> <any-value>? ) ]

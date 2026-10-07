@@ -5,54 +5,11 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // SelectorList is a comma separated list of selectors.
+//
+//csstree:node walkContext=selector
 type SelectorList struct {
 	Loc      *Location
-	Children *List[Node]
-}
-
-func (n *SelectorList) Type() string        { return "SelectorList" }
-func (n *SelectorList) Location() *Location { return n.Loc }
-
-func (n *SelectorList) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"children", n.Children},
-	)
-}
-
-func selectorListNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "SelectorList",
-		WalkContext: "selector",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField(
-				"Selector",
-				"Raw",
-			)}},
-		},
-		Generate:        generateSelectorList,
-		Walk:            walkSelectorList,
-		Clone:           cloneSelectorList,
-		FromPlainObject: fromPlainObjectSelectorList,
-	}
-}
-
-func walkSelectorList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*SelectorList)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func cloneSelectorList(node Node, clone func(Node) Node) Node {
-	c := *node.(*SelectorList)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectSelectorList(r *PlainObjectReader, object map[string]any) Node {
-	return &SelectorList{
-		Loc:      r.Location(object),
-		Children: r.List(object, "children"),
-	}
+	Children *List[Node] `css:"children,[Selector|Raw]"`
 }
 
 // SelectorList parses a list of selectors.

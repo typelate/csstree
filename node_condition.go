@@ -13,60 +13,12 @@ func likelyFeatureToken(tokenType tokenizer.TokenType) bool {
 }
 
 // Condition is a media, container or supports condition.
+//
+//csstree:node
 type Condition struct {
 	Loc      *Location
-	Kind     string
-	Children *List[Node]
-}
-
-func (n *Condition) Type() string        { return "Condition" }
-func (n *Condition) Location() *Location { return n.Loc }
-
-func (n *Condition) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"kind", n.Kind},
-		jsonField{"children", n.Children},
-	)
-}
-
-func conditionNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Condition",
-		Structure: []StructureField{
-			{Name: "kind", Types: []FieldType{stringField()}},
-			{Name: "children", Types: []FieldType{listField(
-				"Identifier",
-				"Feature",
-				"FeatureFunction",
-				"FeatureRange",
-				"SupportsDeclaration",
-			)}},
-		},
-		Generate:        generateCondition,
-		Walk:            walkCondition,
-		Clone:           cloneCondition,
-		FromPlainObject: fromPlainObjectCondition,
-	}
-}
-
-func walkCondition(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*Condition)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func cloneCondition(node Node, clone func(Node) Node) Node {
-	c := *node.(*Condition)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectCondition(r *PlainObjectReader, object map[string]any) Node {
-	return &Condition{
-		Loc:      r.Location(object),
-		Kind:     r.String(object, "kind"),
-		Children: r.List(object, "children"),
-	}
+	Kind     string      `css:"kind,string"`
+	Children *List[Node] `css:"children,[Identifier|Feature|FeatureFunction|FeatureRange|SupportsDeclaration]"`
 }
 
 func featureOrRange(p *Parser, kind string) Node {

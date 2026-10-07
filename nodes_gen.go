@@ -39,6 +39,48 @@ func fromPlainObjectAnPlusB(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
+func (n *AtrulePrelude) Type() string        { return "AtrulePrelude" }
+func (n *AtrulePrelude) Location() *Location { return n.Loc }
+
+func (n *AtrulePrelude) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"children", n.Children},
+	)
+}
+
+func atrulePreludeNodeType() NodeConfig {
+	return NodeConfig{
+		Name:        "AtrulePrelude",
+		WalkContext: "atrulePrelude",
+		Structure: []StructureField{
+			{Name: "children", Types: []FieldType{listField()}},
+		},
+		Generate:        generateAtrulePrelude,
+		Walk:            walkAtrulePrelude,
+		Clone:           cloneAtrulePrelude,
+		FromPlainObject: fromPlainObjectAtrulePrelude,
+	}
+}
+
+func walkAtrulePrelude(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*AtrulePrelude)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneAtrulePrelude(node Node, clone func(Node) Node) Node {
+	c := *node.(*AtrulePrelude)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectAtrulePrelude(r *PlainObjectReader, object map[string]any) Node {
+	return &AtrulePrelude{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
+	}
+}
+
 func (n *Block) Type() string        { return "Block" }
 func (n *Block) Location() *Location { return n.Loc }
 
@@ -76,6 +118,47 @@ func cloneBlock(node Node, clone func(Node) Node) Node {
 
 func fromPlainObjectBlock(r *PlainObjectReader, object map[string]any) Node {
 	return &Block{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
+	}
+}
+
+func (n *Brackets) Type() string        { return "Brackets" }
+func (n *Brackets) Location() *Location { return n.Loc }
+
+func (n *Brackets) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"children", n.Children},
+	)
+}
+
+func bracketsNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Brackets",
+		Structure: []StructureField{
+			{Name: "children", Types: []FieldType{listField()}},
+		},
+		Generate:        generateBrackets,
+		Walk:            walkBrackets,
+		Clone:           cloneBrackets,
+		FromPlainObject: fromPlainObjectBrackets,
+	}
+}
+
+func walkBrackets(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Brackets)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneBrackets(node Node, clone func(Node) Node) Node {
+	c := *node.(*Brackets)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectBrackets(r *PlainObjectReader, object map[string]any) Node {
+	return &Brackets{
 		Loc:      r.Location(object),
 		Children: r.List(object, "children"),
 	}
@@ -241,6 +324,91 @@ func fromPlainObjectComment(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
+func (n *Condition) Type() string        { return "Condition" }
+func (n *Condition) Location() *Location { return n.Loc }
+
+func (n *Condition) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"kind", n.Kind},
+		jsonField{"children", n.Children},
+	)
+}
+
+func conditionNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Condition",
+		Structure: []StructureField{
+			{Name: "kind", Types: []FieldType{stringField()}},
+			{Name: "children", Types: []FieldType{listField("Identifier", "Feature", "FeatureFunction", "FeatureRange", "SupportsDeclaration")}},
+		},
+		Generate:        generateCondition,
+		Walk:            walkCondition,
+		Clone:           cloneCondition,
+		FromPlainObject: fromPlainObjectCondition,
+	}
+}
+
+func walkCondition(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Condition)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneCondition(node Node, clone func(Node) Node) Node {
+	c := *node.(*Condition)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectCondition(r *PlainObjectReader, object map[string]any) Node {
+	return &Condition{
+		Loc:      r.Location(object),
+		Kind:     r.String(object, "kind"),
+		Children: r.List(object, "children"),
+	}
+}
+
+func (n *DeclarationList) Type() string        { return "DeclarationList" }
+func (n *DeclarationList) Location() *Location { return n.Loc }
+
+func (n *DeclarationList) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"children", n.Children},
+	)
+}
+
+func declarationListNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "DeclarationList",
+		Structure: []StructureField{
+			{Name: "children", Types: []FieldType{listField("Declaration", "Atrule", "Rule")}},
+		},
+		Generate:        generateDeclarationList,
+		Walk:            walkDeclarationList,
+		Clone:           cloneDeclarationList,
+		FromPlainObject: fromPlainObjectDeclarationList,
+	}
+}
+
+func walkDeclarationList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*DeclarationList)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneDeclarationList(node Node, clone func(Node) Node) Node {
+	c := *node.(*DeclarationList)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectDeclarationList(r *PlainObjectReader, object map[string]any) Node {
+	return &DeclarationList{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
+	}
+}
+
 func (n *Dimension) Type() string        { return "Dimension" }
 func (n *Dimension) Location() *Location { return n.Loc }
 
@@ -275,6 +443,98 @@ func fromPlainObjectDimension(r *PlainObjectReader, object map[string]any) Node 
 		Loc:   r.Location(object),
 		Value: r.String(object, "value"),
 		Unit:  r.String(object, "unit"),
+	}
+}
+
+func (n *Function) Type() string        { return "Function" }
+func (n *Function) Location() *Location { return n.Loc }
+
+func (n *Function) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+		jsonField{"children", n.Children},
+	)
+}
+
+func functionNodeType() NodeConfig {
+	return NodeConfig{
+		Name:        "Function",
+		WalkContext: "function",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{stringField()}},
+			{Name: "children", Types: []FieldType{listField()}},
+		},
+		Generate:        generateFunction,
+		Walk:            walkFunction,
+		Clone:           cloneFunction,
+		FromPlainObject: fromPlainObjectFunction,
+	}
+}
+
+func walkFunction(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Function)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneFunction(node Node, clone func(Node) Node) Node {
+	c := *node.(*Function)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectFunction(r *PlainObjectReader, object map[string]any) Node {
+	return &Function{
+		Loc:      r.Location(object),
+		Name:     r.String(object, "name"),
+		Children: r.List(object, "children"),
+	}
+}
+
+func (n *GeneralEnclosed) Type() string        { return "GeneralEnclosed" }
+func (n *GeneralEnclosed) Location() *Location { return n.Loc }
+
+func (n *GeneralEnclosed) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"kind", n.Kind},
+		jsonField{"function", nullableString(n.Function)},
+		jsonField{"children", n.Children},
+	)
+}
+
+func generalEnclosedNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "GeneralEnclosed",
+		Structure: []StructureField{
+			{Name: "kind", Types: []FieldType{stringField()}},
+			{Name: "function", Types: []FieldType{stringField(), nullField()}},
+			{Name: "children", Types: []FieldType{listField()}},
+		},
+		Generate:        generateGeneralEnclosed,
+		Walk:            walkGeneralEnclosed,
+		Clone:           cloneGeneralEnclosed,
+		FromPlainObject: fromPlainObjectGeneralEnclosed,
+	}
+}
+
+func walkGeneralEnclosed(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*GeneralEnclosed)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneGeneralEnclosed(node Node, clone func(Node) Node) Node {
+	c := *node.(*GeneralEnclosed)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectGeneralEnclosed(r *PlainObjectReader, object map[string]any) Node {
+	return &GeneralEnclosed{
+		Loc:      r.Location(object),
+		Kind:     r.String(object, "kind"),
+		Function: r.String(object, "function"),
+		Children: r.List(object, "children"),
 	}
 }
 
@@ -414,6 +674,88 @@ func fromPlainObjectLayer(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
+func (n *LayerList) Type() string        { return "LayerList" }
+func (n *LayerList) Location() *Location { return n.Loc }
+
+func (n *LayerList) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"children", n.Children},
+	)
+}
+
+func layerListNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "LayerList",
+		Structure: []StructureField{
+			{Name: "children", Types: []FieldType{listField("Layer")}},
+		},
+		Generate:        generateLayerList,
+		Walk:            walkLayerList,
+		Clone:           cloneLayerList,
+		FromPlainObject: fromPlainObjectLayerList,
+	}
+}
+
+func walkLayerList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*LayerList)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneLayerList(node Node, clone func(Node) Node) Node {
+	c := *node.(*LayerList)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectLayerList(r *PlainObjectReader, object map[string]any) Node {
+	return &LayerList{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
+	}
+}
+
+func (n *MediaQueryList) Type() string        { return "MediaQueryList" }
+func (n *MediaQueryList) Location() *Location { return n.Loc }
+
+func (n *MediaQueryList) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"children", n.Children},
+	)
+}
+
+func mediaQueryListNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "MediaQueryList",
+		Structure: []StructureField{
+			{Name: "children", Types: []FieldType{listField("MediaQuery")}},
+		},
+		Generate:        generateMediaQueryList,
+		Walk:            walkMediaQueryList,
+		Clone:           cloneMediaQueryList,
+		FromPlainObject: fromPlainObjectMediaQueryList,
+	}
+}
+
+func walkMediaQueryList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*MediaQueryList)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneMediaQueryList(node Node, clone func(Node) Node) Node {
+	c := *node.(*MediaQueryList)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectMediaQueryList(r *PlainObjectReader, object map[string]any) Node {
+	return &MediaQueryList{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
+	}
+}
+
 func (n *NestingSelector) Type() string        { return "NestingSelector" }
 func (n *NestingSelector) Location() *Location { return n.Loc }
 
@@ -511,6 +853,47 @@ func fromPlainObjectOperator(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
+func (n *Parentheses) Type() string        { return "Parentheses" }
+func (n *Parentheses) Location() *Location { return n.Loc }
+
+func (n *Parentheses) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"children", n.Children},
+	)
+}
+
+func parenthesesNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Parentheses",
+		Structure: []StructureField{
+			{Name: "children", Types: []FieldType{listField()}},
+		},
+		Generate:        generateParentheses,
+		Walk:            walkParentheses,
+		Clone:           cloneParentheses,
+		FromPlainObject: fromPlainObjectParentheses,
+	}
+}
+
+func walkParentheses(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Parentheses)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneParentheses(node Node, clone func(Node) Node) Node {
+	c := *node.(*Parentheses)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectParentheses(r *PlainObjectReader, object map[string]any) Node {
+	return &Parentheses{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
+	}
+}
+
 func (n *Percentage) Type() string        { return "Percentage" }
 func (n *Percentage) Location() *Location { return n.Loc }
 
@@ -542,6 +925,96 @@ func fromPlainObjectPercentage(r *PlainObjectReader, object map[string]any) Node
 	return &Percentage{
 		Loc:   r.Location(object),
 		Value: r.String(object, "value"),
+	}
+}
+
+func (n *PseudoClassSelector) Type() string        { return "PseudoClassSelector" }
+func (n *PseudoClassSelector) Location() *Location { return n.Loc }
+
+func (n *PseudoClassSelector) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+		jsonField{"children", n.Children},
+	)
+}
+
+func pseudoClassSelectorNodeType() NodeConfig {
+	return NodeConfig{
+		Name:        "PseudoClassSelector",
+		WalkContext: "function",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{stringField()}},
+			{Name: "children", Types: []FieldType{listField("Raw"), nullField()}},
+		},
+		Generate:        generatePseudoClassSelector,
+		Walk:            walkPseudoClassSelector,
+		Clone:           clonePseudoClassSelector,
+		FromPlainObject: fromPlainObjectPseudoClassSelector,
+	}
+}
+
+func walkPseudoClassSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*PseudoClassSelector)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func clonePseudoClassSelector(node Node, clone func(Node) Node) Node {
+	c := *node.(*PseudoClassSelector)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectPseudoClassSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &PseudoClassSelector{
+		Loc:      r.Location(object),
+		Name:     r.String(object, "name"),
+		Children: r.List(object, "children"),
+	}
+}
+
+func (n *PseudoElementSelector) Type() string        { return "PseudoElementSelector" }
+func (n *PseudoElementSelector) Location() *Location { return n.Loc }
+
+func (n *PseudoElementSelector) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+		jsonField{"children", n.Children},
+	)
+}
+
+func pseudoElementSelectorNodeType() NodeConfig {
+	return NodeConfig{
+		Name:        "PseudoElementSelector",
+		WalkContext: "function",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{stringField()}},
+			{Name: "children", Types: []FieldType{listField("Raw"), nullField()}},
+		},
+		Generate:        generatePseudoElementSelector,
+		Walk:            walkPseudoElementSelector,
+		Clone:           clonePseudoElementSelector,
+		FromPlainObject: fromPlainObjectPseudoElementSelector,
+	}
+}
+
+func walkPseudoElementSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*PseudoElementSelector)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func clonePseudoElementSelector(node Node, clone func(Node) Node) Node {
+	c := *node.(*PseudoElementSelector)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectPseudoElementSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &PseudoElementSelector{
+		Loc:      r.Location(object),
+		Name:     r.String(object, "name"),
+		Children: r.List(object, "children"),
 	}
 }
 
@@ -632,6 +1105,89 @@ func fromPlainObjectRule(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
+func (n *Selector) Type() string        { return "Selector" }
+func (n *Selector) Location() *Location { return n.Loc }
+
+func (n *Selector) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"children", n.Children},
+	)
+}
+
+func selectorNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Selector",
+		Structure: []StructureField{
+			{Name: "children", Types: []FieldType{listField("TypeSelector", "IdSelector", "ClassSelector", "AttributeSelector", "PseudoClassSelector", "PseudoElementSelector", "Combinator")}},
+		},
+		Generate:        generateSelector,
+		Walk:            walkSelector,
+		Clone:           cloneSelector,
+		FromPlainObject: fromPlainObjectSelector,
+	}
+}
+
+func walkSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Selector)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneSelector(node Node, clone func(Node) Node) Node {
+	c := *node.(*Selector)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &Selector{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
+	}
+}
+
+func (n *SelectorList) Type() string        { return "SelectorList" }
+func (n *SelectorList) Location() *Location { return n.Loc }
+
+func (n *SelectorList) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"children", n.Children},
+	)
+}
+
+func selectorListNodeType() NodeConfig {
+	return NodeConfig{
+		Name:        "SelectorList",
+		WalkContext: "selector",
+		Structure: []StructureField{
+			{Name: "children", Types: []FieldType{listField("Selector", "Raw")}},
+		},
+		Generate:        generateSelectorList,
+		Walk:            walkSelectorList,
+		Clone:           cloneSelectorList,
+		FromPlainObject: fromPlainObjectSelectorList,
+	}
+}
+
+func walkSelectorList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*SelectorList)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneSelectorList(node Node, clone func(Node) Node) Node {
+	c := *node.(*SelectorList)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectSelectorList(r *PlainObjectReader, object map[string]any) Node {
+	return &SelectorList{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
+	}
+}
+
 func (n *String) Type() string        { return "String" }
 func (n *String) Location() *Location { return n.Loc }
 
@@ -663,6 +1219,48 @@ func fromPlainObjectString(r *PlainObjectReader, object map[string]any) Node {
 	return &String{
 		Loc:   r.Location(object),
 		Value: r.String(object, "value"),
+	}
+}
+
+func (n *StyleSheet) Type() string        { return "StyleSheet" }
+func (n *StyleSheet) Location() *Location { return n.Loc }
+
+func (n *StyleSheet) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"children", n.Children},
+	)
+}
+
+func styleSheetNodeType() NodeConfig {
+	return NodeConfig{
+		Name:        "StyleSheet",
+		WalkContext: "stylesheet",
+		Structure: []StructureField{
+			{Name: "children", Types: []FieldType{listField("Comment", "CDO", "CDC", "Atrule", "Rule", "Raw")}},
+		},
+		Generate:        generateStyleSheet,
+		Walk:            walkStyleSheet,
+		Clone:           cloneStyleSheet,
+		FromPlainObject: fromPlainObjectStyleSheet,
+	}
+}
+
+func walkStyleSheet(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*StyleSheet)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneStyleSheet(node Node, clone func(Node) Node) Node {
+	c := *node.(*StyleSheet)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectStyleSheet(r *PlainObjectReader, object map[string]any) Node {
+	return &StyleSheet{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
 	}
 }
 
@@ -765,6 +1363,47 @@ func fromPlainObjectURL(r *PlainObjectReader, object map[string]any) Node {
 	return &URL{
 		Loc:   r.Location(object),
 		Value: r.String(object, "value"),
+	}
+}
+
+func (n *Value) Type() string        { return "Value" }
+func (n *Value) Location() *Location { return n.Loc }
+
+func (n *Value) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"children", n.Children},
+	)
+}
+
+func valueNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Value",
+		Structure: []StructureField{
+			{Name: "children", Types: []FieldType{listField()}},
+		},
+		Generate:        generateValue,
+		Walk:            walkValue,
+		Clone:           cloneValue,
+		FromPlainObject: fromPlainObjectValue,
+	}
+}
+
+func walkValue(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
+	n := node.(*Value)
+	return n.Children != nil && walkList(n.Children)
+}
+
+func cloneValue(node Node, clone func(Node) Node) Node {
+	c := *node.(*Value)
+	c.Loc = cloneLocation(c.Loc)
+	c.Children = cloneList(c.Children, clone)
+	return &c
+}
+
+func fromPlainObjectValue(r *PlainObjectReader, object map[string]any) Node {
+	return &Value{
+		Loc:      r.Location(object),
+		Children: r.List(object, "children"),
 	}
 }
 

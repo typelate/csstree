@@ -9,58 +9,11 @@ func styleSheetConsumeRaw(p *Parser) Node {
 }
 
 // StyleSheet is a style sheet.
+//
+//csstree:node walkContext=stylesheet
 type StyleSheet struct {
 	Loc      *Location
-	Children *List[Node]
-}
-
-func (n *StyleSheet) Type() string        { return "StyleSheet" }
-func (n *StyleSheet) Location() *Location { return n.Loc }
-
-func (n *StyleSheet) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"children", n.Children},
-	)
-}
-
-func styleSheetNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "StyleSheet",
-		WalkContext: "stylesheet",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField(
-				"Comment",
-				"CDO",
-				"CDC",
-				"Atrule",
-				"Rule",
-				"Raw",
-			)}},
-		},
-		Generate:        generateStyleSheet,
-		Walk:            walkStyleSheet,
-		Clone:           cloneStyleSheet,
-		FromPlainObject: fromPlainObjectStyleSheet,
-	}
-}
-
-func walkStyleSheet(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*StyleSheet)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func cloneStyleSheet(node Node, clone func(Node) Node) Node {
-	c := *node.(*StyleSheet)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectStyleSheet(r *PlainObjectReader, object map[string]any) Node {
-	return &StyleSheet{
-		Loc:      r.Location(object),
-		Children: r.List(object, "children"),
-	}
+	Children *List[Node] `css:"children,[Comment|CDO|CDC|Atrule|Rule|Raw]"`
 }
 
 // StyleSheet parses a style sheet.

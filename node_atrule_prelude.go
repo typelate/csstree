@@ -8,51 +8,11 @@ import (
 
 // AtrulePrelude is the prelude of an at-rule, between its name and its
 // block or semicolon.
+//
+//csstree:node walkContext=atrulePrelude
 type AtrulePrelude struct {
 	Loc      *Location
-	Children *List[Node]
-}
-
-func (n *AtrulePrelude) Type() string        { return "AtrulePrelude" }
-func (n *AtrulePrelude) Location() *Location { return n.Loc }
-
-func (n *AtrulePrelude) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"children", n.Children},
-	)
-}
-
-func atrulePreludeNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "AtrulePrelude",
-		WalkContext: "atrulePrelude",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateAtrulePrelude,
-		Walk:            walkAtrulePrelude,
-		Clone:           cloneAtrulePrelude,
-		FromPlainObject: fromPlainObjectAtrulePrelude,
-	}
-}
-
-func walkAtrulePrelude(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*AtrulePrelude)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func cloneAtrulePrelude(node Node, clone func(Node) Node) Node {
-	c := *node.(*AtrulePrelude)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectAtrulePrelude(r *PlainObjectReader, object map[string]any) Node {
-	return &AtrulePrelude{
-		Loc:      r.Location(object),
-		Children: r.List(object, "children"),
-	}
+	Children *List[Node] `css:"children,[]"`
 }
 
 // AtrulePrelude parses the prelude of the at-rule name ("" is upstream

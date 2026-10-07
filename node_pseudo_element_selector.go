@@ -7,57 +7,14 @@ import (
 )
 
 // PseudoElementSelector is :: [ <ident> | <function-token> <any-value>? ) ].
+//
+//csstree:node walkContext=function
 type PseudoElementSelector struct {
 	Loc  *Location
-	Name string
+	Name string `css:"name,string"`
 	// Children holds the arguments of a functional pseudo-element; nil for
 	// a pseudo-element written without parentheses.
-	Children *List[Node]
-}
-
-func (n *PseudoElementSelector) Type() string        { return "PseudoElementSelector" }
-func (n *PseudoElementSelector) Location() *Location { return n.Loc }
-
-func (n *PseudoElementSelector) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"name", n.Name},
-		jsonField{"children", n.Children},
-	)
-}
-
-func pseudoElementSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "PseudoElementSelector",
-		WalkContext: "function",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-			{Name: "children", Types: []FieldType{listField("Raw"), nullField()}},
-		},
-		Generate:        generatePseudoElementSelector,
-		Walk:            walkPseudoElementSelector,
-		Clone:           clonePseudoElementSelector,
-		FromPlainObject: fromPlainObjectPseudoElementSelector,
-	}
-}
-
-func walkPseudoElementSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*PseudoElementSelector)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func clonePseudoElementSelector(node Node, clone func(Node) Node) Node {
-	c := *node.(*PseudoElementSelector)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectPseudoElementSelector(r *PlainObjectReader, object map[string]any) Node {
-	return &PseudoElementSelector{
-		Loc:      r.Location(object),
-		Name:     r.String(object, "name"),
-		Children: r.List(object, "children"),
-	}
+	Children *List[Node] `css:"children,[Raw]|null"`
 }
 
 // PseudoElementSelector parses :: [ <ident> | <function-token> <any-value>? ) ]

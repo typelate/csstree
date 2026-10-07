@@ -10,54 +10,11 @@ func declarationListConsumeRaw(p *Parser) Node {
 
 // DeclarationList is a list of declarations without braces, e.g. the
 // content of a style attribute.
+//
+//csstree:node
 type DeclarationList struct {
 	Loc      *Location
-	Children *List[Node]
-}
-
-func (n *DeclarationList) Type() string        { return "DeclarationList" }
-func (n *DeclarationList) Location() *Location { return n.Loc }
-
-func (n *DeclarationList) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"children", n.Children},
-	)
-}
-
-func declarationListNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "DeclarationList",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField(
-				"Declaration",
-				"Atrule",
-				"Rule",
-			)}},
-		},
-		Generate:        generateDeclarationList,
-		Walk:            walkDeclarationList,
-		Clone:           cloneDeclarationList,
-		FromPlainObject: fromPlainObjectDeclarationList,
-	}
-}
-
-func walkDeclarationList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*DeclarationList)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func cloneDeclarationList(node Node, clone func(Node) Node) Node {
-	c := *node.(*DeclarationList)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectDeclarationList(r *PlainObjectReader, object map[string]any) Node {
-	return &DeclarationList{
-		Loc:      r.Location(object),
-		Children: r.List(object, "children"),
-	}
+	Children *List[Node] `css:"children,[Declaration|Atrule|Rule]"`
 }
 
 // DeclarationList parses a list of declarations.

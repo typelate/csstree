@@ -7,55 +7,12 @@ import (
 )
 
 // Function is a function in a value: <function-token> <sequence> ).
+//
+//csstree:node walkContext=function
 type Function struct {
 	Loc      *Location
-	Name     string
-	Children *List[Node]
-}
-
-func (n *Function) Type() string        { return "Function" }
-func (n *Function) Location() *Location { return n.Loc }
-
-func (n *Function) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"name", n.Name},
-		jsonField{"children", n.Children},
-	)
-}
-
-func functionNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "Function",
-		WalkContext: "function",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateFunction,
-		Walk:            walkFunction,
-		Clone:           cloneFunction,
-		FromPlainObject: fromPlainObjectFunction,
-	}
-}
-
-func walkFunction(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*Function)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func cloneFunction(node Node, clone func(Node) Node) Node {
-	c := *node.(*Function)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectFunction(r *PlainObjectReader, object map[string]any) Node {
-	return &Function{
-		Loc:      r.Location(object),
-		Name:     r.String(object, "name"),
-		Children: r.List(object, "children"),
-	}
+	Name     string      `css:"name,string"`
+	Children *List[Node] `css:"children,[]"`
 }
 
 // Function parses <function-token> <sequence> ). The arguments are parsed

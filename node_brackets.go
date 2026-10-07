@@ -5,50 +5,11 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // Brackets is a [] block in a value.
+//
+//csstree:node
 type Brackets struct {
 	Loc      *Location
-	Children *List[Node]
-}
-
-func (n *Brackets) Type() string        { return "Brackets" }
-func (n *Brackets) Location() *Location { return n.Loc }
-
-func (n *Brackets) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"children", n.Children},
-	)
-}
-
-func bracketsNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Brackets",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateBrackets,
-		Walk:            walkBrackets,
-		Clone:           cloneBrackets,
-		FromPlainObject: fromPlainObjectBrackets,
-	}
-}
-
-func walkBrackets(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*Brackets)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func cloneBrackets(node Node, clone func(Node) Node) Node {
-	c := *node.(*Brackets)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectBrackets(r *PlainObjectReader, object map[string]any) Node {
-	return &Brackets{
-		Loc:      r.Location(object),
-		Children: r.List(object, "children"),
-	}
+	Children *List[Node] `css:"children,[]"`
 }
 
 // Brackets parses a [] block, reading its content with readSequence and

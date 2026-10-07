@@ -8,59 +8,14 @@ import "github.com/typelate/csstree/tokenizer"
 //
 //	<function-token> <any-value> )
 //	( <any-value> )
+//
+//csstree:node
 type GeneralEnclosed struct {
 	Loc  *Location
-	Kind string
+	Kind string `css:"kind,string"`
 	// Function is the function name; "" (upstream null) for ( <any-value> ).
-	Function string
-	Children *List[Node]
-}
-
-func (n *GeneralEnclosed) Type() string        { return "GeneralEnclosed" }
-func (n *GeneralEnclosed) Location() *Location { return n.Loc }
-
-func (n *GeneralEnclosed) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"kind", n.Kind},
-		jsonField{"function", nullableString(n.Function)},
-		jsonField{"children", n.Children},
-	)
-}
-
-func generalEnclosedNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "GeneralEnclosed",
-		Structure: []StructureField{
-			{Name: "kind", Types: []FieldType{stringField()}},
-			{Name: "function", Types: []FieldType{stringField(), nullField()}},
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateGeneralEnclosed,
-		Walk:            walkGeneralEnclosed,
-		Clone:           cloneGeneralEnclosed,
-		FromPlainObject: fromPlainObjectGeneralEnclosed,
-	}
-}
-
-func walkGeneralEnclosed(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*GeneralEnclosed)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func cloneGeneralEnclosed(node Node, clone func(Node) Node) Node {
-	c := *node.(*GeneralEnclosed)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectGeneralEnclosed(r *PlainObjectReader, object map[string]any) Node {
-	return &GeneralEnclosed{
-		Loc:      r.Location(object),
-		Kind:     r.String(object, "kind"),
-		Function: r.String(object, "function"),
-		Children: r.List(object, "children"),
-	}
+	Function string      `css:"function,string|null"`
+	Children *List[Node] `css:"children,[]"`
 }
 
 // GeneralEnclosed parses a general enclosed term of a condition of kind.
