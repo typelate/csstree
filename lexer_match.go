@@ -54,7 +54,7 @@ type matchStackItem struct {
 
 type syntaxStackItem struct {
 	syntax         definitionsyntax.Node
-	opts           *definitionsyntax.Range
+	bounds         *definitionsyntax.Range
 	percentSibling bool
 	prev           *syntaxStackItem
 }
@@ -250,13 +250,13 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 	}
 
 	openSyntax := func() {
-		opts := typeOpts(state.syntax)
-		if opts == nil && syntaxStack != nil {
-			opts = syntaxStack.opts
+		bounds := typeOpts(state.syntax)
+		if bounds == nil && syntaxStack != nil {
+			bounds = syntaxStack.bounds
 		}
 		syntaxStack = &syntaxStackItem{
 			syntax:         state.syntax,
-			opts:           opts,
+			bounds:         bounds,
 			percentSibling: state.percentSibling,
 			prev:           syntaxStack,
 		}
@@ -460,15 +460,15 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			state = mismatchState
 
 		case "Generic":
-			var opts *definitionsyntax.Range
+			var bounds *definitionsyntax.Range
 			if syntaxStack != nil {
-				opts = syntaxStack.opts
+				bounds = syntaxStack.bounds
 			}
 			// math functions are type checked (Values 4 §10.9)
 			percentSibling := syntaxStack != nil && syntaxStack.percentSibling
 			consumed, handled := matchMathFunction(state.calc, percentSibling, token, getNextToken)
 			if !handled {
-				consumed = state.fn(token, getNextToken, opts)
+				consumed = state.fn(token, getNextToken, bounds)
 			}
 			lastTokenIndex := tokenIndex + consumed
 

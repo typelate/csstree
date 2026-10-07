@@ -14,9 +14,9 @@ import (
 // genericFunc is a generic type: it returns how many tokens starting at
 // token (nil at the end of the input) it consumes, 0 for a mismatch.
 // getNextToken(offset) returns the token offset tokens ahead of token, nil
-// past the end. opts is the range restriction of the type reference being
+// past the end. bounds is the range restriction of the type reference being
 // matched, nil when there is none.
-type genericFunc func(token *matchToken, getNextToken func(offset int) *matchToken, opts *definitionsyntax.Range) int
+type genericFunc func(token *matchToken, getNextToken func(offset int) *matchToken, bounds *definitionsyntax.Range) int
 
 // genericType is a generic type with its name; createGenericTypes returns
 // them in upstream's object key order. calc says how the matcher type
@@ -53,17 +53,17 @@ func isPostfixIeHack(str string, offset int) bool {
 }
 
 // outOfRange reports whether the number at the start of value is outside
-// opts. numEnd < 0 is upstream's omitted numEnd.
-func outOfRange(opts *definitionsyntax.Range, value string, numEnd int) bool {
-	return outOfRangeUnit(opts, value, numEnd, "")
+// bounds. numEnd < 0 is upstream's omitted numEnd.
+func outOfRange(bounds *definitionsyntax.Range, value string, numEnd int) bool {
+	return outOfRangeUnit(bounds, value, numEnd, "")
 }
 
 // outOfRangeUnit reports whether the number at the start of value, of the
-// lowercase unit ("" for a number), is outside opts. Upstream skips the
+// lowercase unit ("" for a number), is outside bounds. Upstream skips the
 // bounds with a unit (a FIXME: a type conversion is not implemented);
 // compareToBound compares them as CSS Values 4 §5.1 says.
-func outOfRangeUnit(opts *definitionsyntax.Range, value string, numEnd int, unit string) bool {
-	if opts != nil {
+func outOfRangeUnit(bounds *definitionsyntax.Range, value string, numEnd int, unit string) bool {
+	if bounds != nil {
 		numStr := value
 		if numEnd >= 0 && numEnd != len(value) {
 			numStr = value[:numEnd]
@@ -74,14 +74,14 @@ func outOfRangeUnit(opts *definitionsyntax.Range, value string, numEnd int, unit
 			return true
 		}
 
-		if opts.Min != nil {
-			if order, ok := compareToBound(num, unit, opts.Min); ok && order < 0 {
+		if bounds.Min != nil {
+			if order, ok := compareToBound(num, unit, bounds.Min); ok && order < 0 {
 				return true
 			}
 		}
 
-		if opts.Max != nil {
-			if order, ok := compareToBound(num, unit, opts.Max); ok && order > 0 {
+		if bounds.Max != nil {
+			if order, ok := compareToBound(num, unit, bounds.Max); ok && order > 0 {
 				return true
 			}
 		}
@@ -203,9 +203,9 @@ func dashedIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitio
 // A custom property is any property whose name starts with two dashes (U+002D HYPHEN-MINUS), like --foo.
 // The <custom-property-name> production corresponds to this: it’s defined as any <dashed-ident>
 // (a valid identifier that starts with two dashes), except -- itself, which is reserved for future use by CSS.
-func customPropertyName(token *matchToken, getNextToken func(offset int) *matchToken, opts *definitionsyntax.Range) int {
+func customPropertyName(token *matchToken, getNextToken func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
 	// ... it’s defined as any <dashed-ident>
-	if dashedIdent(token, getNextToken, opts) == 0 {
+	if dashedIdent(token, getNextToken, bounds) == 0 {
 		return 0
 	}
 
@@ -360,8 +360,8 @@ func dimension(units []string) genericFunc {
 		unitSet[unit] = true
 	}
 
-	return func(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyntax.Range) int {
-		unit, ok := dimensionTokenUnit(token, opts)
+	return func(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
+		unit, ok := dimensionTokenUnit(token, bounds)
 		if !ok || !unitSet[unit] {
 			return 0
 		}
@@ -371,17 +371,17 @@ func dimension(units []string) genericFunc {
 
 // anyDimension is the generic type of dimension tokens of any unit
 // (upstream dimension(null)).
-func anyDimension(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyntax.Range) int {
-	if _, ok := dimensionTokenUnit(token, opts); !ok {
+func anyDimension(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
+	if _, ok := dimensionTokenUnit(token, bounds); !ok {
 		return 0
 	}
 	return 1
 }
 
 // dimensionTokenUnit returns the lowercase unit of a dimension token in
-// the range opts, and false for other tokens and dimensions out of the
+// the range bounds, and false for other tokens and dimensions out of the
 // range.
-func dimensionTokenUnit(token *matchToken, opts *definitionsyntax.Range) (string, bool) {
+func dimensionTokenUnit(token *matchToken, bounds *definitionsyntax.Range) (string, bool) {
 	if token == nil || token.typ != tokenizer.Dimension {
 		return "", false
 	}
@@ -393,7 +393,7 @@ func dimensionTokenUnit(token *matchToken, opts *definitionsyntax.Range) (string
 	unit := asciiLowerCase(dimensionUnit(token.value, numberEnd))
 
 	// check range if specified
-	if outOfRangeUnit(opts, token.value, numberEnd, unit) {
+	if outOfRangeUnit(bounds, token.value, numberEnd, unit) {
 		return "", false
 	}
 
@@ -406,14 +406,14 @@ func dimensionTokenUnit(token *matchToken, opts *definitionsyntax.Range) (string
 
 // §5.5. Percentages: the <percentage> type
 // https://drafts.csswg.org/css-values-4/#percentages
-func percentage(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyntax.Range) int {
+func percentage(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
 	// ... corresponds to the <percentage-token> production
 	if token == nil || token.typ != tokenizer.Percentage {
 		return 0
 	}
 
 	// check range if specified
-	if outOfRangeUnit(opts, token.value, len(token.value)-1, "%") {
+	if outOfRangeUnit(bounds, token.value, len(token.value)-1, "%") {
 		return 0
 	}
 
@@ -428,13 +428,13 @@ func percentage(token *matchToken, _ func(offset int) *matchToken, opts *definit
 // The value <zero> represents a literal number with the value 0. Expressions that merely
 // evaluate to a <number> with the value 0 (for example, calc(0)) do not match <zero>;
 // only literal <number-token>s do.
-func zero(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyntax.Range) int {
+func zero(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
 	if token == nil || token.typ != tokenizer.Number {
 		return 0
 	}
 
 	// a zero is out of a range such as [1px,∞]
-	if jsnum.Parse(token.value) != 0 || outOfRange(opts, "0", -1) {
+	if jsnum.Parse(token.value) != 0 || outOfRange(bounds, "0", -1) {
 		return 0
 	}
 
@@ -443,12 +443,12 @@ func zero(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyn
 
 // zeroOr returns a generic type that takes a <zero> or what next takes.
 func zeroOr(next genericFunc) genericFunc {
-	return func(token *matchToken, getNextToken func(offset int) *matchToken, opts *definitionsyntax.Range) int {
-		if zero(token, getNextToken, opts) == 1 {
+	return func(token *matchToken, getNextToken func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
+		if zero(token, getNextToken, bounds) == 1 {
 			return 1
 		}
 
-		return next(token, getNextToken, opts)
+		return next(token, getNextToken, bounds)
 	}
 }
 
@@ -456,7 +456,7 @@ func zeroOr(next genericFunc) genericFunc {
 // https://drafts.csswg.org/css-values-4/#numbers
 // Number values are denoted by <number>, and represent real numbers, possibly with a fractional component.
 // ... It corresponds to the <number-token> production
-func number(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyntax.Range) int {
+func number(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
 	// ... a <number-token>, or the <dimension-token> of a number with the
 	// IE postfix hack (123\9); upstream reads any token whose text is a
 	// number, such as the delims + and - or the ident e5
@@ -471,7 +471,7 @@ func number(token *matchToken, _ func(offset int) *matchToken, opts *definitions
 	}
 
 	// check range if specified
-	if outOfRange(opts, token.value, numberEnd) {
+	if outOfRange(bounds, token.value, numberEnd) {
 		return 0
 	}
 
@@ -480,7 +480,7 @@ func number(token *matchToken, _ func(offset int) *matchToken, opts *definitions
 
 // §5.2. Integers: the <integer> type
 // https://drafts.csswg.org/css-values-4/#integers
-func integer(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyntax.Range) int {
+func integer(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
 	// ... corresponds to a subset of the <number-token> production
 	if token == nil || token.typ != tokenizer.Number {
 		return 0
@@ -501,7 +501,7 @@ func integer(token *matchToken, _ func(offset int) *matchToken, opts *definition
 	}
 
 	// check range if specified
-	if outOfRange(opts, token.value, i) {
+	if outOfRange(bounds, token.value, i) {
 		return 0
 	}
 
