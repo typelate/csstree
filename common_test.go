@@ -8,7 +8,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -18,8 +17,12 @@ import (
 
 const stringifyFixtureFilename = "testdata/stringify.css"
 
+// newlineNormalizer is upstream's str.replace(/\n|\r\n?|\f/g, '\n'): a
+// Replacer tries "\r\n" before "\r".
+var newlineNormalizer = strings.NewReplacer("\r\n", "\n", "\r", "\n", "\f", "\n")
+
 func normalizeNewlines(str string) string {
-	return regexp.MustCompile(`\n|\r\n?|\f`).ReplaceAllString(str, "\n")
+	return newlineNormalizer.Replace(str)
 }
 
 func TestCommon(t *testing.T) {
