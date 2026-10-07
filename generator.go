@@ -30,8 +30,10 @@ const (
 )
 
 // UnknownNodeTypeError is returned by Generate for a node whose type has no
-// generate function. Type is "undefined" for a nil node, as upstream reads
-// the type of null.
+// generate function; Type is "undefined" for a nil node, as upstream reads
+// the type of null. The lexer's Match methods return it for a value they
+// cannot generate and for a definition syntax node they cannot match (Type
+// is "" for a nil syntax).
 type UnknownNodeTypeError struct {
 	Type string
 }

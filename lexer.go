@@ -17,20 +17,23 @@ import (
 // Errors the lexer's Match methods return where upstream uses a plain
 // Error.
 var (
-	// ErrVarNotSupported is returned for a value containing var().
-	//lint:ignore ST1005 upstream message
-	ErrVarNotSupported = errors.New("Matching for a tree with var() is not supported")
-	// ErrCustomProperty is returned for a custom property (--*).
-	ErrCustomProperty = errors.New("Lexer matching doesn't applicable for custom properties")
+	// ErrVarNotSupported is returned for a value containing var()
+	// (upstream "Matching for a tree with var() is not supported").
+	ErrVarNotSupported = errors.New("csstree: matching a value with var() is not supported")
+	// ErrCustomProperty is returned for a custom property (--*), whose
+	// value is not matched (upstream "Lexer matching doesn't applicable
+	// for custom properties").
+	ErrCustomProperty = errors.New("csstree: custom property values are not matched")
 	// ErrNotDeclaration is returned by MatchDeclaration for a node that is
-	// not a Declaration.
-	//lint:ignore ST1005 upstream message
-	ErrNotDeclaration = errors.New("Not a Declaration node")
+	// not a Declaration (upstream "Not a Declaration node").
+	ErrNotDeclaration = errors.New("csstree: not a Declaration node")
 )
 
 // AtruleSyntaxError reports an at-rule prelude or descriptor that the
 // at-rule does not allow (upstream a built-in SyntaxError).
 type AtruleSyntaxError struct {
+	// Message is upstream's message, such as "At-rule `@media` should
+	// contain a prelude".
 	Message string
 }
 
@@ -340,6 +343,15 @@ func matchSyntax(lexer *Lexer, syntax *Descriptor, value matchInput, useCSSWideK
 // Values to match are ASTs (a nil Node is upstream null); the methods with
 // a String suffix take CSS text instead, which is tokenized rather than
 // parsed (upstream takes either in the same argument).
+//
+// The Match methods fail with a *SyntaxMatchError for a value that does
+// not match (which unwraps to ErrIterationLimit when the matcher gave up),
+// a *SyntaxReferenceError for an unknown type, property, at-rule or
+// descriptor, or one a syntax refers to, an *AtruleSyntaxError for a
+// prelude or descriptor the at-rule does not allow, ErrVarNotSupported,
+// ErrCustomProperty or ErrNotDeclaration, an *UnknownNodeTypeError for a
+// value they cannot generate, or the *definitionsyntax.SyntaxError of a
+// syntax that does not parse.
 type Lexer struct {
 	cssWideKeywords []string
 	syntax          *Syntax
@@ -573,8 +585,7 @@ func newDescriptor(source descriptorSource, ref SyntaxRef, parent string) *Descr
 		}
 		if syntax == nil {
 			// upstream: buildMatchGraph(null) throws a TypeError
-			//lint:ignore ST1005 upstream message
-			return nil, errors.New("Unknown node type:")
+			return nil, &UnknownNodeTypeError{}
 		}
 		return buildMatchGraph(syntax, &ref)
 	})
@@ -691,7 +702,7 @@ func (l *Lexer) setType(name string, descriptor *Descriptor) {
 // unknown, else nil.
 func (l *Lexer) CheckAtruleName(atruleName string) error {
 	if l.Atrule(atruleName) == nil {
-		return newSyntaxReferenceError("Unknown at-rule", "@"+atruleName)
+		return newSyntaxReferenceError("Unknown at-rule", KindAtrule, "@"+atruleName)
 	}
 
 	return nil
@@ -749,7 +760,7 @@ func (l *Lexer) CheckAtruleDescriptorName(atruleName, descriptorName string) err
 
 	if atrule.descriptors[descriptor.Name] == nil &&
 		atrule.descriptors[descriptor.Basename] == nil {
-		return newSyntaxReferenceError("Unknown at-rule descriptor", descriptorName)
+		return newSyntaxReferenceError("Unknown at-rule descriptor", KindAtruleDescriptor, descriptorName)
 	}
 
 	return nil
@@ -759,7 +770,7 @@ func (l *Lexer) CheckAtruleDescriptorName(atruleName, descriptorName string) err
 // unknown, else nil.
 func (l *Lexer) CheckPropertyName(propertyName string) error {
 	if l.Property(propertyName) == nil {
-		return newSyntaxReferenceError("Unknown property", propertyName)
+		return newSyntaxReferenceError("Unknown property", KindProperty, propertyName)
 	}
 
 	return nil
@@ -870,7 +881,7 @@ func (l *Lexer) matchType(typeName string, value matchInput) (*MatchResult, erro
 	typeSyntax := l.Type(typeName)
 
 	if typeSyntax == nil {
-		return &MatchResult{}, newSyntaxReferenceError("Unknown type", typeName)
+		return &MatchResult{}, newSyntaxReferenceError("Unknown type", KindType, typeName)
 	}
 
 	return matchSyntax(l, typeSyntax, value, false)
@@ -907,7 +918,7 @@ func (l *Lexer) MatchDescriptorString(syntax *Descriptor, value string) (*MatchR
 
 func (l *Lexer) match(syntax *Descriptor, value matchInput) (*MatchResult, error) {
 	if syntax == nil {
-		return &MatchResult{}, newSyntaxReferenceError("Bad syntax", "")
+		return &MatchResult{}, newSyntaxReferenceError("Bad syntax", "", "")
 	}
 
 	return matchSyntax(l, syntax, value, false)

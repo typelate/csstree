@@ -98,12 +98,11 @@ func TestLexerMatchProperty(t *testing.T) {
 	})
 
 	t.Run("custom property", func(t *testing.T) {
-		match := outcome(lexer.MatchProperty("--foo", bar()))
-
-		if match.Matched != nil {
-			t.Errorf(`MatchProperty("--foo", bar) matched a value, want nil`)
+		// upstream's message is "Lexer matching doesn't applicable for
+		// custom properties"
+		if _, err := lexer.MatchProperty("--foo", bar()); !errors.Is(err, ErrCustomProperty) {
+			t.Errorf(`MatchProperty("--foo", bar) error = %v, want ErrCustomProperty`, err)
 		}
-		assertErrorMessage(t, `MatchProperty("--foo", bar) error`, match.err, "Lexer matching doesn't applicable for custom properties")
 	})
 
 	t.Run("should match css wide keywords", func(t *testing.T) {
@@ -175,7 +174,7 @@ func assertNotMatchedAt(t *testing.T, call string, match matchOutcome, line, col
 	if matchError.RawMessage != "Mismatch" {
 		t.Errorf("%s error.RawMessage = %q, want %q", call, matchError.RawMessage, "Mismatch")
 	}
-	if matchError.Line != line || matchError.Column != column {
-		t.Errorf("%s error line:column = %d:%d, want %d:%d", call, matchError.Line, matchError.Column, line, column)
+	if start := matchError.Loc.Start; start.Line != line || start.Column != column {
+		t.Errorf("%s error line:column = %d:%d, want %d:%d", call, start.Line, start.Column, line, column)
 	}
 }

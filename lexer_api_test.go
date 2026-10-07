@@ -279,9 +279,8 @@ func TestSyntaxMatchErrorLocation(t *testing.T) {
 		}
 		start := tokenizerPosition{matchErr.Loc.Start.Offset, matchErr.Loc.Start.Line, matchErr.Loc.Start.Column}
 		end := tokenizerPosition{matchErr.Loc.End.Offset, matchErr.Loc.End.Line, matchErr.Loc.End.Column}
-		fields := tokenizerPosition{matchErr.Offset, matchErr.Line, matchErr.Column}
-		if start != test.start || end != test.end || fields != test.start || matchErr.Loc.Filename != "<unknown>" {
-			t.Errorf("MatchProperty(color, %q) mismatch at %v-%v (fields %v, source %q), want %v-%v", test.value, start, end, fields, matchErr.Loc.Filename, test.start, test.end)
+		if start != test.start || end != test.end || matchErr.Loc.Filename != "<unknown>" {
+			t.Errorf("MatchProperty(color, %q) mismatch at %v-%v (source %q), want %v-%v", test.value, start, end, matchErr.Loc.Filename, test.start, test.end)
 		}
 	}
 }
@@ -585,5 +584,50 @@ func TestLexerFunctionFragmentsAndTrace(t *testing.T) {
 		if test.got != test.want {
 			t.Errorf("%s = %v, want %v", test.desc, test.got, test.want)
 		}
+	}
+}
+
+// TestLexerErrorTypes checks that the lexer's errors can be told apart
+// with errors.Is and errors.As (Go only).
+func TestLexerErrorTypes(t *testing.T) {
+	lexer := DefaultLexer()
+
+	for _, test := range []struct {
+		desc      string
+		err       error
+		kind      SyntaxKind
+		reference string
+	}{
+		{"unknown type", outcome(lexer.MatchTypeString("nope", "x")).err, KindType, "nope"},
+		{"unknown property", outcome(lexer.MatchPropertyString("nope", "x")).err, KindProperty, "nope"},
+		{"unknown at-rule", outcome(lexer.MatchAtrulePreludeString("nope", "x")).err, KindAtrule, "@nope"},
+		{"unknown descriptor", outcome(lexer.MatchAtruleDescriptorString("font-face", "nope", "x")).err, KindAtruleDescriptor, "nope"},
+		{"nil descriptor", outcome(lexer.MatchDescriptorString(nil, "x")).err, "", ""},
+		{"type reference", outcome(lexer.MatchString("<unknown-type>", "x")).err, KindType, "unknown-type"},
+		{"property reference", outcome(lexer.MatchString("<'unknown-property'>", "x")).err, KindProperty, "unknown-property"},
+	} {
+		var refErr *SyntaxReferenceError
+		if !errors.As(test.err, &refErr) || refErr.Kind != test.kind || refErr.Reference != test.reference {
+			t.Errorf("%s: error = %#v, want a *SyntaxReferenceError for %s %q", test.desc, test.err, test.kind, test.reference)
+		}
+	}
+
+	_, err := lexer.MatchString("[a | a a]* b", "a a a a a a a a a a a a a a c")
+	if !errors.Is(err, ErrIterationLimit) {
+		t.Errorf("MatchString(exponential backtracking) error = %v, want ErrIterationLimit", err)
+	}
+	if _, err := lexer.MatchString("[a | a a]* b", "a c"); err == nil || errors.Is(err, ErrIterationLimit) {
+		t.Errorf("MatchString(mismatch) error = %v, want a mismatch that is not ErrIterationLimit", err)
+	}
+
+	var typeErr *UnknownNodeTypeError
+	if _, err := lexer.MatchDescriptorString(NewDescriptorFromTree(SyntaxRef{Kind: KindType, Name: "nil"}, nil), "x"); !errors.As(err, &typeErr) {
+		t.Errorf("MatchDescriptorString(nil syntax) error = %v, want an *UnknownNodeTypeError", err)
+	}
+	if _, err := lexer.MatchDescriptorString(NewDescriptorFromTree(SyntaxRef{Kind: KindType, Name: "range"}, &definitionsyntax.Range{}), "x"); !errors.As(err, &typeErr) || typeErr.Type != "Range" {
+		t.Errorf("MatchDescriptorString(range syntax) error = %v, want an *UnknownNodeTypeError for Range", err)
+	}
+	if _, err := lexer.MatchProperty("color", &Value{Children: new(List[Node])}); err == nil {
+		t.Errorf("MatchProperty(color, empty value) = a match, want an error")
 	}
 }

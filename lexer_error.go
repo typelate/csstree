@@ -3,6 +3,7 @@
 package csstree
 
 import (
+	"errors"
 	"regexp"
 	"strings"
 
@@ -143,24 +144,49 @@ func buildLoc(position tokenizer.Position, extra string) tokenizer.Position {
 }
 
 // SyntaxReferenceError reports a reference to an unknown at-rule,
-// descriptor, property or type, or a bad syntax (upstream
-// createCustomError('SyntaxReferenceError', ...)).
+// descriptor, property or type, by a Match or Check method of Lexer or by
+// a syntax being matched, or a nil descriptor (upstream
+// createCustomError('SyntaxReferenceError', ...) and the "Bad syntax
+// reference" Error the matcher throws).
 type SyntaxReferenceError struct {
-	// Message is the error type followed by the reference in backquotes.
-	Message string
+	// Kind is the kind of syntax that is unknown: KindAtrule (whose
+	// Reference starts with "@"), KindAtruleDescriptor, KindProperty or
+	// KindType, or "" for a nil descriptor.
+	Kind SyntaxKind
 	// Reference is the name that is unknown ("" when there is none).
 	Reference string
+	// Message is upstream's message, such as "Unknown property `foo`" or
+	// "Bad syntax reference: <foo>".
+	Message string
 }
 
-func newSyntaxReferenceError(typ, referenceName string) *SyntaxReferenceError {
-	message := typ
-	if referenceName != "" {
-		message += " `" + referenceName + "`"
+// newSyntaxReferenceError returns the error of upstream
+// createCustomError('SyntaxReferenceError', reason + reference).
+func newSyntaxReferenceError(reason string, kind SyntaxKind, reference string) *SyntaxReferenceError {
+	message := reason
+	if reference != "" {
+		message += " `" + reference + "`"
 	}
 
 	return &SyntaxReferenceError{
+		Kind:      kind,
+		Reference: reference,
 		Message:   message,
-		Reference: referenceName,
+	}
+}
+
+// newBadSyntaxReferenceError returns the error for a reference in a
+// syntax to a type or property the lexer does not have.
+func newBadSyntaxReferenceError(kind SyntaxKind, name string) *SyntaxReferenceError {
+	reference := "<'" + name + "'>"
+	if kind == KindType {
+		reference = "<" + name + ">"
+	}
+
+	return &SyntaxReferenceError{
+		Kind:      kind,
+		Reference: name,
+		Message:   "Bad syntax reference: " + reference,
 	}
 }
 
@@ -169,15 +195,23 @@ func (e *SyntaxReferenceError) Error() string {
 	return e.Message
 }
 
+// ErrIterationLimit is what a *SyntaxMatchError unwraps to when the matcher
+// gave up after too many iterations, which a syntax whose alternatives
+// backtrack exponentially can need (upstream logs a warning and reports
+// the mismatch).
+var ErrIterationLimit = errors.New("csstree: maximum match iterations exceeded")
+
 // SyntaxMatchError reports a value that does not match a syntax (upstream
-// createCustomError('SyntaxMatchError', ...)).
+// createCustomError('SyntaxMatchError', ...)). It unwraps to
+// ErrIterationLimit when the matcher gave up.
 //
 // Offsets and columns count bytes.
 type SyntaxMatchError struct {
 	// Message is RawMessage followed by the syntax, the value and a caret
 	// line pointing at the mismatch.
 	Message string
-	// RawMessage is the reason of the mismatch, e.g. "Mismatch".
+	// RawMessage is the reason of the mismatch: "Mismatch", or upstream's
+	// message for ErrIterationLimit.
 	RawMessage string
 	// Syntax is the definition syntax that was matched ("<generic>" for a
 	// generic type).
@@ -188,14 +222,12 @@ type SyntaxMatchError struct {
 	// in CSS.
 	MismatchOffset int
 	MismatchLength int
-	// Offset, Line and Column are Loc.Start (upstream assigns the start
-	// position's fields to the error).
-	Offset int
-	Line   int
-	Column int
-	// Loc is the mismatch's range in the source of the value; Source is
-	// "<unknown>" when the value has no location.
+	// Loc is the mismatch's range in the source of the value; Filename is
+	// "<unknown>" when the value has no location. Upstream also copies
+	// Loc.Start's offset, line and column to the error.
 	Loc Location
+
+	err error
 }
 
 func newSyntaxMatchError(message string, syntax definitionsyntax.Node, node Node, matchResult *matchResult) *SyntaxMatchError {
@@ -220,9 +252,9 @@ func newSyntaxMatchError(message string, syntax definitionsyntax.Node, node Node
 		"   value: " + value + "\n" +
 		"  --------" + strings.Repeat("-", err.MismatchOffset) + "^"
 
-	err.Offset = mismatch.start.Offset
-	err.Line = mismatch.start.Line
-	err.Column = mismatch.start.Column
+	if message == exitReasonIterationLimit {
+		err.err = ErrIterationLimit
+	}
 	source := "<unknown>"
 	if node != nil {
 		if loc := node.Location(); loc != nil && loc.Filename != "" {
@@ -241,4 +273,9 @@ func newSyntaxMatchError(message string, syntax definitionsyntax.Node, node Node
 // Error returns Message, the same text as upstream's error.message.
 func (e *SyntaxMatchError) Error() string {
 	return e.Message
+}
+
+// Unwrap returns ErrIterationLimit when the matcher gave up, else nil.
+func (e *SyntaxMatchError) Unwrap() error {
+	return e.err
 }

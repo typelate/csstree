@@ -3,8 +3,6 @@
 package csstree
 
 import (
-	"errors"
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -485,11 +483,11 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			}
 
 			if dictSyntax == nil {
-				reference := "<'" + state.name + "'>"
+				kind := KindProperty
 				if isType {
-					reference = "<" + state.name + ">"
+					kind = KindType
 				}
-				return nil, errors.New("Bad syntax reference: " + reference)
+				return nil, newBadSyntaxReferenceError(kind, state.name)
 			}
 
 			// stash a syntax for types with low priority
@@ -596,8 +594,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			}
 
 		default:
-			//lint:ignore ST1005 upstream message
-			return nil, fmt.Errorf("Unknown node type: %s", state.typ)
+			return nil, &UnknownNodeTypeError{Type: state.typ}
 		}
 	}
 

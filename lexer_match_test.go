@@ -143,9 +143,6 @@ func TestLexerMatch(t *testing.T) {
 						if !errors.As(match.err, &matchError) {
 							t.Fatalf("Match(%q, %q) error = %v, want a *SyntaxMatchError", test.syntax, test.value, match.err)
 						}
-						if matchError.Offset != matchError.Loc.Start.Offset {
-							t.Errorf("Match(%q, %q) error.Offset = %d, want loc.start.offset %d", test.syntax, test.value, matchError.Offset, matchError.Loc.Start.Offset)
-						}
 						wantStart, wantEnd := test.start, test.end
 						if v.typ == "ast" && test.astStart != -1 {
 							wantStart = test.astStart

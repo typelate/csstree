@@ -11,10 +11,11 @@ type Fragment struct {
 	Nodes  *List[Node]
 }
 
-// errEmptyMatchFragment is returned for a fragment of a syntax that
-// matched no tokens, such as the empty value of a property that allows
-// one; upstream throws a TypeError reading its first token.
-var errEmptyMatchFragment = errors.New("cannot find the nodes of a syntax that matched no tokens")
+// ErrEmptyFragment is returned by the Find*Fragments methods of Lexer for
+// a fragment of a syntax that matched no tokens, such as the empty value
+// of a property that allows one; upstream throws a TypeError reading its
+// first token.
+var ErrEmptyFragment = errors.New("csstree: a syntax that matched no tokens has no fragment")
 
 func getFirstMatchNode(matchNode *MatchNode) (Node, error) {
 	if matchNode.Match == nil {
@@ -22,7 +23,7 @@ func getFirstMatchNode(matchNode *MatchNode) (Node, error) {
 	}
 
 	if len(matchNode.Match) == 0 {
-		return nil, errEmptyMatchFragment
+		return nil, ErrEmptyFragment
 	}
 
 	return getFirstMatchNode(matchNode.Match[0])
@@ -34,7 +35,7 @@ func getLastMatchNode(matchNode *MatchNode) (Node, error) {
 	}
 
 	if len(matchNode.Match) == 0 {
-		return nil, errEmptyMatchFragment
+		return nil, ErrEmptyFragment
 	}
 
 	return getLastMatchNode(matchNode.Match[len(matchNode.Match)-1])

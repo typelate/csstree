@@ -3,7 +3,6 @@
 package csstree
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -157,7 +156,7 @@ func buildGroupMatchGraph(combinator definitionsyntax.Combinator, terms []*match
 		return buildAnyInAnyOrderMatchGraph(terms, false), nil
 	}
 
-	return nil, fmt.Errorf("unknown combinator %q", combinator)
+	return nil, fmt.Errorf("csstree: unknown definition syntax combinator %q", combinator)
 }
 
 // buildJuxtaposedMatchGraph is the " " combinator.
@@ -615,8 +614,11 @@ func buildMatchGraphInternal(node definitionsyntax.Node) (*matchGraphNode, error
 	default:
 		// upstream: new Error('Unknown node type:', node.type), whose
 		// message is the first argument only
-		//lint:ignore ST1005 upstream message
-		return nil, errors.New("Unknown node type:")
+		typ := ""
+		if node != nil {
+			typ = node.Type()
+		}
+		return nil, &UnknownNodeTypeError{Type: typ}
 	}
 }
 
