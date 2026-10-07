@@ -16,11 +16,11 @@ func TestConvert(t *testing.T) {
 			ast := mustParse(t, css, ParseOptions{})
 			data, err := json.Marshal(ast)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("json.Marshal(ast): %v", err)
 			}
 			var plainObject map[string]any
 			if err := json.Unmarshal(data, &plainObject); err != nil {
-				t.Fatal(err)
+				t.Fatalf("json.Unmarshal(data, &plainObject): %v", err)
 			}
 
 			converted, err := FromPlainObject(plainObject)
@@ -29,7 +29,7 @@ func TestConvert(t *testing.T) {
 			}
 			actual, err := Generate(converted, GenerateOptions{})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Generate(converted, GenerateOptions{}): %v", err)
 			}
 
 			if actual != css {
@@ -42,7 +42,7 @@ func TestConvert(t *testing.T) {
 			expected := toPlainJSON(t, ast)
 			actual, err := ToPlainObject(ast)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("ToPlainObject(ast): %v", err)
 			}
 
 			// DeepEqual, not JSON: the plain object has the Go types
@@ -58,11 +58,11 @@ func TestConvert(t *testing.T) {
 			ast := mustParse(t, css, ParseOptions{Positions: true, Filename: "test.css"})
 			plainObject, err := ToPlainObject(ast)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("ToPlainObject(ast): %v", err)
 			}
 			converted, err := FromPlainObject(plainObject)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("FromPlainObject(plainObject): %v", err)
 			}
 			assertJSONEqual(t, "FromPlainObject(ToPlainObject(ast))", toPlainJSON(t, converted), toPlainJSON(t, ast))
 		})
@@ -85,7 +85,7 @@ func TestConvert(t *testing.T) {
 				t.Run(test.name, func(t *testing.T) {
 					var plainObject map[string]any
 					if err := json.Unmarshal([]byte(test.object), &plainObject); err != nil {
-						t.Fatal(err)
+						t.Fatalf("json.Unmarshal([]byte(test.object), &plainObject): %v", err)
 					}
 					if node, err := FromPlainObject(plainObject); err == nil {
 						t.Errorf("FromPlainObject(%s) = %v, want an error", test.object, node)

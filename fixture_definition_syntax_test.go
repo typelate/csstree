@@ -124,11 +124,11 @@ func loadAtruleTests(t *testing.T) ([]string, map[string]atruleTest) {
 	filename := filepath.Join(definitionSyntaxFixtureDir, "atrules.json")
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("os.ReadFile(%q): %v", filename, err)
 	}
 	locator, err := fixturetest.NewJSONLocator(path.Join(definitionSyntaxFixtureDir, "atrules.json"), data)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("fixturetest.NewJSONLocator(..., data): %v", err)
 	}
 
 	var raw map[string]struct {
@@ -144,7 +144,7 @@ func loadAtruleTests(t *testing.T) ([]string, map[string]atruleTest) {
 	for _, key := range locator.Keys() {
 		name, err := locator.Get(key)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("locator.Get(%q): %v", key, err)
 		}
 		tests[key] = atruleTest{
 			Name:        name,

@@ -196,7 +196,7 @@ func TestSpecGenerateReverseSolidusFixedPoint(t *testing.T) {
 		t.Run(source, func(t *testing.T) {
 			ast, err := Parse(source, ParseOptions{})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ParseOptions{}): %v", source, err)
 			}
 			first := mustGenerate(t, ast)
 			if first != source {
@@ -204,7 +204,7 @@ func TestSpecGenerateReverseSolidusFixedPoint(t *testing.T) {
 			}
 			ast, err = Parse(first, ParseOptions{})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ParseOptions{}): %v", first, err)
 			}
 			if second := mustGenerate(t, ast); second != first {
 				t.Errorf("Generate(Parse(%q)) = %q, want %q", first, second, first)

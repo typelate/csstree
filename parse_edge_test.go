@@ -39,7 +39,7 @@ func TestParseNameWithDottedCapitalI(t *testing.T) {
 				return nil
 			}})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ...): %v", tt.source, err)
 			}
 			if got := enterTypes(t, ast); got != tt.types {
 				t.Errorf("Parse(%q) node types = %q, want %q", tt.source, got, tt.types)
@@ -58,7 +58,7 @@ func mustGenerate(t *testing.T, ast Node) string {
 	t.Helper()
 	css, err := Generate(ast, GenerateOptions{})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Generate(ast, GenerateOptions{}): %v", err)
 	}
 	return css
 }
@@ -146,7 +146,7 @@ func TestParseOnParseErrorPanics(t *testing.T) {
 		messages = append(messages, err.Error())
 		return nil
 	}}); err != nil {
-		t.Fatal(err)
+		t.Fatalf("Parse(%q, ...): %v", source, err)
 	}
 	// upstream ends with `")" is expected`: it reads the a of (a:]) as a
 	// condition, which the port rejects (see TestSpecConditionGrammar)
@@ -168,7 +168,7 @@ func TestParseConditionUnknownKind(t *testing.T) {
 		return nil
 	}})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Parse(%q, ...): %v", "(a)", err)
 	}
 	if got, want := enterTypes(t, ast), "Condition GeneralEnclosed Identifier"; got != want {
 		t.Errorf("node types = %q, want %q", got, want)

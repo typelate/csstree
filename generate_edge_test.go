@@ -20,7 +20,7 @@ func TestSourceMapSourcesFileAndContent(t *testing.T) {
 	sourceMap := &SourceMapGenerator{File: "out\n.css"}
 	css, err := Generate(a, GenerateOptions{SourceMap: sourceMap})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Generate(a, ...): %v", err)
 	}
 	sourceMap.SetSourceContent("a.css", "a{b:c}\n\"x\"")
 
@@ -33,7 +33,7 @@ func TestSourceMapSourcesFileAndContent(t *testing.T) {
 	}
 	data, err := sourceMap.MarshalJSON()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("sourceMap.MarshalJSON(): %v", err)
 	}
 	if string(data) != want {
 		t.Errorf("MarshalJSON() = %s, want %s", data, want)
@@ -96,7 +96,7 @@ func TestSourceMapGeneratorAddMapping(t *testing.T) {
 			{Generated: SourceMapPosition{Line: 1, Column: 1000}, Original: &SourceMapPosition{Line: 300, Column: 0}, Source: "y"},
 		} {
 			if err := g.AddMapping(m); err != nil {
-				t.Fatal(err)
+				t.Fatalf("g.AddMapping(m): %v", err)
 			}
 		}
 		g.SetSourceContent("y", "yy")
@@ -129,7 +129,7 @@ func TestGenerateTokens(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			css, err := Generate(tt.node, GenerateOptions{Mode: tt.mode})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Generate(tt.node, GenerateOptions{Mode: tt.mode}): %v", err)
 			}
 			if css != tt.want {
 				t.Errorf("Generate() = %q, want %q", css, tt.want)
@@ -193,7 +193,7 @@ func TestAtruleDefinitionMarshalJSON(t *testing.T) {
 	} {
 		data, err := tt.definition.MarshalJSON()
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("tt.definition.MarshalJSON(): %v", err)
 		}
 		if string(data) != tt.want {
 			t.Errorf("MarshalJSON(%+v) = %s, want %s", tt.definition, data, tt.want)
@@ -208,7 +208,7 @@ func TestCloneASTFixtures(t *testing.T) {
 		options.Positions = true
 		ast, err := Parse(test.Source, options)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Parse(%q, options): %v", test.Source, err)
 		}
 		astCopy := Clone(ast)
 

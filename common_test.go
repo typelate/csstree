@@ -28,7 +28,7 @@ func normalizeNewlines(str string) string {
 func TestCommon(t *testing.T) {
 	data, err := os.ReadFile(stringifyFixtureFilename)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("os.ReadFile(%q): %v", stringifyFixtureFilename, err)
 	}
 	fixture := normalizeNewlines(string(data))
 
@@ -45,7 +45,7 @@ func TestCommon(t *testing.T) {
 			Positions: true,
 		})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Parse(%q, ...): %v", fixture, err)
 		}
 
 		var buf bytes.Buffer
@@ -53,12 +53,12 @@ func TestCommon(t *testing.T) {
 		enc.SetEscapeHTML(false)
 		enc.SetIndent("", "    ")
 		if err := enc.Encode(ast); err != nil {
-			t.Fatal(err)
+			t.Fatalf("enc.Encode(ast): %v", err)
 		}
 
 		expectedData, err := os.ReadFile(strings.TrimSuffix(stringifyFixtureFilename, ".css") + ".ast")
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("os.ReadFile(...): %v", err)
 		}
 		expected := normalizeNewlines(strings.TrimSpace(string(expectedData)))
 		actual := strings.TrimSuffix(buf.String(), "\n")
@@ -79,7 +79,7 @@ func TestCommon(t *testing.T) {
 		foundTypes := make(map[string]bool)
 		ast, err := Parse(fixture, ParseOptions{})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Parse(%q, ParseOptions{}): %v", fixture, err)
 		}
 
 		if err := Walk(ast, WalkOptions{
@@ -88,7 +88,7 @@ func TestCommon(t *testing.T) {
 				return WalkContinue
 			},
 		}); err != nil {
-			t.Fatal(err)
+			t.Fatalf("Walk(ast, ...): %v", err)
 		}
 
 		var actual []string
@@ -137,14 +137,14 @@ func TestCommon(t *testing.T) {
 			Generic: new(false),
 		})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Fork(...): %v", err)
 		}
 
 		forkWithGeneric, err := Fork(&Config{
 			// By default, generic is true
 		})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Fork(...): %v", err)
 		}
 
 		// Generic should be set
@@ -158,7 +158,7 @@ func TestCommon(t *testing.T) {
 		// Lexer match should depend on generic (<length> is generic type)
 		node, err := Parse("1px", ParseOptions{Context: "value"})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf(`Parse(%q, ParseOptions{Context: "value"}): %v`, "1px", err)
 		}
 
 		// upstream asserts that match throws; the Go lexer reports what
@@ -176,7 +176,7 @@ func TestCommon(t *testing.T) {
 		t.Run("extend nodes", func(t *testing.T) {
 			ast, err := Parse("20px", ParseOptions{Context: "value"})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf(`Parse(%q, ParseOptions{Context: "value"}): %v`, "20px", err)
 			}
 			forkedSyntax, err := Fork(&Config{
 				Node: map[string]NodeConfig{
@@ -188,7 +188,7 @@ func TestCommon(t *testing.T) {
 				},
 			})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Fork(...): %v", err)
 			}
 
 			if actual, err := forkedSyntax.Generate(ast, GenerateOptions{}); err != nil || actual != "?px" {

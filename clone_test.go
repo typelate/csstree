@@ -46,11 +46,11 @@ func TestClone(t *testing.T) {
 		createCloneTest(t, "an AST as JSON", func(t *testing.T) Node {
 			plainObject, err := ToPlainObject(mustParse(t, ".test{color:red;}@media foo{div{color:green}}", ParseOptions{}))
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("ToPlainObject(...): %v", err)
 			}
 			ast, err := FromPlainObject(plainObject)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("FromPlainObject(plainObject): %v", err)
 			}
 			return ast
 		})

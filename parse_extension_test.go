@@ -58,7 +58,7 @@ func assertPlainObject(t *testing.T, syntax *Syntax, source string, options Pars
 	}
 	actual, err := ToPlainObject(ast)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("ToPlainObject(ast): %v", err)
 	}
 	if !reflect.DeepEqual(actual, expected) {
 		t.Errorf("ToPlainObject(Parse(%q)) = %v, want %v", source, actual, expected)
@@ -88,7 +88,7 @@ func TestParseExtension(t *testing.T) {
 				return syntaxConfig
 			}))
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Fork(...): %v", err)
 			}
 
 			t.Run("should not affect base syntax", func(t *testing.T) {
@@ -134,7 +134,7 @@ func TestParseExtension(t *testing.T) {
 				return syntaxConfig
 			}))
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Fork(...): %v", err)
 			}
 
 			t.Run("should not affect base syntax", func(t *testing.T) {

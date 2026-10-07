@@ -89,7 +89,7 @@ func createWalkTest(t *testing.T, test astFixtureTest, walker func(ast Node, fn 
 	}
 
 	if err := walker(ast, func(node Node) { actual = append(actual, node.Type()) }); err != nil {
-		t.Fatal(err)
+		t.Fatalf("walker(ast, ...): %v", err)
 	}
 
 	// type arrays should be equal
@@ -110,7 +110,7 @@ func createWalkVisitTest(t *testing.T, test astFixtureTest, visitType string, wa
 	}
 
 	if err := walker(ast, func(node Node) { actual = append(actual, node.Type()) }); err != nil {
-		t.Fatal(err)
+		t.Fatalf("walker(ast, ...): %v", err)
 	}
 
 	// type arrays should be equal
@@ -139,7 +139,7 @@ func createWalkDeclarationsTest(t *testing.T, test astFixtureTest, walker func(a
 	}
 
 	if err := walker(ast, func(node Node) { actual = append(actual, node.Type()) }); err != nil {
-		t.Fatal(err)
+		t.Fatalf("walker(ast, ...): %v", err)
 	}
 
 	// type arrays should be equal

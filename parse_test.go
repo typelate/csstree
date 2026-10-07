@@ -25,11 +25,11 @@ func loadGenericTypesFixture(t *testing.T) map[string]genericTypeFixture {
 	t.Helper()
 	data, err := os.ReadFile("testdata/definition-syntax-match/generic.json")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("os.ReadFile(%q): %v", "testdata/definition-syntax-match/generic.json", err)
 	}
 	var fixture map[string]genericTypeFixture
 	if err := json.Unmarshal(data, &fixture); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(data, &fixture): %v", err)
 	}
 	return fixture
 }
@@ -196,7 +196,7 @@ func TestParse(t *testing.T) {
 		t.Run("should take parse context", func(t *testing.T) {
 			ast, err := Parse("property: value", ParseOptions{})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ParseOptions{}): %v", "property: value", err)
 			}
 			want := map[string]any{
 				"type": "StyleSheet",
@@ -215,7 +215,7 @@ func TestParse(t *testing.T) {
 				Context: "declaration",
 			})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ...): %v", "property: value", err)
 			}
 			want = map[string]any{
 				"type":      "Declaration",
@@ -249,7 +249,7 @@ func TestParse(t *testing.T) {
 		t.Run("should use List for children by default", func(t *testing.T) {
 			ast, err := Parse("a{}", ParseOptions{})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ParseOptions{}): %v", "a{}", err)
 			}
 			if ast.(*StyleSheet).Children == nil {
 				t.Error("Children = nil, should be List")
@@ -279,7 +279,7 @@ func TestParse(t *testing.T) {
 			},
 		})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Parse(%q, ...): %v", "{a: 1!; foo; b: 2}", err)
 		}
 
 		if got := ast.(*Block).Children.Size(); got != 3 {
@@ -467,7 +467,7 @@ func TestParse(t *testing.T) {
 					actual = append(actual, comment{value, loc})
 				},
 			}); err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ...): %v", source, err)
 			}
 
 			want := []comment{
@@ -506,7 +506,7 @@ func TestParse(t *testing.T) {
 					actual = append(actual, comment{value, loc})
 				},
 			}); err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ...): %v", source, err)
 			}
 
 			want := []comment{
@@ -561,7 +561,7 @@ func TestParse(t *testing.T) {
 					actual = append(actual, indexedToken{index, token{tokenType, start, end}})
 				},
 			}); err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ...): %v", source, err)
 			}
 
 			var want []indexedToken
@@ -620,7 +620,7 @@ func TestParse(t *testing.T) {
 					})
 				},
 			}); err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ...): %v", source, err)
 			}
 
 			var want []apiToken
@@ -667,7 +667,7 @@ func TestParse(t *testing.T) {
 			var positions []position
 			ast, err := Parse(source, options)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, options): %v", source, err)
 			}
 
 			if err := Walk(ast, WalkOptions{
@@ -683,7 +683,7 @@ func TestParse(t *testing.T) {
 					return WalkContinue
 				},
 			}); err != nil {
-				t.Fatal(err)
+				t.Fatalf("Walk(ast, ...): %v", err)
 			}
 			return positions
 		}

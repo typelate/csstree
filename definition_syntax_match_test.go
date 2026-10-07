@@ -42,7 +42,7 @@ func forEachDefinitionSyntaxMatchTest(t *testing.T, factory func(t *testing.T, t
 
 	entries, err := os.ReadDir(definitionSyntaxMatchFixtureDir)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("os.ReadDir(%q): %v", definitionSyntaxMatchFixtureDir, err)
 	}
 
 	for _, entry := range entries {
@@ -54,11 +54,11 @@ func forEachDefinitionSyntaxMatchTest(t *testing.T, factory func(t *testing.T, t
 		filename := filepath.Join(definitionSyntaxMatchFixtureDir, fn)
 		data, err := os.ReadFile(filename)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("os.ReadFile(%q): %v", filename, err)
 		}
 		locator, err := fixturetest.NewJSONLocator(path.Join(definitionSyntaxMatchFixtureDir, fn), data)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("fixturetest.NewJSONLocator(..., data): %v", err)
 		}
 
 		var tests map[string]definitionSyntaxMatchTest
@@ -70,7 +70,7 @@ func forEachDefinitionSyntaxMatchTest(t *testing.T, factory func(t *testing.T, t
 			test := tests[key]
 			test.Name, err = locator.Get(key)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("locator.Get(%q): %v", key, err)
 			}
 
 			factory(t, key, test)
@@ -218,11 +218,11 @@ func createSyntaxTest(t *testing.T, testName string, test definitionSyntaxMatchT
 			t.Run(`should MATCH to "`+input+`"`, func(t *testing.T) {
 				graph, err := matchGraph()
 				if err != nil {
-					t.Fatal(err)
+					t.Fatalf("matchGraph(): %v", err)
 				}
 				m, err := matchAsList(stringToTokens(input), graph, syntaxes)
 				if err != nil {
-					t.Fatal(err)
+					t.Fatalf("matchAsList(stringToTokens(input), graph, syntaxes): %v", err)
 				}
 
 				if m.list == nil {
@@ -250,11 +250,11 @@ func createSyntaxTest(t *testing.T, testName string, test definitionSyntaxMatchT
 			t.Run(`should NOT MATCH to "`+input+`"`, func(t *testing.T) {
 				graph, err := matchGraph()
 				if err != nil {
-					t.Fatal(err)
+					t.Fatalf("matchGraph(): %v", err)
 				}
 				m, err := matchAsList(stringToTokens(input), graph, syntaxes)
 				if err != nil {
-					t.Fatal(err)
+					t.Fatalf("matchAsList(stringToTokens(input), graph, syntaxes): %v", err)
 				}
 
 				if m.list != nil {
@@ -269,11 +269,11 @@ func createSyntaxTest(t *testing.T, testName string, test definitionSyntaxMatchT
 			t.Run(`match result for "`+input+`"`, func(t *testing.T) {
 				graph, err := matchGraph()
 				if err != nil {
-					t.Fatal(err)
+					t.Fatalf("matchGraph(): %v", err)
 				}
 				m, err := matchAsTree(stringToTokens(input), graph, syntaxes)
 				if err != nil {
-					t.Fatal(err)
+					t.Fatalf("matchAsTree(stringToTokens(input), graph, syntaxes): %v", err)
 				}
 				if m.tree == nil {
 					t.Fatalf("matchAsTree(%q) = null, want a match", input)
@@ -294,7 +294,7 @@ func TestDefinitionSyntaxMatch(t *testing.T) {
 		t.Run("should raise an error on broken type reference", func(t *testing.T) {
 			matchTree, err := buildMatchGraphFromString("<foo>", nil)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("buildMatchGraphFromString(%q, nil): %v", "<foo>", err)
 			}
 
 			_, err = matchAsList(stringToTokens("foo"), matchTree, &testMatchSyntaxes{})
@@ -307,7 +307,7 @@ func TestDefinitionSyntaxMatch(t *testing.T) {
 		t.Run("should raise an error on broken property reference", func(t *testing.T) {
 			matchTree, err := buildMatchGraphFromString("<'foo'>", nil)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("buildMatchGraphFromString(%q, nil): %v", "<'foo'>", err)
 			}
 
 			_, err = matchAsList(stringToTokens("foo"), matchTree, &testMatchSyntaxes{})

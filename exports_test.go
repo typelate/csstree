@@ -22,20 +22,20 @@ func TestExports(t *testing.T) {
 	const fixtureFilename = "testdata/stringify.css"
 	cssData, err := os.ReadFile(fixtureFilename)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("os.ReadFile(%q): %v", fixtureFilename, err)
 	}
 	css := string(cssData)
 	expectedData, err := os.ReadFile(strings.Replace(fixtureFilename, ".css", ".ast", 1))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("os.ReadFile(...): %v", err)
 	}
 	var expectedPlain map[string]any
 	if err := json.Unmarshal(expectedData, &expectedPlain); err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(expectedData, &expectedPlain): %v", err)
 	}
 	expectedAST, err := FromPlainObject(expectedPlain)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("FromPlainObject(expectedPlain): %v", err)
 	}
 
 	t.Run("exports / entry points", func(t *testing.T) {
@@ -112,7 +112,7 @@ func TestExports(t *testing.T) {
 		t.Run("parser", func(t *testing.T) {
 			ast, err := Parse(css, ParseOptions{})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ParseOptions{}): %v", css, err)
 			}
 			assertJSONEqual(t, "Parse(stringify.css)", stripLoc(toPlainJSON(t, ast)), stripLoc(any(expectedPlain)))
 		})
@@ -131,7 +131,7 @@ func TestExports(t *testing.T) {
 					if node.Type() == "SelectorList" || node.Type() == "Selector" {
 						css, err := Generate(node, GenerateOptions{})
 						if err != nil {
-							t.Fatal(err)
+							t.Fatalf("Generate(node, GenerateOptions{}): %v", err)
 						}
 						context := "selector"
 						if node.Type() == "SelectorList" {
@@ -148,14 +148,14 @@ func TestExports(t *testing.T) {
 					return WalkContinue
 				},
 			}); err != nil {
-				t.Fatal(err)
+				t.Fatalf("Walk(expectedAST, ...): %v", err)
 			}
 
 			for _, test := range selectors {
 				t.Run(test.css, func(t *testing.T) {
 					ast, err := ParseSelector(test.css, ParseOptions{Context: test.context})
 					if err != nil {
-						t.Fatal(err)
+						t.Fatalf("ParseSelector(%q, ...): %v", test.css, err)
 					}
 					assertASTEqualNoLoc(t, test.css, ast, test.expected)
 				})
@@ -166,11 +166,11 @@ func TestExports(t *testing.T) {
 			generate := CreateGenerator(generatorConfig())
 			got, err := generate(expectedAST, GenerateOptions{})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("generate(expectedAST, GenerateOptions{}): %v", err)
 			}
 			want, err := Generate(expectedAST, GenerateOptions{})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Generate(expectedAST, GenerateOptions{}): %v", err)
 			}
 			if got != want {
 				t.Errorf("generator Generate(stringify.ast) = %q, want %q", got, want)
@@ -180,7 +180,7 @@ func TestExports(t *testing.T) {
 		t.Run("walker", func(t *testing.T) {
 			walker, err := CreateWalker(walkerConfig())
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("CreateWalker(walkerConfig()): %v", err)
 			}
 			var actualTypes []string
 			var expectedTypes []string
@@ -191,7 +191,7 @@ func TestExports(t *testing.T) {
 					return WalkContinue
 				},
 			}); err != nil {
-				t.Fatal(err)
+				t.Fatalf("walker.Walk(expectedAST, ...): %v", err)
 			}
 			if err := Walk(expectedAST, WalkOptions{
 				Enter: func(_ *WalkContext, node Node, _ *ListItem[Node], _ *List[Node]) WalkAction {
@@ -199,7 +199,7 @@ func TestExports(t *testing.T) {
 					return WalkContinue
 				},
 			}); err != nil {
-				t.Fatal(err)
+				t.Fatalf("Walk(expectedAST, ...): %v", err)
 			}
 
 			if !slices.Equal(actualTypes, expectedTypes) {
@@ -213,7 +213,7 @@ func TestExports(t *testing.T) {
 			// lists are []any, and FromPlainObject builds *List[Node]
 			ast, err := Parse(css, ParseOptions{})
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("Parse(%q, ParseOptions{}): %v", css, err)
 			}
 			findFirstAtrule := func(ast Node) *Atrule {
 				atrule, _ := Find(ast, func(_ *WalkContext, node Node, _ *ListItem[Node], _ *List[Node]) bool {
@@ -228,7 +228,7 @@ func TestExports(t *testing.T) {
 
 			plain, err := ToPlainObject(ast)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("ToPlainObject(ast): %v", err)
 			}
 			if _, ok := plain["children"].([]any); !ok {
 				t.Errorf("ToPlainObject().children = %T, want []any", plain["children"])
@@ -236,7 +236,7 @@ func TestExports(t *testing.T) {
 
 			back, err := FromPlainObject(plain)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("FromPlainObject(plain): %v", err)
 			}
 			if back.(*StyleSheet).Children == nil || findFirstAtrule(back).Prelude.(*AtrulePrelude).Children == nil {
 				t.Errorf("FromPlainObject() children are not lists")
@@ -262,7 +262,7 @@ func TestExports(t *testing.T) {
 		t.Run("data", func(t *testing.T) {
 			data, err := defaultDefinitions()
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("defaultDefinitions(): %v", err)
 			}
 			if len(data.Atrules) == 0 || len(data.Properties) == 0 || len(data.Types) == 0 {
 				t.Errorf("definitions have %d atrules, %d properties, %d types, want some of each", len(data.Atrules), len(data.Properties), len(data.Types))
@@ -272,7 +272,7 @@ func TestExports(t *testing.T) {
 		t.Run("data-patch", func(t *testing.T) {
 			var dataPatch map[string]json.RawMessage
 			if err := json.Unmarshal(patchJSON, &dataPatch); err != nil {
-				t.Fatal(err)
+				t.Fatalf("json.Unmarshal(patchJSON, &dataPatch): %v", err)
 			}
 			got := slices.Sorted(maps.Keys(dataPatch))
 			want := []string{"atrules", "properties", "types"}

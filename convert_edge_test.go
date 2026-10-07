@@ -16,11 +16,11 @@ func TestFromPlainObjectFields(t *testing.T) {
 		dec.UseNumber()
 		var object map[string]any
 		if err := dec.Decode(&object); err != nil {
-			t.Fatal(err)
+			t.Fatalf("dec.Decode(&object): %v", err)
 		}
 		node, err := FromPlainObject(object)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("FromPlainObject(object): %v", err)
 		}
 		if loc := node.Location(); loc == nil || loc.Source != "s" || loc.End.Offset != 1 || loc.End.Column != 2 {
 			t.Errorf("Location() = %+v", loc)

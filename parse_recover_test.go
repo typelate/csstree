@@ -26,7 +26,7 @@ func TestParseRecoversFromPanics(t *testing.T) {
 		return syntaxConfig
 	}))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Fork(...): %v", err)
 	}
 
 	t.Run("parseWithFallback falls back to Raw", func(t *testing.T) {

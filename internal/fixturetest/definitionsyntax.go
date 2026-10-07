@@ -67,7 +67,7 @@ func LoadDefinitionSyntaxTests(t testing.TB, moduleRoot string) []DefinitionSynt
 		// named as upstream names it, relative to the module root
 		locator, err := NewJSONLocator(path.Join(DefinitionSyntaxDir, fn), data)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("NewJSONLocator(%q): %v", filename, err)
 		}
 
 		var raw map[string]struct {
@@ -88,7 +88,7 @@ func LoadDefinitionSyntaxTests(t testing.TB, moduleRoot string) []DefinitionSynt
 			test := raw[key]
 			name, err := locator.Get(key)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("locator.Get(%q): %v", key, err)
 			}
 
 			item := DefinitionSyntaxTest{

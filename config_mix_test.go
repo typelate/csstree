@@ -105,7 +105,7 @@ func TestMix(t *testing.T) {
 			config.Scope["Value"].Functions["var"] = nil
 			return config
 		})); err != nil {
-			t.Fatal(err)
+			t.Fatalf("base.Fork(...): %v", err)
 		}
 		if base.config.Scope["Value"].GetNode == nil || getNode == nil {
 			t.Error("Fork() changed the scope of the base syntax")
@@ -125,11 +125,11 @@ func TestMix(t *testing.T) {
 	t.Run("fork with nil extension", func(t *testing.T) {
 		syntax, err := Fork(nil)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Fork(nil): %v", err)
 		}
 		ast, err := syntax.Parse("a{b:c}", ParseOptions{})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("syntax.Parse(%q, ParseOptions{}): %v", "a{b:c}", err)
 		}
 		if css, err := syntax.Generate(ast, GenerateOptions{}); err != nil || css != "a{b:c}" {
 			t.Errorf("Fork(nil).Generate(Parse(a{b:c})) = %q, %v, want %q", css, err, "a{b:c}")

@@ -36,23 +36,23 @@ func TestGenerateOpenStringRoundTrip(t *testing.T) {
 	} {
 		ast, err := Parse(source, ParseOptions{})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Parse(%q, ParseOptions{}): %v", source, err)
 		}
 		css, err := Generate(ast, GenerateOptions{})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Generate(ast, GenerateOptions{}): %v", err)
 		}
 		again, err := Parse(css, ParseOptions{})
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("Parse(%q, ParseOptions{}): %v", css, err)
 		}
 		want, err := ToPlainObject(ast)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("ToPlainObject(ast): %v", err)
 		}
 		got, err := ToPlainObject(again)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("ToPlainObject(again): %v", err)
 		}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Parse(Generate(Parse(%q))) = %v, want %v (generated %q)", source, got, want, css)
