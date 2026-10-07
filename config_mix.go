@@ -164,12 +164,12 @@ func mix(dest, src *Config) *Config {
 		result.Properties = mixSyntaxes(dest.Properties, src.Properties)
 	}
 
-	if src.ParseContext != nil {
-		result.ParseContext = maps.Clone(dest.ParseContext)
-		if result.ParseContext == nil {
-			result.ParseContext = make(map[string]func(p *Parser, options ParseOptions) Node)
+	if src.Contexts != nil {
+		result.Contexts = maps.Clone(dest.Contexts)
+		if result.Contexts == nil {
+			result.Contexts = make(map[ParseContext]ContextParser)
 		}
-		maps.Copy(result.ParseContext, src.ParseContext)
+		maps.Copy(result.Contexts, src.Contexts)
 	}
 
 	if src.Scope != nil {

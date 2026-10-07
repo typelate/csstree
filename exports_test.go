@@ -101,7 +101,7 @@ func TestExports(t *testing.T) {
 		t.Run("selector-parser", func(t *testing.T) {
 			type selectorTest struct {
 				css      string
-				context  string
+				context  ParseContext
 				expected Node
 			}
 			var selectors []selectorTest
@@ -114,9 +114,9 @@ func TestExports(t *testing.T) {
 						if err != nil {
 							t.Fatalf("Generate(node, GenerateOptions{}): %v", err)
 						}
-						context := "selector"
+						context := ContextSelector
 						if node.Type() == "SelectorList" {
-							context = "selectorList"
+							context = ContextSelectorList
 						}
 						selectors = append(selectors, selectorTest{
 							css:      css,

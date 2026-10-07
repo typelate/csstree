@@ -29,7 +29,7 @@ func parseCollectingErrors(t *testing.T, source string, options ParseOptions) (N
 // order ("" skips the check), generated CSS and recovered errors.
 type specParseTest struct {
 	source   string
-	context  string
+	context  ParseContext
 	json     string
 	types    string
 	generate string

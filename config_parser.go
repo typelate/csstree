@@ -5,27 +5,27 @@ package csstree
 // parserConfig returns the parser configuration of the default syntax.
 func parserConfig() *Config {
 	return &Config{
-		ParseContext: map[string]func(p *Parser, options ParseOptions) Node{
-			"default":    func(p *Parser, _ ParseOptions) Node { return p.StyleSheet() },
-			"stylesheet": func(p *Parser, _ ParseOptions) Node { return p.StyleSheet() },
-			"atrule":     func(p *Parser, _ ParseOptions) Node { return p.Atrule(false) },
-			"atrulePrelude": func(p *Parser, options ParseOptions) Node {
+		Contexts: map[ParseContext]ContextParser{
+			ContextDefault:    func(p *Parser, _ ParseOptions) Node { return p.StyleSheet() },
+			ContextStylesheet: func(p *Parser, _ ParseOptions) Node { return p.StyleSheet() },
+			ContextAtrule:     func(p *Parser, _ ParseOptions) Node { return p.Atrule(false) },
+			ContextAtrulePrelude: func(p *Parser, options ParseOptions) Node {
 				return p.AtrulePrelude(options.Atrule)
 			},
-			"mediaQueryList": func(p *Parser, _ ParseOptions) Node { return p.MediaQueryList() },
-			"mediaQuery":     func(p *Parser, _ ParseOptions) Node { return p.MediaQuery() },
-			"condition": func(p *Parser, options ParseOptions) Node {
+			ContextMediaQueryList: func(p *Parser, _ ParseOptions) Node { return p.MediaQueryList() },
+			ContextMediaQuery:     func(p *Parser, _ ParseOptions) Node { return p.MediaQuery() },
+			ContextCondition: func(p *Parser, options ParseOptions) Node {
 				return p.Condition(options.Kind)
 			},
-			"rule":         func(p *Parser, _ ParseOptions) Node { return p.Rule() },
-			"selectorList": func(p *Parser, _ ParseOptions) Node { return p.SelectorList() },
-			"selector":     func(p *Parser, _ ParseOptions) Node { return p.Selector() },
-			"block": func(p *Parser, _ ParseOptions) Node {
+			ContextRule:         func(p *Parser, _ ParseOptions) Node { return p.Rule() },
+			ContextSelectorList: func(p *Parser, _ ParseOptions) Node { return p.SelectorList() },
+			ContextSelector:     func(p *Parser, _ ParseOptions) Node { return p.Selector() },
+			ContextBlock: func(p *Parser, _ ParseOptions) Node {
 				return p.Block(true)
 			},
-			"declarationList": func(p *Parser, _ ParseOptions) Node { return p.DeclarationList() },
-			"declaration":     func(p *Parser, _ ParseOptions) Node { return p.Declaration() },
-			"value":           func(p *Parser, _ ParseOptions) Node { return p.Value() },
+			ContextDeclarationList: func(p *Parser, _ ParseOptions) Node { return p.DeclarationList() },
+			ContextDeclaration:     func(p *Parser, _ ParseOptions) Node { return p.Declaration() },
+			ContextValue:           func(p *Parser, _ ParseOptions) Node { return p.Value() },
 		},
 		Features: map[string]map[string]func(p *Parser) Node{
 			"supports": {

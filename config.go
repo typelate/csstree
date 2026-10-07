@@ -8,11 +8,11 @@ import "bytes"
 // Config is a syntax configuration: the keys upstream's createSyntax,
 // createParser, createGenerator, createWalker and Lexer read.
 type Config struct {
-	// ParseContext maps a context name (ParseOptions.Context) to the
-	// function parsing the root node. Upstream also allows the name of a
-	// node type as a string; in Go write a function calling the node's
-	// Parser method.
-	ParseContext map[string]func(p *Parser, options ParseOptions) Node
+	// Contexts maps a parse context (ParseOptions.Context) to the
+	// function parsing the root node (upstream parseContext). Upstream
+	// also allows the name of a node type as a string; in Go write a
+	// function calling the node's Parser method.
+	Contexts map[ParseContext]ContextParser
 	// Features maps a condition kind ("supports", "container") to the
 	// parsers of its functional features (e.g. supports selector()).
 	Features map[string]map[string]func(p *Parser) Node
@@ -39,6 +39,9 @@ type Config struct {
 	Atrules         map[string]AtruleDefinition
 	Properties      map[string]string
 }
+
+// ContextParser parses the root node of a parse context.
+type ContextParser func(p *Parser, options ParseOptions) Node
 
 // AtruleParser holds the parsers of an at-rule (upstream
 // atrule[name].parse = { prelude, block }). A nil field is upstream null.

@@ -41,9 +41,9 @@ func (c matchCase) run(t *testing.T, lexer *Lexer) *MatchResult {
 	t.Helper()
 
 	if c.ast {
-		context := "value"
+		context := ContextValue
 		if c.kind == "prelude" {
-			context = "atrulePrelude"
+			context = ContextAtrulePrelude
 		}
 		node := mustParse(t, c.value, ParseOptions{Context: context, Atrule: c.name, Positions: true})
 		switch c.kind {

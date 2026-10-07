@@ -30,9 +30,9 @@ type GenerateHandlers struct {
 // GenerateOptions configures Generate. The zero value means upstream's
 // defaults.
 type GenerateOptions struct {
-	// Mode selects how whitespace between tokens is decided: "safe" (the
-	// default, also for "") or "spec". Other values are ignored.
-	Mode string
+	// Mode selects how whitespace between tokens is decided; "" means
+	// ModeSafe. Other values are ignored.
+	Mode GenerateMode
 	// Decorator, when set, receives the default handlers and returns the
 	// handlers to use.
 	Decorator func(handlers GenerateHandlers) GenerateHandlers
@@ -43,6 +43,19 @@ type GenerateOptions struct {
 	// mapped.
 	SourceMap *SourceMapGenerator
 }
+
+// GenerateMode selects where the generator puts whitespace between tokens
+// (upstream options.mode).
+type GenerateMode string
+
+const (
+	// ModeSafe adds whitespace between tokens that would otherwise
+	// tokenize differently, and also where some browsers need it.
+	ModeSafe GenerateMode = "safe"
+	// ModeSpec adds whitespace only where CSS Syntax requires it for the
+	// CSS to round-trip.
+	ModeSpec GenerateMode = "spec"
+)
 
 // UnknownNodeTypeError is returned by Generate for a node whose type has no
 // generate function.
@@ -180,9 +193,9 @@ func createGenerator(config *Config) func(node Node, options GenerateOptions) (s
 		}
 
 		switch options.Mode {
-		case "safe":
+		case ModeSafe:
 			handlers.TokenBefore = safeTokenBefore()
-		case "spec":
+		case ModeSpec:
 			handlers.TokenBefore = specTokenBefore()
 		}
 

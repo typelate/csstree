@@ -59,7 +59,7 @@ type astFixtureTest struct {
 func (test astFixtureTest) ParseOptions(throwOnError bool) ParseOptions {
 	o := test.Options
 	options := ParseOptions{
-		Context:   o.Context,
+		Context:   ParseContext(o.Context),
 		Atrule:    o.Atrule,
 		Positions: o.Positions,
 	}

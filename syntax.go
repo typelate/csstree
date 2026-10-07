@@ -220,12 +220,12 @@ func createDefaultSyntax(lexer *Config) *Syntax {
 	walker := walkerConfig()
 
 	syntax, err := NewSyntax(&Config{
-		ParseContext: parser.ParseContext,
-		Features:     parser.Features,
-		Scope:        parser.Scope,
-		Atrule:       parser.Atrule,
-		Pseudo:       parser.Pseudo,
-		Node:         walker.Node,
+		Contexts: parser.Contexts,
+		Features: parser.Features,
+		Scope:    parser.Scope,
+		Atrule:   parser.Atrule,
+		Pseudo:   parser.Pseudo,
+		Node:     walker.Node,
 
 		Generic:         lexer.Generic,
 		CSSWideKeywords: lexer.CSSWideKeywords,

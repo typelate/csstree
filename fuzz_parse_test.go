@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-var fuzzContexts = []string{"stylesheet", "atrule", "atrulePrelude", "mediaQueryList", "mediaQuery", "condition", "rule", "selectorList", "selector", "block", "declarationList", "declaration", "value"}
+var fuzzContexts = []ParseContext{"stylesheet", "atrule", "atrulePrelude", "mediaQueryList", "mediaQuery", "condition", "rule", "selectorList", "selector", "block", "declarationList", "declaration", "value"}
 
 func FuzzParse(f *testing.F) {
 	for _, file := range loadASTFixtures(f, nil) {

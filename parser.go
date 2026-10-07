@@ -20,16 +20,38 @@ const (
 	nullTokenType    = tokenizer.EOF // upstream NULL
 )
 
+// ParseContext names what a parse parses: the node type of the root of
+// the AST (upstream options.context). A syntax may define more contexts in
+// Config.Contexts.
+type ParseContext string
+
+// The parse contexts of the default syntax.
+const (
+	ContextDefault         ParseContext = "default" // a StyleSheet, as ContextStylesheet
+	ContextStylesheet      ParseContext = "stylesheet"
+	ContextAtrule          ParseContext = "atrule"
+	ContextAtrulePrelude   ParseContext = "atrulePrelude" // of ParseOptions.Atrule
+	ContextMediaQueryList  ParseContext = "mediaQueryList"
+	ContextMediaQuery      ParseContext = "mediaQuery"
+	ContextCondition       ParseContext = "condition" // of ParseOptions.Kind
+	ContextRule            ParseContext = "rule"
+	ContextSelectorList    ParseContext = "selectorList"
+	ContextSelector        ParseContext = "selector"
+	ContextBlock           ParseContext = "block"
+	ContextDeclarationList ParseContext = "declarationList"
+	ContextDeclaration     ParseContext = "declaration"
+	ContextValue           ParseContext = "value"
+)
+
 // ParseOptions configures a parse. The zero value means upstream's defaults.
 type ParseOptions struct {
-	// Context names the parse context (upstream options.context), e.g.
-	// "stylesheet", "selector" or "value"; "" means "default".
-	Context string
-	// Atrule is the at-rule name for the "atrulePrelude" context; "" is
-	// upstream null.
+	// Context names the parse context; "" means ContextDefault.
+	Context ParseContext
+	// Atrule is the at-rule name for ContextAtrulePrelude; "" is upstream
+	// null.
 	Atrule string
-	// Kind is the condition kind for the "condition" context; "" means
-	// upstream's default "media".
+	// Kind is the condition kind for ContextCondition ("media",
+	// "supports" or "container"); "" means upstream's default "media".
 	Kind string
 
 	// Positions makes the parser record node locations.
@@ -136,11 +158,12 @@ func (api *TokenIterateAPI) GetRangeLocation(start, end int) *Location {
 // UnknownContextError is returned by a parse with a context the syntax does
 // not define.
 type UnknownContextError struct {
-	Context string
+	Context ParseContext
 }
 
+// Error returns upstream's message, "Unknown context `name`".
 func (e *UnknownContextError) Error() string {
-	return "Unknown context `" + e.Context + "`"
+	return "Unknown context `" + string(e.Context) + "`"
 }
 
 // parseAbort carries an error returned by OnParseError (other than a
@@ -181,15 +204,15 @@ type Parser struct {
 // affected by later changes to the Config it was built from.
 func processConfig(config *Config) *Config {
 	parseConfig := &Config{
-		ParseContext: maps.Clone(config.ParseContext),
-		Features:     maps.Clone(config.Features),
-		Scope:        maps.Clone(config.Scope),
-		Atrule:       maps.Clone(config.Atrule),
-		Pseudo:       maps.Clone(config.Pseudo),
-		Node:         maps.Clone(config.Node),
+		Contexts: maps.Clone(config.Contexts),
+		Features: maps.Clone(config.Features),
+		Scope:    maps.Clone(config.Scope),
+		Atrule:   maps.Clone(config.Atrule),
+		Pseudo:   maps.Clone(config.Pseudo),
+		Node:     maps.Clone(config.Node),
 	}
-	if parseConfig.ParseContext == nil {
-		parseConfig.ParseContext = make(map[string]func(p *Parser, options ParseOptions) Node)
+	if parseConfig.Contexts == nil {
+		parseConfig.Contexts = make(map[ParseContext]ContextParser)
 	}
 	return parseConfig
 }
@@ -259,10 +282,10 @@ func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error
 
 	context := options.Context
 	if context == "" {
-		context = "default"
+		context = ContextDefault
 	}
 
-	contextParser, ok := p.Config.ParseContext[context]
+	contextParser, ok := p.Config.Contexts[context]
 	if !ok || contextParser == nil {
 		return nil, &UnknownContextError{Context: context}
 	}

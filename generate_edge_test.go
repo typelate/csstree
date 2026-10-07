@@ -119,7 +119,7 @@ func TestGenerateTokens(t *testing.T) {
 	for _, tt := range []struct {
 		name string
 		node Node
-		mode string
+		mode GenerateMode
 		want string
 	}{
 		// a lone \ is followed by a newline so it cannot escape what comes next
