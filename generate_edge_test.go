@@ -51,7 +51,7 @@ func TestGenerateWithSourceMapBadLocation(t *testing.T) {
 	}
 }
 
-func TestSourceMapGeneratorAddMapping(t *testing.T) {
+func TestSourceMapAddMapping(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		for _, tt := range []struct {
 			mapping sourceMapping
@@ -107,7 +107,7 @@ func TestSourceMapGeneratorAddMapping(t *testing.T) {
 			{Generated: sourceMapPosition{Line: 1, Column: 1000}, Original: &sourceMapPosition{Line: 300, Column: 0}, Source: "y"},
 		} {
 			if err := g.addMapping(m); err != nil {
-				t.Fatalf("g.AddMapping(m): %v", err)
+				t.Fatalf("g.addMapping(m): %v", err)
 			}
 		}
 		g.SetSourceContent("y", "yy")
