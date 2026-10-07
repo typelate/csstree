@@ -164,11 +164,11 @@ func TestCommon(t *testing.T) {
 		// upstream asserts that match throws; the Go lexer reports what
 		// upstream throws as the result's Error, not a *SyntaxMatchError
 		var matchError *SyntaxMatchError
-		if result := forkWithoutGeneric.Lexer().Match("<length>", node); result.Error == nil || errors.As(result.Error, &matchError) {
-			t.Errorf(`forkWithoutGeneric.Lexer.Match("<length>", 1px) error = %v, want "Bad syntax reference: <length>"`, result.Error)
+		if _, err := forkWithoutGeneric.Lexer().Match("<length>", node); err == nil || errors.As(err, &matchError) {
+			t.Errorf(`forkWithoutGeneric.Lexer.Match("<length>", 1px) error = %v, want "Bad syntax reference: <length>"`, err)
 		}
-		if result := forkWithGeneric.Lexer().Match("<length>", node); result.Error != nil {
-			t.Errorf(`forkWithGeneric.Lexer.Match("<length>", 1px) error = %v, want nil`, result.Error)
+		if _, err := forkWithGeneric.Lexer().Match("<length>", node); err != nil {
+			t.Errorf(`forkWithGeneric.Lexer.Match("<length>", 1px) error = %v, want nil`, err)
 		}
 	})
 

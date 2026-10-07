@@ -14,7 +14,7 @@ import (
 	"github.com/typelate/csstree/definitionsyntax"
 )
 
-// Errors the lexer returns in MatchResult.Error where upstream uses a plain
+// Errors the lexer's Match methods return where upstream uses a plain
 // Error.
 var (
 	// ErrVarNotSupported is returned for a value containing var().
@@ -92,15 +92,14 @@ type MatchNode struct {
 	Node   Node
 }
 
-// MatchResult is the result of a match (upstream buildMatchResult). Matched
-// is nil and Error is set when the value does not match: a
-// *SyntaxMatchError, a *SyntaxReferenceError, an *AtruleSyntaxError, one
-// of the Err* values, or an error where upstream throws (a broken syntax
-// definition or reference, or a node the generator does not know).
+// MatchResult is the result of a match (upstream buildMatchResult without
+// its error). The Match methods return a MatchResult even with an error,
+// as io.Reader returns n with one, so that Iterations can be read; Matched
+// is then nil. Matched is also nil, without an error, for an at-rule
+// without a prelude matched against no prelude.
 type MatchResult struct {
 	Matched    *MatchNode
 	Iterations int
-	Error      error
 }
 
 // Descriptor is a syntax of the lexer: a type, a property, an at-rule
@@ -228,55 +227,43 @@ func syntaxHasTopLevelCommaMultiplier(syntax definitionsyntax.Node) bool {
 		singleTerm.Comma
 }
 
-func buildMatchResult(matched *MatchNode, err error, iterations int) *MatchResult {
-	return &MatchResult{
-		Matched:    matched,
-		Iterations: iterations,
-		Error:      err,
-	}
-}
-
-func matchSyntax(lexer *Lexer, syntax *Descriptor, value matchInput, useCSSWideKeywords bool) *MatchResult {
+func matchSyntax(lexer *Lexer, syntax *Descriptor, value matchInput, useCSSWideKeywords bool) (*MatchResult, error) {
 	tokens, err := prepareTokens(value, lexer.syntax)
 	if err != nil {
-		return buildMatchResult(nil, err, 0)
+		return &MatchResult{}, err
 	}
 	var result *matchResult
 
 	if valueHasVar(tokens) {
-		return buildMatchResult(nil, ErrVarNotSupported, 0)
+		return &MatchResult{}, ErrVarNotSupported
 	}
 
 	if useCSSWideKeywords {
 		result, err = matchAsTree(tokens, lexer.cssWideKeywordsSyntax, lexer)
 		if err != nil {
-			return buildMatchResult(nil, err, 0)
+			return &MatchResult{}, err
 		}
 	}
 
 	if !useCSSWideKeywords || result.tree == nil {
 		match, err := syntax.match()
 		if err != nil {
-			return buildMatchResult(nil, err, 0)
+			return &MatchResult{}, err
 		}
 		result, err = matchAsTree(tokens, match, lexer)
 		if err != nil {
-			return buildMatchResult(nil, err, 0)
+			return &MatchResult{}, err
 		}
 		if result.tree == nil {
 			definition, err := syntax.Syntax()
 			if err != nil {
-				return buildMatchResult(nil, err, 0)
+				return &MatchResult{}, err
 			}
-			return buildMatchResult(
-				nil,
-				newSyntaxMatchError(result.reason, definition, value.node, result),
-				result.iterations,
-			)
+			return &MatchResult{Iterations: result.iterations}, newSyntaxMatchError(result.reason, definition, value.node, result)
 		}
 	}
 
-	return buildMatchResult(result.tree, nil, result.iterations)
+	return &MatchResult{Matched: result.tree, Iterations: result.iterations}, nil
 }
 
 // Lexer matches CSS values against the syntaxes of types, properties and
@@ -670,7 +657,10 @@ func (l *Lexer) checkAtrulePrelude(atruleName string, prelude matchInput) error 
 	}
 
 	if atrule.Prelude != nil && !prelude.truthy() {
-		if matchSyntax(l, atrule.Prelude, cssInput(""), false).Matched == nil {
+		// upstream reads only the match: failing to match is a missing
+		// prelude whatever the error
+		result, err := matchSyntax(l, atrule.Prelude, cssInput(""), false)
+		if err != nil || result.Matched == nil {
 			return &AtruleSyntaxError{Message: "At-rule `@" + atruleName + "` should contain a prelude"}
 		}
 	}
@@ -712,25 +702,25 @@ func (l *Lexer) CheckPropertyName(propertyName string) error {
 
 // MatchAtrulePrelude matches an at-rule prelude (nil for none) against the
 // at-rule's prelude syntax.
-func (l *Lexer) MatchAtrulePrelude(atruleName string, prelude Node) *MatchResult {
+func (l *Lexer) MatchAtrulePrelude(atruleName string, prelude Node) (*MatchResult, error) {
 	return l.matchAtrulePrelude(atruleName, nodeInput(prelude))
 }
 
 // MatchAtrulePreludeString is MatchAtrulePrelude for prelude text ("" for
 // none).
-func (l *Lexer) MatchAtrulePreludeString(atruleName, prelude string) *MatchResult {
+func (l *Lexer) MatchAtrulePreludeString(atruleName, prelude string) (*MatchResult, error) {
 	return l.matchAtrulePrelude(atruleName, cssInput(prelude))
 }
 
-func (l *Lexer) matchAtrulePrelude(atruleName string, prelude matchInput) *MatchResult {
+func (l *Lexer) matchAtrulePrelude(atruleName string, prelude matchInput) (*MatchResult, error) {
 	if err := l.checkAtrulePrelude(atruleName, prelude); err != nil {
-		return buildMatchResult(nil, err, 0)
+		return &MatchResult{}, err
 	}
 
 	atrule := l.GetAtrule(atruleName, true)
 
 	if atrule.Prelude == nil {
-		return buildMatchResult(nil, nil, 0)
+		return &MatchResult{}, nil
 	}
 
 	if !prelude.truthy() {
@@ -741,18 +731,18 @@ func (l *Lexer) matchAtrulePrelude(atruleName string, prelude matchInput) *Match
 }
 
 // MatchAtruleDescriptor matches the value of an at-rule descriptor.
-func (l *Lexer) MatchAtruleDescriptor(atruleName, descriptorName string, value Node) *MatchResult {
+func (l *Lexer) MatchAtruleDescriptor(atruleName, descriptorName string, value Node) (*MatchResult, error) {
 	return l.matchAtruleDescriptor(atruleName, descriptorName, nodeInput(value))
 }
 
 // MatchAtruleDescriptorString is MatchAtruleDescriptor for value text.
-func (l *Lexer) MatchAtruleDescriptorString(atruleName, descriptorName, value string) *MatchResult {
+func (l *Lexer) MatchAtruleDescriptorString(atruleName, descriptorName, value string) (*MatchResult, error) {
 	return l.matchAtruleDescriptor(atruleName, descriptorName, cssInput(value))
 }
 
-func (l *Lexer) matchAtruleDescriptor(atruleName, descriptorName string, value matchInput) *MatchResult {
+func (l *Lexer) matchAtruleDescriptor(atruleName, descriptorName string, value matchInput) (*MatchResult, error) {
 	if err := l.CheckAtruleDescriptorName(atruleName, descriptorName); err != nil {
-		return buildMatchResult(nil, err, 0)
+		return &MatchResult{}, err
 	}
 
 	atrule := l.GetAtrule(atruleName, true)
@@ -768,10 +758,10 @@ func (l *Lexer) matchAtruleDescriptor(atruleName, descriptorName string, value m
 
 // MatchDeclaration matches the value of a Declaration node against its
 // property's syntax.
-func (l *Lexer) MatchDeclaration(node Node) *MatchResult {
+func (l *Lexer) MatchDeclaration(node Node) (*MatchResult, error) {
 	declaration, ok := node.(*Declaration)
 	if !ok {
-		return buildMatchResult(nil, ErrNotDeclaration, 0)
+		return &MatchResult{}, ErrNotDeclaration
 	}
 
 	return l.MatchProperty(declaration.Property, declaration.Value)
@@ -779,43 +769,43 @@ func (l *Lexer) MatchDeclaration(node Node) *MatchResult {
 
 // MatchProperty matches value against the syntax of the property, also
 // accepting the CSS-wide keywords.
-func (l *Lexer) MatchProperty(propertyName string, value Node) *MatchResult {
+func (l *Lexer) MatchProperty(propertyName string, value Node) (*MatchResult, error) {
 	return l.matchProperty(propertyName, nodeInput(value))
 }
 
 // MatchPropertyString is MatchProperty for value text.
-func (l *Lexer) MatchPropertyString(propertyName, value string) *MatchResult {
+func (l *Lexer) MatchPropertyString(propertyName, value string) (*MatchResult, error) {
 	return l.matchProperty(propertyName, cssInput(value))
 }
 
-func (l *Lexer) matchProperty(propertyName string, value matchInput) *MatchResult {
+func (l *Lexer) matchProperty(propertyName string, value matchInput) (*MatchResult, error) {
 	// don't match syntax for a custom property at the moment
 	if Property(propertyName).Custom {
-		return buildMatchResult(nil, ErrCustomProperty, 0)
+		return &MatchResult{}, ErrCustomProperty
 	}
 
 	if err := l.CheckPropertyName(propertyName); err != nil {
-		return buildMatchResult(nil, err, 0)
+		return &MatchResult{}, err
 	}
 
 	return matchSyntax(l, l.GetProperty(propertyName, true), value, true)
 }
 
 // MatchType matches value against the syntax of the type typeName.
-func (l *Lexer) MatchType(typeName string, value Node) *MatchResult {
+func (l *Lexer) MatchType(typeName string, value Node) (*MatchResult, error) {
 	return l.matchType(typeName, nodeInput(value))
 }
 
 // MatchTypeString is MatchType for value text.
-func (l *Lexer) MatchTypeString(typeName, value string) *MatchResult {
+func (l *Lexer) MatchTypeString(typeName, value string) (*MatchResult, error) {
 	return l.matchType(typeName, cssInput(value))
 }
 
-func (l *Lexer) matchType(typeName string, value matchInput) *MatchResult {
+func (l *Lexer) matchType(typeName string, value matchInput) (*MatchResult, error) {
 	typeSyntax := l.GetType(typeName)
 
 	if typeSyntax == nil {
-		return buildMatchResult(nil, newSyntaxReferenceError("Unknown type", typeName), 0)
+		return &MatchResult{}, newSyntaxReferenceError("Unknown type", typeName)
 	}
 
 	return matchSyntax(l, typeSyntax, value, false)
@@ -823,30 +813,30 @@ func (l *Lexer) matchType(typeName string, value matchInput) *MatchResult {
 
 // Match matches value against a definition syntax, such as
 // "fn( <number># )" (upstream match with a string syntax).
-func (l *Lexer) Match(syntax string, value Node) *MatchResult {
+func (l *Lexer) Match(syntax string, value Node) (*MatchResult, error) {
 	return l.MatchDescriptor(l.CreateDescriptor(syntax, "Type", "anonymous", ""), value)
 }
 
 // MatchString is Match for value text.
-func (l *Lexer) MatchString(syntax, value string) *MatchResult {
+func (l *Lexer) MatchString(syntax, value string) (*MatchResult, error) {
 	return l.MatchDescriptorString(l.CreateDescriptor(syntax, "Type", "anonymous", ""), value)
 }
 
 // MatchDescriptor matches value against a descriptor, such as one GetType
 // returns (upstream match with a descriptor). A nil descriptor is a "Bad
 // syntax" *SyntaxReferenceError.
-func (l *Lexer) MatchDescriptor(syntax *Descriptor, value Node) *MatchResult {
+func (l *Lexer) MatchDescriptor(syntax *Descriptor, value Node) (*MatchResult, error) {
 	return l.match(syntax, nodeInput(value))
 }
 
 // MatchDescriptorString is MatchDescriptor for value text.
-func (l *Lexer) MatchDescriptorString(syntax *Descriptor, value string) *MatchResult {
+func (l *Lexer) MatchDescriptorString(syntax *Descriptor, value string) (*MatchResult, error) {
 	return l.match(syntax, cssInput(value))
 }
 
-func (l *Lexer) match(syntax *Descriptor, value matchInput) *MatchResult {
+func (l *Lexer) match(syntax *Descriptor, value matchInput) (*MatchResult, error) {
 	if syntax == nil {
-		return buildMatchResult(nil, newSyntaxReferenceError("Bad syntax", ""), 0)
+		return &MatchResult{}, newSyntaxReferenceError("Bad syntax", "")
 	}
 
 	return matchSyntax(l, syntax, value, false)
@@ -856,7 +846,13 @@ func (l *Lexer) match(syntax *Descriptor, value matchInput) *MatchResult {
 // syntax named name of type typ ("Type", "Property", "Keyword", ...) when
 // matching value against the property's syntax.
 func (l *Lexer) FindValueFragments(propertyName string, value Node, typ, name string) ([]Fragment, error) {
-	return matchFragments(l, value, l.MatchProperty(propertyName, value), typ, name)
+	match, err := l.MatchProperty(propertyName, value)
+	if err != nil {
+		// a value that does not match has no fragments
+		return nil, nil
+	}
+
+	return matchFragments(l, value, match, typ, name)
 }
 
 // FindDeclarationValueFragments is FindValueFragments for the property
@@ -867,7 +863,13 @@ func (l *Lexer) FindDeclarationValueFragments(declaration Node, typ, name string
 		value = declaration.Value
 	}
 
-	return matchFragments(l, value, l.MatchDeclaration(declaration), typ, name)
+	match, err := l.MatchDeclaration(declaration)
+	if err != nil {
+		// a value that does not match has no fragments
+		return nil, nil
+	}
+
+	return matchFragments(l, value, match, typ, name)
 }
 
 // FindAllFragments is FindDeclarationValueFragments for every declaration

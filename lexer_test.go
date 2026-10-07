@@ -37,14 +37,14 @@ func mustFork(t *testing.T, extension SyntaxExtension) *Syntax {
 	return syntax
 }
 
-func assertMatched(t *testing.T, call string, result *MatchResult) {
+func assertMatched(t *testing.T, call string, result matchOutcome) {
 	t.Helper()
 	if result.Matched == nil {
-		t.Errorf("%s matched = nil, want a match (error: %v)", call, result.Error)
+		t.Errorf("%s matched = nil, want a match (error: %v)", call, result.err)
 	}
 }
 
-func assertNotMatched(t *testing.T, call string, result *MatchResult) {
+func assertNotMatched(t *testing.T, call string, result matchOutcome) {
 	t.Helper()
 	if result.Matched != nil {
 		t.Errorf("%s matched a value, want nil", call)
@@ -60,8 +60,8 @@ func TestLexer(t *testing.T) {
 			},
 		})
 
-		assertNotMatched(t, `MatchTypeString("length", "foo")`, customLexer.MatchTypeString("length", "foo"))
-		assertMatched(t, `MatchTypeString("length", "1px")`, customLexer.MatchTypeString("length", "1px"))
+		assertNotMatched(t, `MatchTypeString("length", "foo")`, outcome(customLexer.MatchTypeString("length", "foo")))
+		assertMatched(t, `MatchTypeString("length", "1px")`, outcome(customLexer.MatchTypeString("length", "1px")))
 	})
 
 	t.Run("should not use generic type names when generics are not used", func(t *testing.T) {
@@ -71,8 +71,8 @@ func TestLexer(t *testing.T) {
 			},
 		})
 
-		assertMatched(t, `MatchTypeString("length", "foo")`, customLexer.MatchTypeString("length", "foo"))
-		assertNotMatched(t, `MatchTypeString("length", "1px")`, customLexer.MatchTypeString("length", "1px"))
+		assertMatched(t, `MatchTypeString("length", "foo")`, outcome(customLexer.MatchTypeString("length", "foo")))
+		assertNotMatched(t, `MatchTypeString("length", "1px")`, outcome(customLexer.MatchTypeString("length", "1px")))
 	})
 
 	t.Run("validate()", func(t *testing.T) {
@@ -125,9 +125,9 @@ func TestLexer(t *testing.T) {
 		if got := customLexer.Units()["length"]; !slices.Equal(got, []string{"xx", "yy"}) {
 			t.Errorf("Units()[length] = %q, want %q", got, []string{"xx", "yy"})
 		}
-		assertNotMatched(t, `MatchTypeString("length", "1px")`, customLexer.MatchTypeString("length", "1px"))
-		assertMatched(t, `MatchTypeString("length", "1xx")`, customLexer.MatchTypeString("length", "1xx"))
-		assertMatched(t, `MatchTypeString("length", "1yy")`, customLexer.MatchTypeString("length", "1yy"))
+		assertNotMatched(t, `MatchTypeString("length", "1px")`, outcome(customLexer.MatchTypeString("length", "1px")))
+		assertMatched(t, `MatchTypeString("length", "1xx")`, outcome(customLexer.MatchTypeString("length", "1xx")))
+		assertMatched(t, `MatchTypeString("length", "1yy")`, outcome(customLexer.MatchTypeString("length", "1yy")))
 	})
 
 	t.Run("should not add new unit groups or discard existing", func(t *testing.T) {
@@ -161,9 +161,9 @@ func TestLexer(t *testing.T) {
 			},
 		})
 
-		assertMatched(t, `MatchPropertyString("test", "foo")`, customLexer.MatchPropertyString("test", "foo"))
-		assertMatched(t, `MatchPropertyString("test", "bar")`, customLexer.MatchPropertyString("test", "bar"))
-		assertNotMatched(t, `MatchPropertyString("test", "inherit")`, customLexer.MatchPropertyString("test", "inherit"))
+		assertMatched(t, `MatchPropertyString("test", "foo")`, outcome(customLexer.MatchPropertyString("test", "foo")))
+		assertMatched(t, `MatchPropertyString("test", "bar")`, outcome(customLexer.MatchPropertyString("test", "bar")))
+		assertNotMatched(t, `MatchPropertyString("test", "inherit")`, outcome(customLexer.MatchPropertyString("test", "inherit")))
 	})
 
 	t.Run("should allow append definitions", func(t *testing.T) {
@@ -180,15 +180,15 @@ func TestLexer(t *testing.T) {
 		})
 
 		t.Run("properties", func(t *testing.T) {
-			assertMatched(t, `MatchPropertyString("color", "foo")`, customSyntax.Lexer().MatchPropertyString("color", "foo"))
-			assertMatched(t, `MatchPropertyString("new", "foo")`, customSyntax.Lexer().MatchPropertyString("new", "foo"))
+			assertMatched(t, `MatchPropertyString("color", "foo")`, outcome(customSyntax.Lexer().MatchPropertyString("color", "foo")))
+			assertMatched(t, `MatchPropertyString("new", "foo")`, outcome(customSyntax.Lexer().MatchPropertyString("new", "foo")))
 		})
 		t.Run("types", func(t *testing.T) {
-			assertMatched(t, `MatchTypeString("box", "foo")`, customSyntax.Lexer().MatchTypeString("box", "foo"))
-			assertMatched(t, `MatchTypeString("new", "foo")`, customSyntax.Lexer().MatchTypeString("new", "foo"))
+			assertMatched(t, `MatchTypeString("box", "foo")`, outcome(customSyntax.Lexer().MatchTypeString("box", "foo")))
+			assertMatched(t, `MatchTypeString("new", "foo")`, outcome(customSyntax.Lexer().MatchTypeString("new", "foo")))
 		})
 		t.Run("should not append to generic", func(t *testing.T) {
-			assertNotMatched(t, `MatchTypeString("length", "foo")`, customSyntax.Lexer().MatchTypeString("length", "foo"))
+			assertNotMatched(t, `MatchTypeString("length", "foo")`, outcome(customSyntax.Lexer().MatchTypeString("length", "foo")))
 		})
 	})
 
@@ -218,9 +218,9 @@ func TestLexer(t *testing.T) {
 			if got, err := lexer.Validate(); got != nil || err != nil {
 				t.Errorf("Validate() = %+v, %v, want nil, nil", got, err)
 			}
-			assertNotMatched(t, `MatchPropertyString("test", "1 2aa 3")`, lexer.MatchPropertyString("test", "1 2aa 3"))
-			assertNotMatched(t, `MatchPropertyString("test", "wide")`, lexer.MatchPropertyString("test", "wide"))
-			assertMatched(t, `MatchPropertyString("color", "red")`, lexer.MatchPropertyString("color", "red"))
+			assertNotMatched(t, `MatchPropertyString("test", "1 2aa 3")`, outcome(lexer.MatchPropertyString("test", "1 2aa 3")))
+			assertNotMatched(t, `MatchPropertyString("test", "wide")`, outcome(lexer.MatchPropertyString("test", "wide")))
+			assertMatched(t, `MatchPropertyString("color", "red")`, outcome(lexer.MatchPropertyString("color", "red")))
 		})
 
 		t.Run("custom syntax should be valid and correct", func(t *testing.T) {
@@ -230,9 +230,9 @@ func TestLexer(t *testing.T) {
 		})
 
 		t.Run("custom syntax should match own grammar only", func(t *testing.T) {
-			assertMatched(t, `MatchPropertyString("test", "1 2aa 3")`, customLexer.MatchPropertyString("test", "1 2aa 3"))
-			assertMatched(t, `MatchPropertyString("test", "wide")`, customLexer.MatchPropertyString("test", "wide"))
-			assertNotMatched(t, `MatchPropertyString("color", "red")`, customLexer.MatchPropertyString("color", "red"))
+			assertMatched(t, `MatchPropertyString("test", "1 2aa 3")`, outcome(customLexer.MatchPropertyString("test", "1 2aa 3")))
+			assertMatched(t, `MatchPropertyString("test", "wide")`, outcome(customLexer.MatchPropertyString("test", "wide")))
+			assertNotMatched(t, `MatchPropertyString("color", "red")`, outcome(customLexer.MatchPropertyString("color", "red")))
 		})
 
 		t.Run("recovery syntax from dump", func(t *testing.T) {
@@ -254,8 +254,8 @@ func TestLexer(t *testing.T) {
 			if got, err := recoverySyntax.Lexer().Validate(); got != nil || err != nil {
 				t.Errorf("Validate() = %+v, %v, want nil, nil", got, err)
 			}
-			assertMatched(t, `MatchPropertyString("test", "1 2aa 3")`, recoverySyntax.Lexer().MatchPropertyString("test", "1 2aa 3"))
-			assertMatched(t, `MatchPropertyString("test", "wide")`, recoverySyntax.Lexer().MatchPropertyString("test", "wide"))
+			assertMatched(t, `MatchPropertyString("test", "1 2aa 3")`, outcome(recoverySyntax.Lexer().MatchPropertyString("test", "1 2aa 3")))
+			assertMatched(t, `MatchPropertyString("test", "wide")`, outcome(recoverySyntax.Lexer().MatchPropertyString("test", "wide")))
 		})
 	})
 }

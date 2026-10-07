@@ -87,9 +87,9 @@ func TestSpecEscapedKeywords(t *testing.T) {
 func TestSpecEscapedVar(t *testing.T) {
 	lexer := DefaultLexer()
 	for _, value := range []string{`v\61r(--x)`, `\76 AR(--x)`, `rgb(V\41R(--x))`} {
-		result := lexer.MatchPropertyString("color", value)
-		if !errors.Is(result.Error, ErrVarNotSupported) {
-			t.Errorf("MatchPropertyString(%q, %q) error = %v, want %v", "color", value, result.Error, ErrVarNotSupported)
+		_, err := lexer.MatchPropertyString("color", value)
+		if !errors.Is(err, ErrVarNotSupported) {
+			t.Errorf("MatchPropertyString(%q, %q) error = %v, want %v", "color", value, err, ErrVarNotSupported)
 		}
 	}
 }

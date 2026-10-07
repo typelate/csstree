@@ -344,9 +344,8 @@ func TestSpecMathTrace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	result := lexer.MatchProperty("margin", node)
-	if result.Matched == nil {
-		t.Fatalf("MatchProperty(margin) error = %v", result.Error)
+	if _, err := lexer.MatchProperty("margin", node); err != nil {
+		t.Fatalf("MatchProperty(margin) error = %v", err)
 	}
 	fragments, err := lexer.FindValueFragments("margin", node, "Type", "length")
 	if err != nil {
@@ -377,9 +376,9 @@ func TestSpecMathIterations(t *testing.T) {
 
 	lexer := DefaultLexer()
 	for _, tc := range cases {
-		result := lexer.MatchPropertyString(tc.property, tc.value)
-		if got := result.Matched != nil; got != tc.want {
-			t.Errorf("MatchPropertyString(%q, %.40q...) matched = %t, want %t (error: %v)", tc.property, tc.value, got, tc.want, result.Error)
+		result, err := lexer.MatchPropertyString(tc.property, tc.value)
+		if got := err == nil; got != tc.want {
+			t.Errorf("MatchPropertyString(%q, %.40q...) matched = %t, want %t (error: %v)", tc.property, tc.value, got, tc.want, err)
 		}
 		if result.Iterations >= iterationLimit {
 			t.Errorf("MatchPropertyString(%q, %.40q...) iterations = %d, want below %d", tc.property, tc.value, result.Iterations, iterationLimit)
@@ -397,7 +396,7 @@ func TestSpecMathNestingLimit(t *testing.T) {
 		strings.Repeat("calc(", n) + "1px" + strings.Repeat(")", n),
 		"calc(" + strings.Repeat("(", n) + "1px" + strings.Repeat(")", n) + ")",
 	} {
-		if result := lexer.MatchPropertyString("width", value); result.Matched != nil {
+		if _, err := lexer.MatchPropertyString("width", value); err == nil {
 			t.Errorf("MatchPropertyString(width, %d levels of nesting) matched, want a mismatch", n)
 		}
 	}

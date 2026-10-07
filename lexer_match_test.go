@@ -24,20 +24,20 @@ func TestLexerMatch(t *testing.T) {
 		value := mustParse(t, "fn(1, 2, 3)", ParseOptions{Context: "value"})
 		fn := value.(*Value).Children.First()
 		syntax := customSyntax.Lexer().GetType("fn")
-		match := customSyntax.Lexer().MatchDescriptor(syntax, fn)
+		match := outcome(customSyntax.Lexer().MatchDescriptor(syntax, fn))
 
 		assertMatchNoError(t, `MatchDescriptor(<fn>, fn(1, 2, 3))`, match)
 	})
 
 	t.Run("should take a string as a value", func(t *testing.T) {
 		syntax := customSyntax.Lexer().GetType("fn")
-		match := customSyntax.Lexer().MatchDescriptorString(syntax, "fn(1, 2, 3)")
+		match := outcome(customSyntax.Lexer().MatchDescriptorString(syntax, "fn(1, 2, 3)"))
 
 		assertMatchNoError(t, `MatchDescriptorString(<fn>, "fn(1, 2, 3)")`, match)
 	})
 
 	t.Run("should take a string as a syntax", func(t *testing.T) {
-		match := customSyntax.Lexer().MatchString("fn( <number># )", "fn(1, 2, 3)")
+		match := outcome(customSyntax.Lexer().MatchString("fn( <number># )", "fn(1, 2, 3)"))
 
 		assertMatchNoError(t, `MatchString("fn( <number># )", "fn(1, 2, 3)")`, match)
 	})
@@ -47,12 +47,12 @@ func TestLexerMatch(t *testing.T) {
 		fn := value.(*Value).Children.First()
 		// upstream passes {}, which has no type; a nil descriptor is the Go
 		// counterpart
-		match := customSyntax.Lexer().MatchDescriptor(nil, fn)
+		match := outcome(customSyntax.Lexer().MatchDescriptor(nil, fn))
 
 		if match.Matched != nil {
 			t.Errorf("MatchDescriptor(nil, fn) matched a value, want nil")
 		}
-		assertErrorMessage(t, "MatchDescriptor(nil, fn) error", match.Error, "Bad syntax")
+		assertErrorMessage(t, "MatchDescriptor(nil, fn) error", match.err, "Bad syntax")
 	})
 
 	t.Run("mismatch position", func(t *testing.T) {
@@ -102,20 +102,20 @@ func TestLexerMatch(t *testing.T) {
 
 		values := []struct {
 			typ       string
-			match     func(t *testing.T, syntax, value string) *MatchResult
+			match     func(t *testing.T, syntax, value string) matchOutcome
 			serialize func(t *testing.T, value string) string
 		}{
 			{
 				"string",
-				func(t *testing.T, syntax, value string) *MatchResult {
-					return customSyntax.Lexer().MatchString(syntax, value)
+				func(t *testing.T, syntax, value string) matchOutcome {
+					return outcome(customSyntax.Lexer().MatchString(syntax, value))
 				},
 				func(t *testing.T, value string) string { return value },
 			},
 			{
 				"ast",
-				func(t *testing.T, syntax, value string) *MatchResult {
-					return customSyntax.Lexer().Match(syntax, mustParse(t, value, ParseOptions{Context: "value", Positions: true}))
+				func(t *testing.T, syntax, value string) matchOutcome {
+					return outcome(customSyntax.Lexer().Match(syntax, mustParse(t, value, ParseOptions{Context: "value", Positions: true})))
 				},
 				func(t *testing.T, value string) string {
 					return generate(t, mustParse(t, value, ParseOptions{Context: "value", Positions: true}))
@@ -123,8 +123,8 @@ func TestLexerMatch(t *testing.T) {
 			},
 			{
 				"ast Raw",
-				func(t *testing.T, syntax, value string) *MatchResult {
-					return customSyntax.Lexer().Match(syntax, rawTestValue(value))
+				func(t *testing.T, syntax, value string) matchOutcome {
+					return outcome(customSyntax.Lexer().Match(syntax, rawTestValue(value)))
 				},
 				func(t *testing.T, value string) string { return generate(t, rawTestValue(value)) },
 			},
@@ -140,8 +140,8 @@ func TestLexerMatch(t *testing.T) {
 							t.Errorf("Match(%q, %q) matched a value, want nil", test.syntax, test.value)
 						}
 						var matchError *SyntaxMatchError
-						if !errors.As(match.Error, &matchError) {
-							t.Fatalf("Match(%q, %q) error = %v, want a *SyntaxMatchError", test.syntax, test.value, match.Error)
+						if !errors.As(match.err, &matchError) {
+							t.Fatalf("Match(%q, %q) error = %v, want a *SyntaxMatchError", test.syntax, test.value, match.err)
 						}
 						if matchError.Offset != matchError.Loc.Start.Offset {
 							t.Errorf("Match(%q, %q) error.Offset = %d, want loc.start.offset %d", test.syntax, test.value, matchError.Offset, matchError.Loc.Start.Offset)

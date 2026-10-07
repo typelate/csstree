@@ -26,11 +26,11 @@ func TestLexerMatchResult(t *testing.T) {
 	lexer := DefaultLexer()
 
 	// upstream beforeEach
-	setup := func(t *testing.T) (testNode Node, match, mismatch *MatchResult) {
+	setup := func(t *testing.T) (testNode Node, match, mismatch matchOutcome) {
 		ast := mustParse(t, "rgb(1, 2, 3)", ParseOptions{Context: "value"})
 		testNode = ast.(*Value).Children.First().(*Function).Children.First()
-		match = lexer.MatchProperty("background", ast)
-		mismatch = lexer.MatchProperty("margin", ast)
+		match = outcome(lexer.MatchProperty("background", ast))
+		mismatch = outcome(lexer.MatchProperty("margin", ast))
 		return testNode, match, mismatch
 	}
 
@@ -66,7 +66,7 @@ func TestLexerMatchResult(t *testing.T) {
 		testNode, match, mismatch := setup(t)
 
 		for _, test := range []struct {
-			result *MatchResult
+			result matchOutcome
 			typ    string
 			want   bool
 		}{
@@ -86,7 +86,7 @@ func TestLexerMatchResult(t *testing.T) {
 		testNode, match, mismatch := setup(t)
 
 		for _, test := range []struct {
-			result   *MatchResult
+			result   matchOutcome
 			property string
 			want     bool
 		}{
@@ -106,7 +106,7 @@ func TestLexerMatchResult(t *testing.T) {
 		ast := mustParse(t, "repeat 0", ParseOptions{Context: "value"})
 		keywordNode := ast.(*Value).Children.First()
 		numberNode := ast.(*Value).Children.Last()
-		match := lexer.MatchProperty("background", ast)
+		match := outcome(lexer.MatchProperty("background", ast))
 
 		if !match.IsKeyword(keywordNode) {
 			t.Errorf("IsKeyword(repeat) = false, want true")

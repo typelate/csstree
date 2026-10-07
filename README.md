@@ -16,8 +16,7 @@ if err != nil {
 
 css, err := csstree.Generate(ast, csstree.GenerateOptions{})
 
-result := csstree.DefaultLexer().MatchPropertyString("color", "red")
-if result.Error != nil {
+if _, err := csstree.DefaultLexer().MatchPropertyString("color", "red"); err != nil {
 	// the value does not match the property's syntax
 }
 ```
@@ -38,8 +37,8 @@ See `Example` in [example_test.go](example_test.go) for walking an AST.
 - The AST is typed: each node type is a Go struct implementing `Node`, children
   are `*List[Node]`, and JSON encoding matches upstream's. There is no
   `list: false` (array children) mode.
-- Functions that throw upstream return an `error`. Lexer matches report
-  failures in `MatchResult.Error`.
+- Functions that throw upstream return an `error`, and so do lexer matches
+  where upstream reports failures in the result's `error`.
 - Only syntax errors fall back to a `Raw` node. Any other panic in a parse
   or generate function, an extension or a callback is a bug: `Parse` and
   `Generate` return it as an `*InternalError` holding the panic value and

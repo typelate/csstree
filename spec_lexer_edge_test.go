@@ -53,8 +53,8 @@ func TestFindFragmentsEmptyMatch(t *testing.T) {
 	lexer := DefaultLexer()
 	value := mustParse(t, "", ParseOptions{Context: "value"})
 
-	if result := lexer.MatchProperty("-webkit-box-reflect", value); result.Matched == nil {
-		t.Fatalf("MatchProperty(-webkit-box-reflect, empty) error = %v, want a match", result.Error)
+	if _, err := lexer.MatchProperty("-webkit-box-reflect", value); err != nil {
+		t.Fatalf("MatchProperty(-webkit-box-reflect, empty) error = %v, want a match", err)
 	}
 
 	fragments, err := lexer.FindValueFragments("-webkit-box-reflect", value, "Property", "-webkit-box-reflect")

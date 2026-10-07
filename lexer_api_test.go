@@ -246,16 +246,16 @@ func TestSyntaxMatchErrorLocation(t *testing.T) {
 		{"red \n  blue", false, tokenizerPosition{7, 2, 3}, tokenizerPosition{11, 2, 7}},
 		{"red\n  blue", true, tokenizerPosition{6, 2, 3}, tokenizerPosition{10, 2, 7}},
 	} {
-		var result *MatchResult
+		var result matchOutcome
 		if test.ast {
-			result = lexer.MatchProperty("color", mustParse(t, test.value, ParseOptions{Context: "value", Positions: true}))
+			result = outcome(lexer.MatchProperty("color", mustParse(t, test.value, ParseOptions{Context: "value", Positions: true})))
 		} else {
-			result = lexer.MatchPropertyString("color", test.value)
+			result = outcome(lexer.MatchPropertyString("color", test.value))
 		}
 
 		var matchErr *SyntaxMatchError
-		if !errors.As(result.Error, &matchErr) {
-			t.Fatalf("MatchProperty(color, %q) error = %v, want a SyntaxMatchError", test.value, result.Error)
+		if !errors.As(result.err, &matchErr) {
+			t.Fatalf("MatchProperty(color, %q) error = %v, want a SyntaxMatchError", test.value, result.err)
 		}
 		start := tokenizerPosition{matchErr.Loc.Start.Offset, matchErr.Loc.Start.Line, matchErr.Loc.Start.Column}
 		end := tokenizerPosition{matchErr.Loc.End.Offset, matchErr.Loc.End.Line, matchErr.Loc.End.Column}
@@ -330,8 +330,8 @@ func TestLexerFragmentEdges(t *testing.T) {
 		return prev
 	}))
 	value := mustParse(t, "(1px)", ParseOptions{Context: "value"})
-	if result := custom.Lexer().MatchProperty("foo", value); result.Matched == nil {
-		t.Fatalf("MatchProperty(foo, (1px)) error = %v", result.Error)
+	if _, err := custom.Lexer().MatchProperty("foo", value); err != nil {
+		t.Fatalf("MatchProperty(foo, (1px)) error = %v", err)
 	}
 	fragments, err := custom.Lexer().FindValueFragments("foo", value, "Type", "a")
 	if err != nil {
@@ -352,9 +352,9 @@ func TestLexerBrokenReference(t *testing.T) {
 	}))
 
 	for _, name := range []string{"a", "b"} {
-		result := custom.Lexer().MatchTypeString(name, "x")
-		if result.Matched != nil || result.Error == nil || !strings.HasPrefix(result.Error.Error(), "Expect `]`") {
-			t.Errorf("MatchTypeString(%s, x) error = %v, want Expect `]`", name, result.Error)
+		_, err := custom.Lexer().MatchTypeString(name, "x")
+		if err == nil || !strings.HasPrefix(err.Error(), "Expect `]`") {
+			t.Errorf("MatchTypeString(%s, x) error = %v, want Expect `]`", name, err)
 		}
 	}
 }
@@ -367,36 +367,36 @@ func TestLexerMatchNodeInputs(t *testing.T) {
 
 	for _, test := range []struct {
 		desc       string
-		result     *MatchResult
+		result     matchOutcome
 		matched    bool
 		iterations int
 		err        string // "*" is any error
 	}{
-		{"property nil", lexer.MatchProperty("color", nil), false, 0, "*"},
-		{"type nil", lexer.MatchType("length", nil), false, 0, "*"},
-		{"descriptor nil", lexer.MatchAtruleDescriptor("font-face", "src", nil), false, 0, "*"},
-		{"prelude nil", lexer.MatchAtrulePrelude("media", nil), false, 0, "At-rule `@media` should contain a prelude"},
-		{"prelude nil layer", lexer.MatchAtrulePrelude("layer", nil), true, 12, ""},
-		{"prelude nil font-face", lexer.MatchAtrulePrelude("font-face", nil), false, 0, ""},
-		{"declaration", lexer.MatchDeclaration(mustParse(t, "color: red", ParseOptions{Context: "declaration"})), true, 22, ""},
-		{"declaration important", lexer.MatchDeclaration(mustParse(t, "color: red !important", ParseOptions{Context: "declaration"})), true, 22, ""},
-		{"declaration custom", lexer.MatchDeclaration(mustParse(t, "--x: red", ParseOptions{Context: "declaration"})), false, 0, ErrCustomProperty.Error()},
-		{"not a declaration", lexer.MatchDeclaration(mustParse(t, "red", ParseOptions{Context: "value"})), false, 0, ErrNotDeclaration.Error()},
-		{"raw", lexer.MatchProperty("color", &Raw{Value: " red "}), true, 22, ""},
-		{"identifier", lexer.MatchProperty("color", &Identifier{Name: "red"}), true, 22, ""},
-		{"number", lexer.MatchType("number", &Number{Value: "1"}), true, 3, ""},
+		{"property nil", outcome(lexer.MatchProperty("color", nil)), false, 0, "*"},
+		{"type nil", outcome(lexer.MatchType("length", nil)), false, 0, "*"},
+		{"descriptor nil", outcome(lexer.MatchAtruleDescriptor("font-face", "src", nil)), false, 0, "*"},
+		{"prelude nil", outcome(lexer.MatchAtrulePrelude("media", nil)), false, 0, "At-rule `@media` should contain a prelude"},
+		{"prelude nil layer", outcome(lexer.MatchAtrulePrelude("layer", nil)), true, 12, ""},
+		{"prelude nil font-face", outcome(lexer.MatchAtrulePrelude("font-face", nil)), false, 0, ""},
+		{"declaration", outcome(lexer.MatchDeclaration(mustParse(t, "color: red", ParseOptions{Context: "declaration"}))), true, 22, ""},
+		{"declaration important", outcome(lexer.MatchDeclaration(mustParse(t, "color: red !important", ParseOptions{Context: "declaration"}))), true, 22, ""},
+		{"declaration custom", outcome(lexer.MatchDeclaration(mustParse(t, "--x: red", ParseOptions{Context: "declaration"}))), false, 0, ErrCustomProperty.Error()},
+		{"not a declaration", outcome(lexer.MatchDeclaration(mustParse(t, "red", ParseOptions{Context: "value"}))), false, 0, ErrNotDeclaration.Error()},
+		{"raw", outcome(lexer.MatchProperty("color", &Raw{Value: " red "})), true, 22, ""},
+		{"identifier", outcome(lexer.MatchProperty("color", &Identifier{Name: "red"})), true, 22, ""},
+		{"number", outcome(lexer.MatchType("number", &Number{Value: "1"})), true, 3, ""},
 	} {
 		result := test.result
 		if got := result.Matched != nil; got != test.matched || result.Iterations != test.iterations {
-			t.Errorf("%s: matched = %v after %d iterations, want %v after %d (error %v)", test.desc, got, result.Iterations, test.matched, test.iterations, result.Error)
+			t.Errorf("%s: matched = %v after %d iterations, want %v after %d (error %v)", test.desc, got, result.Iterations, test.matched, test.iterations, result.err)
 		}
 		switch {
-		case test.err == "*" && result.Error == nil:
+		case test.err == "*" && result.err == nil:
 			t.Errorf("%s: error = nil, want an error", test.desc)
-		case test.err == "" && result.Error != nil:
-			t.Errorf("%s: error = %v, want nil", test.desc, result.Error)
-		case test.err != "" && test.err != "*" && (result.Error == nil || result.Error.Error() != test.err):
-			t.Errorf("%s: error = %v, want %q", test.desc, result.Error, test.err)
+		case test.err == "" && result.err != nil:
+			t.Errorf("%s: error = %v, want nil", test.desc, result.err)
+		case test.err != "" && test.err != "*" && (result.err == nil || result.err.Error() != test.err):
+			t.Errorf("%s: error = %v, want %q", test.desc, result.err, test.err)
 		}
 	}
 }
@@ -420,47 +420,47 @@ func TestLexerMatchDescriptorEdges(t *testing.T) {
 		{"1px", true, 6},
 		{"none", false, 8},
 	} {
-		result := lexer.MatchDescriptorString(descriptor, test.value)
+		result := outcome(lexer.MatchDescriptorString(descriptor, test.value))
 		if got := result.Matched != nil; got != test.matched || result.Iterations != test.iterations {
 			t.Errorf("MatchDescriptorString(<length> | auto, %q) = %v, %d iterations, want %v, %d", test.value, got, result.Iterations, test.matched, test.iterations)
 		}
 		var matchErr *SyntaxMatchError
-		if errors.As(result.Error, &matchErr) && matchErr.Syntax != "<length> | auto" {
+		if errors.As(result.err, &matchErr) && matchErr.Syntax != "<length> | auto" {
 			t.Errorf("MatchDescriptorString(<length> | auto, %q) syntax = %q", test.value, matchErr.Syntax)
 		}
 	}
 
-	result := lexer.MatchString("", "x")
+	result, err := lexer.MatchString("", "x")
 	var matchErr *SyntaxMatchError
-	if !errors.As(result.Error, &matchErr) || matchErr.RawMessage != "Mismatch" || matchErr.Syntax != "" || result.Iterations != 3 {
-		t.Errorf(`MatchString("", "x") = %v, %d iterations, want a Mismatch of "" after 3`, result.Error, result.Iterations)
+	if !errors.As(err, &matchErr) || matchErr.RawMessage != "Mismatch" || matchErr.Syntax != "" || result.Iterations != 3 {
+		t.Errorf(`MatchString("", "x") = %v, %d iterations, want a Mismatch of "" after 3`, err, result.Iterations)
 	}
 
 	for _, test := range []struct {
 		desc   string
-		result *MatchResult
+		result matchOutcome
 		want   string
 	}{
-		{"unknown type reference", lexer.MatchString("<unknown-type>", "x"), "Bad syntax reference: <unknown-type>"},
-		{"nil descriptor", lexer.MatchDescriptorString(nil, "x"), "Bad syntax"},
-		{"unknown type", lexer.MatchTypeString("nope", "x"), "Unknown type `nope`"},
-		{"unknown property", lexer.MatchPropertyString("nope", "x"), "Unknown property `nope`"},
-		{"media descriptor", lexer.MatchAtruleDescriptorString("media", "x", "x"), "At-rule `@media` has no known descriptors"},
-		{"unknown descriptor", lexer.MatchAtruleDescriptorString("font-face", "nope", "x"), "Unknown at-rule descriptor `nope`"},
-		{"unknown at-rule", lexer.MatchAtrulePreludeString("nope", "x"), "Unknown at-rule `@nope`"},
+		{"unknown type reference", outcome(lexer.MatchString("<unknown-type>", "x")), "Bad syntax reference: <unknown-type>"},
+		{"nil descriptor", outcome(lexer.MatchDescriptorString(nil, "x")), "Bad syntax"},
+		{"unknown type", outcome(lexer.MatchTypeString("nope", "x")), "Unknown type `nope`"},
+		{"unknown property", outcome(lexer.MatchPropertyString("nope", "x")), "Unknown property `nope`"},
+		{"media descriptor", outcome(lexer.MatchAtruleDescriptorString("media", "x", "x")), "At-rule `@media` has no known descriptors"},
+		{"unknown descriptor", outcome(lexer.MatchAtruleDescriptorString("font-face", "nope", "x")), "Unknown at-rule descriptor `nope`"},
+		{"unknown at-rule", outcome(lexer.MatchAtrulePreludeString("nope", "x")), "Unknown at-rule `@nope`"},
 	} {
-		if test.result.Matched != nil || test.result.Error == nil || test.result.Error.Error() != test.want {
-			t.Errorf("%s: error = %v, want %q", test.desc, test.result.Error, test.want)
+		if test.result.Matched != nil || test.result.err == nil || test.result.err.Error() != test.want {
+			t.Errorf("%s: error = %v, want %q", test.desc, test.result.err, test.want)
 		}
 	}
 
 	var refErr *SyntaxReferenceError
-	if result := lexer.MatchTypeString("nope", "x"); !errors.As(result.Error, &refErr) || refErr.Reference != "nope" {
-		t.Errorf(`MatchTypeString("nope", "x") error = %v, want a SyntaxReferenceError for nope`, result.Error)
+	if _, err := lexer.MatchTypeString("nope", "x"); !errors.As(err, &refErr) || refErr.Reference != "nope" {
+		t.Errorf(`MatchTypeString("nope", "x") error = %v, want a SyntaxReferenceError for nope`, err)
 	}
 
-	if result := lexer.MatchAtrulePreludeString("font-face", ""); result.Matched != nil || result.Error != nil {
-		t.Errorf(`MatchAtrulePreludeString("font-face", "") = %v, %v, want no match and no error`, result.Matched, result.Error)
+	if result, err := lexer.MatchAtrulePreludeString("font-face", ""); result.Matched != nil || err != nil {
+		t.Errorf(`MatchAtrulePreludeString("font-face", "") = %v, %v, want no match and no error`, result.Matched, err)
 	}
 
 	// a group with a combinator the definition syntax parser never
@@ -469,8 +469,8 @@ func TestLexerMatchDescriptorEdges(t *testing.T) {
 		Combinator: "x",
 		Terms:      []definitionsyntax.Node{&definitionsyntax.Keyword{Name: "a"}},
 	}, "Type", "anonymous", "")
-	if result := lexer.MatchDescriptorString(unknownCombinator, "a"); result.Matched != nil || result.Error == nil {
-		t.Errorf(`MatchDescriptorString(group with combinator "x", "a") = %v, %v, want an error`, result.Matched, result.Error)
+	if result, err := lexer.MatchDescriptorString(unknownCombinator, "a"); result.Matched != nil || err == nil {
+		t.Errorf(`MatchDescriptorString(group with combinator "x", "a") = %v, %v, want an error`, result.Matched, err)
 	}
 }
 
@@ -507,7 +507,7 @@ func TestLexerFunctionFragmentsAndTrace(t *testing.T) {
 		}
 	}
 
-	match := lexer.MatchProperty("transform", value)
+	match := outcome(lexer.MatchProperty("transform", value))
 	translate := value.(*Value).Children.First()
 	length := translate.(*Function).Children.First()
 

@@ -31,14 +31,18 @@ func Example() {
 	fmt.Println(css)
 
 	lexer := csstree.DefaultLexer()
-	fmt.Println(lexer.MatchPropertyString("color", "red").Error == nil)
-	fmt.Println(lexer.MatchPropertyString("color", "10px").Error)
+	if _, err := lexer.MatchPropertyString("color", "red"); err == nil {
+		fmt.Println("red is a color")
+	}
+	if _, err := lexer.MatchPropertyString("color", "10px"); err != nil {
+		fmt.Println(err)
+	}
 
 	// Output:
 	// property: color
 	// property: margin
 	// .a{color:red;margin:0 auto}
-	// true
+	// red is a color
 	// Mismatch
 	//   syntax: <color>
 	//    value: 10px

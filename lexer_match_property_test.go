@@ -8,32 +8,32 @@ import (
 	"testing"
 )
 
-func getMatch(lexer *Lexer, property, value, syntax string) *MatchResult {
+func getMatch(lexer *Lexer, property, value, syntax string) matchOutcome {
 	if syntax != "" {
-		return lexer.MatchString(syntax, value)
+		return outcome(lexer.MatchString(syntax, value))
 	}
 
-	return lexer.MatchPropertyString(property, value)
+	return outcome(lexer.MatchPropertyString(property, value))
 }
 
-func assertMatchNoError(t *testing.T, call string, match *MatchResult) {
+func assertMatchNoError(t *testing.T, call string, match matchOutcome) {
 	t.Helper()
 	if match.Matched == nil {
 		t.Errorf("%s matched = nil, want a match", call)
 	}
-	if match.Error != nil {
-		t.Errorf("%s error = %v, want nil", call, match.Error)
+	if match.err != nil {
+		t.Errorf("%s error = %v, want nil", call, match.err)
 	}
 }
 
-func assertSyntaxMatchError(t *testing.T, call string, match *MatchResult) {
+func assertSyntaxMatchError(t *testing.T, call string, match matchOutcome) {
 	t.Helper()
 	if match.Matched != nil {
 		t.Errorf("%s matched a value, want nil", call)
 	}
 	var matchError *SyntaxMatchError
-	if !errors.As(match.Error, &matchError) {
-		t.Errorf("%s error = %v, want a *SyntaxMatchError", call, match.Error)
+	if !errors.As(match.err, &matchError) {
+		t.Errorf("%s error = %v, want a *SyntaxMatchError", call, match.err)
 	}
 }
 
@@ -61,54 +61,54 @@ func TestLexerMatchProperty(t *testing.T) {
 
 	t.Run("vendor prefixes and hacks", func(t *testing.T) {
 		t.Run("vendor prefix", func(t *testing.T) {
-			match := customSyntax().Lexer().MatchProperty("-vendor-foo", bar())
+			match := outcome(customSyntax().Lexer().MatchProperty("-vendor-foo", bar()))
 
 			assertMatchNoError(t, `MatchProperty("-vendor-foo", bar)`, match)
 		})
 
 		t.Run("hacks", func(t *testing.T) {
-			match := customSyntax().Lexer().MatchProperty("_foo", bar())
+			match := outcome(customSyntax().Lexer().MatchProperty("_foo", bar()))
 
 			assertMatchNoError(t, `MatchProperty("_foo", bar)`, match)
 		})
 
 		t.Run("vendor prefix and hack", func(t *testing.T) {
-			match := customSyntax().Lexer().MatchProperty("_-vendor-foo", bar())
+			match := outcome(customSyntax().Lexer().MatchProperty("_-vendor-foo", bar()))
 
 			assertMatchNoError(t, `MatchProperty("_-vendor-foo", bar)`, match)
 		})
 
 		t.Run("case insensetive with vendor prefix and hack", func(t *testing.T) {
 			for _, property := range []string{"FOO", "-VENDOR-Foo", "_FOO", "_-VENDOR-Foo"} {
-				match := customSyntax().Lexer().MatchProperty(property, bar())
+				match := outcome(customSyntax().Lexer().MatchProperty(property, bar()))
 				assertMatchNoError(t, `MatchProperty("`+property+`", bar)`, match)
 			}
 		})
 
 		t.Run("should use verdor version first", func(t *testing.T) {
-			match := customSyntax().Lexer().MatchProperty("-baz-foo", qux())
+			match := outcome(customSyntax().Lexer().MatchProperty("-baz-foo", qux()))
 			assertMatchNoError(t, `MatchProperty("-baz-foo", qux)`, match)
 
-			match = customSyntax().Lexer().MatchProperty("-baz-baz-foo", qux())
+			match = outcome(customSyntax().Lexer().MatchProperty("-baz-baz-foo", qux()))
 			if match.Matched != nil {
 				t.Errorf(`MatchProperty("-baz-baz-foo", qux) matched a value, want nil`)
 			}
-			assertErrorMessage(t, `MatchProperty("-baz-baz-foo", qux) error`, match.Error, "Unknown property `-baz-baz-foo`")
+			assertErrorMessage(t, `MatchProperty("-baz-baz-foo", qux) error`, match.err, "Unknown property `-baz-baz-foo`")
 		})
 	})
 
 	t.Run("custom property", func(t *testing.T) {
-		match := lexer.MatchProperty("--foo", bar())
+		match := outcome(lexer.MatchProperty("--foo", bar()))
 
 		if match.Matched != nil {
 			t.Errorf(`MatchProperty("--foo", bar) matched a value, want nil`)
 		}
-		assertErrorMessage(t, `MatchProperty("--foo", bar) error`, match.Error, "Lexer matching doesn't applicable for custom properties")
+		assertErrorMessage(t, `MatchProperty("--foo", bar) error`, match.err, "Lexer matching doesn't applicable for custom properties")
 	})
 
 	t.Run("should match css wide keywords", func(t *testing.T) {
 		for _, keyword := range testCSSWideKeywords() {
-			match := lexer.MatchPropertyString("color", keyword)
+			match := outcome(lexer.MatchPropertyString("color", keyword))
 
 			assertMatchNoError(t, `MatchPropertyString("color", "`+keyword+`")`, match)
 		}
@@ -116,14 +116,14 @@ func TestLexerMatchProperty(t *testing.T) {
 
 	t.Run("should match css wide keywords", func(t *testing.T) {
 		for _, keyword := range append(testCSSWideKeywords(), "test") {
-			match := customCSSWideKeywords().Lexer().MatchPropertyString("color", keyword)
+			match := outcome(customCSSWideKeywords().Lexer().MatchPropertyString("color", keyword))
 
 			assertMatchNoError(t, `MatchPropertyString("color", "`+keyword+`")`, match)
 		}
 	})
 
 	t.Run("should not be matched to empty value", func(t *testing.T) {
-		match := lexer.MatchProperty("color", mustParse(t, "", ParseOptions{Context: "value", Positions: true}))
+		match := outcome(lexer.MatchProperty("color", mustParse(t, "", ParseOptions{Context: "value", Positions: true})))
 
 		assertNotMatchedAt(t, `MatchProperty("color", "")`, match, 1, 1)
 	})
@@ -135,14 +135,14 @@ func TestLexerMatchProperty(t *testing.T) {
 				match := getMatch(lexer, property, value, syntax)
 
 				// temporary solution to avoid var() using errors
-				if match.Error != nil {
-					if errors.Is(match.Error, ErrVarNotSupported) || errors.Is(match.Error, ErrCustomProperty) {
+				if match.err != nil {
+					if errors.Is(match.err, ErrVarNotSupported) || errors.Is(match.err, ErrCustomProperty) {
 						return
 					}
 				}
 
 				if match.Matched == nil {
-					t.Errorf("match(%q, %q, %q) = nil, want a match: %v", property, syntax, value, match.Error)
+					t.Errorf("match(%q, %q, %q) = nil, want a match: %v", property, syntax, value, match.err)
 				}
 			})
 
@@ -154,8 +154,8 @@ func TestLexerMatchProperty(t *testing.T) {
 					t.Errorf("should NOT MATCH to %q", value)
 				}
 				var matchError *SyntaxMatchError
-				if !errors.As(match.Error, &matchError) {
-					t.Errorf("match(%q, %q, %q) error = %v, want a *SyntaxMatchError", property, syntax, value, match.Error)
+				if !errors.As(match.err, &matchError) {
+					t.Errorf("match(%q, %q, %q) error = %v, want a *SyntaxMatchError", property, syntax, value, match.err)
 				}
 			})
 		}
@@ -163,14 +163,14 @@ func TestLexerMatchProperty(t *testing.T) {
 }
 
 // assertNotMatchedAt checks a "Mismatch" error located at line:column.
-func assertNotMatchedAt(t *testing.T, call string, match *MatchResult, line, column int) {
+func assertNotMatchedAt(t *testing.T, call string, match matchOutcome, line, column int) {
 	t.Helper()
 	if match.Matched != nil {
 		t.Errorf("%s matched a value, want nil", call)
 	}
 	var matchError *SyntaxMatchError
-	if !errors.As(match.Error, &matchError) {
-		t.Fatalf("%s error = %v, want a *SyntaxMatchError", call, match.Error)
+	if !errors.As(match.err, &matchError) {
+		t.Fatalf("%s error = %v, want a *SyntaxMatchError", call, match.err)
 	}
 	if matchError.RawMessage != "Mismatch" {
 		t.Errorf("%s error.RawMessage = %q, want %q", call, matchError.RawMessage, "Mismatch")

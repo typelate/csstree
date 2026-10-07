@@ -18,8 +18,8 @@ func BenchmarkMatchProperty(b *testing.B) {
 		{"grid", "grid-template-columns", "repeat(auto-fill, minmax(10px, 1fr))"},
 		{"rgb", "color", "rgb(0 0 0 / 50%)"},
 	} {
-		if result := lexer.MatchPropertyString(bench.property, bench.value); result.Matched == nil {
-			b.Fatalf("MatchPropertyString(%q, %q) error = %v", bench.property, bench.value, result.Error)
+		if _, err := lexer.MatchPropertyString(bench.property, bench.value); err != nil {
+			b.Fatalf("MatchPropertyString(%q, %q) error = %v", bench.property, bench.value, err)
 		}
 		b.Run(bench.name, func(b *testing.B) {
 			b.ReportAllocs()

@@ -31,22 +31,26 @@ func FuzzMatchProperty(f *testing.F) {
 	f.Fuzz(func(t *testing.T, property, value string) {
 		lexer := DefaultLexer()
 
-		checkResult := func(call string, result *MatchResult) {
-			if result.Matched == nil && result.Error == nil {
+		checkResult := func(call string, result *MatchResult, err error) {
+			switch {
+			case result == nil:
+				t.Errorf("%s = a nil result, error %v", call, err)
+			case result.Matched == nil && err == nil:
 				t.Errorf("%s = no match and no error", call)
-			}
-			if result.Matched != nil && result.Error != nil {
-				t.Errorf("%s = a match and error %v", call, result.Error)
+			case result.Matched != nil && err != nil:
+				t.Errorf("%s = a match and error %v", call, err)
 			}
 		}
 
-		checkResult("MatchPropertyString", lexer.MatchPropertyString(property, value))
+		result, err := lexer.MatchPropertyString(property, value)
+		checkResult("MatchPropertyString", result, err)
 
 		ast, err := Parse(value, ParseOptions{Context: "value", Positions: true})
 		if err != nil {
 			return
 		}
-		checkResult("MatchProperty", lexer.MatchProperty(property, ast))
+		result, err = lexer.MatchProperty(property, ast)
+		checkResult("MatchProperty", result, err)
 		if _, err := lexer.FindValueFragments(property, ast, "Type", "color"); err != nil {
 			t.Errorf("FindValueFragments() error = %v", err)
 		}
@@ -81,17 +85,17 @@ func FuzzMathFunction(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, property, value string) {
 		lexer := DefaultLexer()
-		result := lexer.MatchPropertyString(property, value)
-		if (result.Matched == nil) == (result.Error == nil) {
-			t.Fatalf("MatchPropertyString(%q, %q) matched = %t, error = %v", property, value, result.Matched != nil, result.Error)
+		result, err := lexer.MatchPropertyString(property, value)
+		if (result.Matched == nil) == (err == nil) {
+			t.Fatalf("MatchPropertyString(%q, %q) matched = %t, error = %v", property, value, result.Matched != nil, err)
 		}
 
-		if result.Matched == nil || !isSingleMathFunction(value) || strings.Count(value, "(") >= maxCalcDepth/2 {
+		if err != nil || !isSingleMathFunction(value) || strings.Count(value, "(") >= maxCalcDepth/2 {
 			return
 		}
 		nested := "calc(" + value + ")"
-		if lexer.MatchPropertyString(property, nested).Matched == nil {
-			t.Errorf("MatchPropertyString(%q, %q) matched, but not %q", property, value, nested)
+		if _, err := lexer.MatchPropertyString(property, nested); err != nil {
+			t.Errorf("MatchPropertyString(%q, %q) matched, but not %q: %v", property, value, nested, err)
 		}
 	})
 }
