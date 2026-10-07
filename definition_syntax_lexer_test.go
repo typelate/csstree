@@ -60,7 +60,7 @@ func mustDescriptorSyntax(t *testing.T, definition *Descriptor) definitionsyntax
 	t.Helper()
 	syntax, err := definition.Syntax()
 	if err != nil {
-		t.Fatalf("%s %s: Syntax() error = %v", definition.Type, definition.Name, err)
+		t.Fatalf("%s %s: Syntax() error = %v", definition.Kind, definition.Name, err)
 	}
 	return syntax
 }
@@ -77,7 +77,7 @@ func TestDefinitionSyntaxParseLexer(t *testing.T) {
 		forEachLexerDictionarySyntax(t, func(t *testing.T, definition *Descriptor) {
 			syntax := mustDescriptorSyntax(t, definition)
 			if syntax == nil || syntax.Type() != "Group" {
-				t.Errorf("%s %s: Syntax() = %v, want a Group", definition.Type, definition.Name, syntax)
+				t.Errorf("%s %s: Syntax() = %v, want a Group", definition.Kind, definition.Name, syntax)
 			}
 		})
 	})

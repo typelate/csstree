@@ -231,7 +231,7 @@ func TestLexerMatchAtrulePrelude(t *testing.T) {
 			Match: []*MatchNode{},
 			Syntax: &SyntaxRef{
 				Name: "page",
-				Kind: "AtrulePrelude",
+				Kind: KindAtrulePrelude,
 			},
 		}
 

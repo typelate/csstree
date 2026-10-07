@@ -98,8 +98,8 @@ func TestLexerAccessors(t *testing.T) {
 			if got := prelude != nil; got != test.want {
 				t.Errorf("GetAtrulePrelude(%q, %v) = %v, want a prelude: %v", test.name, test.fallback, prelude, test.want)
 			}
-			if prelude != nil && (prelude.Type != "AtrulePrelude" || prelude.Name != "media") {
-				t.Errorf("GetAtrulePrelude(%q, %v) = %s %s, want AtrulePrelude media", test.name, test.fallback, prelude.Type, prelude.Name)
+			if prelude != nil && (prelude.Kind != KindAtrulePrelude || prelude.Name != "media") {
+				t.Errorf("GetAtrulePrelude(%q, %v) = %s %s, want AtrulePrelude media", test.name, test.fallback, prelude.Kind, prelude.Name)
 			}
 		}
 	})
@@ -410,7 +410,7 @@ func TestLexerMatchDescriptorEdges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	descriptor := lexer.CreateDescriptorFromTree(tree, "Type", "anonymous", "")
+	descriptor := lexer.CreateDescriptorFromTree(tree, KindType, "anonymous", "")
 	for _, test := range []struct {
 		value      string
 		matched    bool
@@ -468,7 +468,7 @@ func TestLexerMatchDescriptorEdges(t *testing.T) {
 	unknownCombinator := lexer.CreateDescriptorFromTree(&definitionsyntax.Group{
 		Combinator: "x",
 		Terms:      []definitionsyntax.Node{&definitionsyntax.Keyword{Name: "a"}},
-	}, "Type", "anonymous", "")
+	}, KindType, "anonymous", "")
 	if result, err := lexer.MatchDescriptorString(unknownCombinator, "a"); result.Matched != nil || err == nil {
 		t.Errorf(`MatchDescriptorString(group with combinator "x", "a") = %v, %v, want an error`, result.Matched, err)
 	}

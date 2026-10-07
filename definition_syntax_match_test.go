@@ -109,7 +109,7 @@ func createSyntaxMatchHandler(source string) func() (*matchGraphNode, error) {
 
 // createGenericMatchHandler is createSyntaxMatchHandler for a generic type.
 func createGenericMatchHandler(generic genericType) func() (*matchGraphNode, error) {
-	match := buildGenericMatchGraphRoot(generic, &SyntaxRef{Kind: "Type", Name: generic.name})
+	match := buildGenericMatchGraphRoot(generic, &SyntaxRef{Kind: KindType, Name: generic.name})
 	return func() (*matchGraphNode, error) {
 		return match, nil
 	}

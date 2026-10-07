@@ -46,18 +46,30 @@ type MatchSyntax interface {
 	Type() string
 }
 
+// SyntaxKind is the kind of a syntax of the lexer (upstream a descriptor's
+// type).
+type SyntaxKind string
+
+// The kinds of syntax of the lexer.
+const (
+	KindType             SyntaxKind = "Type"
+	KindProperty         SyntaxKind = "Property"
+	KindAtrule           SyntaxKind = "Atrule"
+	KindAtrulePrelude    SyntaxKind = "AtrulePrelude"
+	KindAtruleDescriptor SyntaxKind = "AtruleDescriptor"
+)
+
 // SyntaxRef names a syntax of the lexer (upstream a descriptor's ref
 // {type, name}).
 type SyntaxRef struct {
-	// Kind is upstream type: "Type", "Property", "AtrulePrelude" or
-	// "AtruleDescriptor".
-	Kind string
+	Kind SyntaxKind
 	Name string
 }
 
-// Type returns Kind.
+// Type returns Kind as a string, which is the Type of the definition
+// syntax node of a Type or Property reference to the syntax.
 func (r *SyntaxRef) Type() string {
-	return r.Kind
+	return string(r.Kind)
 }
 
 // syntaxName returns the name of a match syntax ("" when it has none).
@@ -107,8 +119,7 @@ type MatchResult struct {
 // Its definition syntax is parsed and its match graph built on first use;
 // a Descriptor is safe for concurrent use.
 type Descriptor struct {
-	// Type is "Type", "Property", "AtrulePrelude" or "AtruleDescriptor".
-	Type string
+	Kind SyntaxKind
 	Name string
 	// Parent is the at-rule name of an AtruleDescriptor, else "".
 	Parent string
@@ -467,13 +478,13 @@ type descriptorSource struct {
 	generic genericType
 }
 
-func (l *Lexer) createDescriptor(source descriptorSource, typ, name, parent string) *Descriptor {
+func (l *Lexer) createDescriptor(source descriptorSource, kind SyntaxKind, name, parent string) *Descriptor {
 	ref := &SyntaxRef{
-		Kind: typ,
+		Kind: kind,
 		Name: name,
 	}
 	descriptor := &Descriptor{
-		Type:         typ,
+		Kind:         kind,
 		Name:         name,
 		Parent:       parent,
 		Serializable: source.isText || source.tree != nil,
@@ -516,7 +527,7 @@ func (l *Lexer) createDescriptor(source descriptorSource, typ, name, parent stri
 	})
 
 	descriptor.matchRef = func() (*matchGraphNode, error) { return nil, nil }
-	if typ == "Property" {
+	if kind == KindProperty {
 		descriptor.matchRef = sync.OnceValues(func() (*matchGraphNode, error) {
 			syntax, err := descriptor.syntax()
 			if err != nil {
@@ -539,18 +550,17 @@ func (l *Lexer) createDescriptor(source descriptorSource, typ, name, parent stri
 	return descriptor
 }
 
-// CreateDescriptor returns a descriptor of type typ ("Type", "Property",
-// "AtrulePrelude" or "AtruleDescriptor") for a definition syntax, without
-// adding it to the lexer; pass it to MatchDescriptor. parent is the
-// at-rule of an AtruleDescriptor.
-func (l *Lexer) CreateDescriptor(syntax, typ, name, parent string) *Descriptor {
-	return l.createDescriptor(descriptorSource{text: syntax, isText: true}, typ, name, parent)
+// CreateDescriptor returns a descriptor of kind for a definition syntax,
+// without adding it to the lexer; pass it to MatchDescriptor. parent is
+// the at-rule of a KindAtruleDescriptor.
+func (l *Lexer) CreateDescriptor(syntax string, kind SyntaxKind, name, parent string) *Descriptor {
+	return l.createDescriptor(descriptorSource{text: syntax, isText: true}, kind, name, parent)
 }
 
 // CreateDescriptorFromTree is CreateDescriptor for a parsed definition
 // syntax.
-func (l *Lexer) CreateDescriptorFromTree(syntax definitionsyntax.Node, typ, name, parent string) *Descriptor {
-	return l.createDescriptor(descriptorSource{tree: syntax}, typ, name, parent)
+func (l *Lexer) CreateDescriptorFromTree(syntax definitionsyntax.Node, kind SyntaxKind, name, parent string) *Descriptor {
+	return l.createDescriptor(descriptorSource{tree: syntax}, kind, name, parent)
 }
 
 // AddAtrule_ adds or replaces the syntax of the at-rule name.
@@ -559,14 +569,14 @@ func (l *Lexer) AddAtrule_(name string, syntax AtruleDefinition) {
 		Name: name,
 	}
 	if syntax.Prelude != "" {
-		atrule.Prelude = l.CreateDescriptor(syntax.Prelude, "AtrulePrelude", name, "")
+		atrule.Prelude = l.CreateDescriptor(syntax.Prelude, KindAtrulePrelude, name, "")
 	}
 	if syntax.Descriptors != nil {
 		atrule.Descriptors = make(map[string]*Descriptor)
 		for _, descName := range sortedKeys(syntax.Descriptors) {
 			atrule.Descriptors[descName] = l.createDescriptor(
 				descriptorSourceFromText(syntax.Descriptors[descName]),
-				"AtruleDescriptor",
+				KindAtruleDescriptor,
 				descName,
 				name,
 			)
@@ -598,7 +608,7 @@ func (l *Lexer) AddProperty_(name, syntax string) {
 	if _, ok := l.properties[name]; !ok {
 		l.propertyNames = append(l.propertyNames, name)
 	}
-	l.properties[name] = l.CreateDescriptor(syntax, "Property", name, "")
+	l.properties[name] = l.CreateDescriptor(syntax, KindProperty, name, "")
 }
 
 // AddType_ adds or replaces the syntax of the type name; an empty syntax
@@ -608,11 +618,11 @@ func (l *Lexer) AddType_(name, syntax string) {
 		return
 	}
 
-	l.addType(name, l.CreateDescriptor(syntax, "Type", name, ""))
+	l.addType(name, l.CreateDescriptor(syntax, KindType, name, ""))
 }
 
 func (l *Lexer) addGenericType(generic genericType) {
-	l.addType(generic.name, l.createDescriptor(descriptorSource{generic: generic}, "Type", generic.name, ""))
+	l.addType(generic.name, l.createDescriptor(descriptorSource{generic: generic}, KindType, generic.name, ""))
 }
 
 func (l *Lexer) addType(name string, descriptor *Descriptor) {
@@ -814,12 +824,12 @@ func (l *Lexer) matchType(typeName string, value matchInput) (*MatchResult, erro
 // Match matches value against a definition syntax, such as
 // "fn( <number># )" (upstream match with a string syntax).
 func (l *Lexer) Match(syntax string, value Node) (*MatchResult, error) {
-	return l.MatchDescriptor(l.CreateDescriptor(syntax, "Type", "anonymous", ""), value)
+	return l.MatchDescriptor(l.CreateDescriptor(syntax, KindType, "anonymous", ""), value)
 }
 
 // MatchString is Match for value text.
 func (l *Lexer) MatchString(syntax, value string) (*MatchResult, error) {
-	return l.MatchDescriptorString(l.CreateDescriptor(syntax, "Type", "anonymous", ""), value)
+	return l.MatchDescriptorString(l.CreateDescriptor(syntax, KindType, "anonymous", ""), value)
 }
 
 // MatchDescriptor matches value against a descriptor, such as one GetType
