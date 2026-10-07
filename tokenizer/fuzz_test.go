@@ -6,7 +6,7 @@ import (
 )
 
 func FuzzTokenize(f *testing.F) {
-	for _, seed := range []string{`url((\0`, `url(\`, `a\`, `"\`, `/*`, `@\`, `#\`, `1e\`, `url( a\)`, "\xef\xbb\xbfa", `u+1?-`, "\xef\xbf\xbe"} {
+	for _, seed := range []string{`url((\0`, `url(\`, `a\`, `"\`, `/*`, `@\`, `#\`, `1e\`, `url( a\)`, "\xef\xbb\xbfa", `u+1?-`, "\xef\xbf\xbe", "a\x00b", "\\\x00", "url(\x00\\\x00)", "\\\xe2\x82", "url(\"\\))", "'\n"} {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, source string) {
