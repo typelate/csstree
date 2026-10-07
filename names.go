@@ -13,25 +13,35 @@ import (
 
 const hyphenMinus = '-' // '-'.charCodeAt()
 
-// KeywordDescriptor is the result of Keyword. Field order and JSON keys
-// match upstream.
+// KeywordDescriptor is the result of Keyword. Its JSON matches upstream's
+// keyword descriptor.
 type KeywordDescriptor struct {
+	// Basename is Name without the vendor prefix.
 	Basename string `json:"basename"`
-	Name     string `json:"name"`
-	Prefix   string `json:"prefix"`
-	Vendor   string `json:"vendor"`
-	Custom   bool   `json:"custom"`
+	// Name is the lower-cased keyword.
+	Name string `json:"name"`
+	// Prefix and Vendor are the vendor prefix, such as "-moz-", or "".
+	Prefix string `json:"prefix"`
+	Vendor string `json:"vendor"`
+	// Custom reports whether the keyword starts with "--".
+	Custom bool `json:"custom"`
 }
 
-// PropertyDescriptor is the result of Property. Field order and JSON keys
-// match upstream.
+// PropertyDescriptor is the result of Property. Its JSON matches
+// upstream's property descriptor.
 type PropertyDescriptor struct {
+	// Basename is the name without the hack and vendor prefix.
 	Basename string `json:"basename"`
-	Name     string `json:"name"`
-	Hack     string `json:"hack"`
-	Vendor   string `json:"vendor"`
-	Prefix   string `json:"prefix"`
-	Custom   bool   `json:"custom"`
+	// Name is the name without the hack, lower-cased unless Custom.
+	Name string `json:"name"`
+	// Hack is the browser hack prefix, such as "*" or "_", or "".
+	Hack string `json:"hack"`
+	// Vendor is the vendor prefix, such as "-moz-", or "".
+	Vendor string `json:"vendor"`
+	// Prefix is Hack followed by Vendor.
+	Prefix string `json:"prefix"`
+	// Custom reports whether the name is a custom property (--*).
+	Custom bool `json:"custom"`
 }
 
 // Keyword describes an identifier: its lower-cased name split into vendor

@@ -146,9 +146,9 @@ type mapping struct {
 }
 
 // SourceMapGenerator is a Source Map revision 3, as GenerateWithSourceMap
-// returns it (the part of source-map-js's SourceMapGenerator that
-// generation needs). Set File and the sources' content before encoding it
-// with String or MarshalJSON.
+// returns it. Set File and the sources' content before encoding it with
+// String or MarshalJSON. It is not safe for concurrent use. (It ports the
+// part of source-map-js's SourceMapGenerator that generation needs.)
 type SourceMapGenerator struct {
 	// File is the name of the generated file ("" omits it).
 	File string
@@ -285,9 +285,8 @@ func (g *SourceMapGenerator) serializeMappings() string {
 	return result.String()
 }
 
-// String returns the source map as JSON (upstream toString, which is
-// JSON.stringify(toJSON())): version, sources, names, mappings, then file
-// and sourcesContent when set.
+// String returns the source map as JSON: version, sources, names,
+// mappings, then file and sourcesContent when set.
 func (g *SourceMapGenerator) String() string {
 	var b strings.Builder
 	b.WriteString(`{"version":3,"sources":`)
@@ -318,7 +317,7 @@ func (g *SourceMapGenerator) String() string {
 	return b.String()
 }
 
-// MarshalJSON encodes the source map (upstream toJSON).
+// MarshalJSON encodes the source map as String does.
 func (g *SourceMapGenerator) MarshalJSON() ([]byte, error) {
 	return []byte(g.String()), nil
 }
