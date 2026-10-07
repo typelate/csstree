@@ -157,14 +157,6 @@ func balancePair(tokenType tokenizer.TokenType) tokenizer.TokenType {
 	return 0
 }
 
-// safe char code getter
-func charCodeAt(str string, index int) int {
-	if index < len(str) {
-		return int(str[index])
-	}
-	return 0
-}
-
 // eqStr reports whether the name actual (an identifier or a function
 // name, escapes decoded) is an ASCII case-insensitive match for the
 // lowercase expected.
@@ -192,8 +184,8 @@ func isPostfixIeHack(str string, offset int) bool {
 		return false
 	}
 
-	return charCodeAt(str, offset) == 0x005C && // U+005C REVERSE SOLIDUS (\)
-		tokenizer.IsDigit(charCodeAt(str, offset+1))
+	return tokenizer.CharCodeAt(str, offset) == 0x005C && // U+005C REVERSE SOLIDUS (\)
+		tokenizer.IsDigit(tokenizer.CharCodeAt(str, offset+1))
 }
 
 // jsNumber converts str to a number as JavaScript's Number(str) does: it
@@ -486,7 +478,7 @@ func dashedIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitio
 	// ... must start with two dashes (U+002D HYPHEN-MINUS), in its value
 	// (escapes decoded)
 	value := tokenValue(token)
-	if charCodeAt(value, 0) != 0x002D || charCodeAt(value, 1) != 0x002D {
+	if tokenizer.CharCodeAt(value, 0) != 0x002D || tokenizer.CharCodeAt(value, 1) != 0x002D {
 		return 0
 	}
 
@@ -528,7 +520,7 @@ func hexColor(token *matchToken, _ func(offset int) *matchToken, _ *definitionsy
 	}
 
 	for i := 1; i < length; i++ {
-		if !tokenizer.IsHexDigit(charCodeAt(token.value, i)) {
+		if !tokenizer.IsHexDigit(tokenizer.CharCodeAt(token.value, i)) {
 			return 0
 		}
 	}
@@ -541,7 +533,7 @@ func idSelector(token *matchToken, _ func(offset int) *matchToken, _ *definition
 		return 0
 	}
 
-	if !tokenizer.IsIdentifierStart(charCodeAt(token.value, 1), charCodeAt(token.value, 2), charCodeAt(token.value, 3)) {
+	if !tokenizer.IsIdentifierStart(tokenizer.CharCodeAt(token.value, 1), tokenizer.CharCodeAt(token.value, 2), tokenizer.CharCodeAt(token.value, 3)) {
 		return 0
 	}
 
@@ -765,14 +757,14 @@ func integer(token *matchToken, _ func(offset int) *matchToken, opts *definition
 
 	// The first digit of an integer may be immediately preceded by `-` or `+` to indicate the integer’s sign.
 	i := 0
-	if charCodeAt(token.value, 0) == 0x002B || // U+002B PLUS SIGN (+)
-		charCodeAt(token.value, 0) == 0x002D { // U+002D HYPHEN-MINUS (-)
+	if tokenizer.CharCodeAt(token.value, 0) == 0x002B || // U+002B PLUS SIGN (+)
+		tokenizer.CharCodeAt(token.value, 0) == 0x002D { // U+002D HYPHEN-MINUS (-)
 		i = 1
 	}
 
 	// When written literally, an integer is one or more decimal digits 0 through 9 ...
 	for ; i < len(token.value); i++ {
-		if !tokenizer.IsDigit(charCodeAt(token.value, i)) {
+		if !tokenizer.IsDigit(tokenizer.CharCodeAt(token.value, i)) {
 			return 0
 		}
 	}

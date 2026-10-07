@@ -326,3 +326,14 @@ func TestSpecAnPlusBOddEven(t *testing.T) {
 		{"syntax", "<an-plus-b> | odd | even", "Even", true},
 	})
 }
+
+// TestSpecNullInHash checks that a NUL in a hash token reads as U+FFFD
+// REPLACEMENT CHARACTER (CSS Syntax 3 §3.3 preprocessing), a name code
+// point, as the tokenizer reads it: #\x00a is an <id-selector>.
+func TestSpecNullInHash(t *testing.T) {
+	runSpecMatchCases(t, []specMatchCase{
+		{"type", "id-selector", "#\x00a", true},
+		{"type", "id-selector", "#a\x00", true},
+		{"type", "hex-color", "#\x00ab", false},
+	})
+}
