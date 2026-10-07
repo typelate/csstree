@@ -4,7 +4,7 @@ package csstree
 
 import "github.com/typelate/csstree/tokenizer"
 
-// Combinator is a selector combinator: + | > | ~ | /deep/ or " " for
+// Combinator is a selector combinator: + | > | ~ | || | /deep/ or " " for
 // descendant.
 type Combinator struct {
 	Loc  *Location
@@ -45,7 +45,7 @@ func fromPlainObjectCombinator(r *PlainObjectReader, object map[string]any) Node
 	}
 }
 
-// Combinator parses + | > | ~ | /deep/
+// Combinator parses + | > | ~ | || | /deep/
 func (p *Parser) Combinator() *Combinator {
 	start := p.TokenStart
 	var name string
@@ -57,6 +57,14 @@ func (p *Parser) Combinator() *Combinator {
 	case tokenizer.Delim:
 		switch p.CharCodeAt(p.TokenStart) {
 		case greaterThanSign, plusSign, tilde:
+			p.Next()
+
+		case verticalLine:
+			// column combinator: two adjacent | delims
+			p.Next()
+			if !p.IsDelim(verticalLine, 0) {
+				p.Error(`Delim "|" is expected`, -1)
+			}
 			p.Next()
 
 		case solidus:

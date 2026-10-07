@@ -59,7 +59,14 @@ func selectorGetNode(p *Parser, _ *SequenceContext) Node {
 		case fullStop:
 			return p.ClassSelector()
 
-		case asterisk, verticalLine:
+		case verticalLine:
+			// || is the column combinator, |name a type selector
+			if p.IsDelim(verticalLine, 1) {
+				return p.Combinator()
+			}
+			return p.TypeSelector()
+
+		case asterisk:
 			return p.TypeSelector()
 
 		case numberSign:

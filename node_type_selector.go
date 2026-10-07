@@ -72,7 +72,8 @@ func (p *Parser) TypeSelector() *TypeSelector {
 	} else {
 		eatIdentifierOrAsterisk(p)
 
-		if p.IsDelim(verticalLine, 0) {
+		// a|| is a type selector followed by a column combinator
+		if p.IsDelim(verticalLine, 0) && !p.IsDelim(verticalLine, 1) {
 			p.Next()
 			eatIdentifierOrAsterisk(p)
 		}
