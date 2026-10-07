@@ -560,12 +560,12 @@ func TestTokenStreamAccessors(t *testing.T) {
 			t.Errorf("GetBlockTokenPairIndex(%d) = %d, want %d", tt.index, got, tt.pair)
 		}
 		wantOpener := tt.tokenType == Function || tt.tokenType == LeftParenthesis || tt.tokenType == LeftSquareBracket || tt.tokenType == LeftCurlyBracket
-		if got := ts.IsBlockOpenerTokenType(tt.tokenType); got != wantOpener {
-			t.Errorf("IsBlockOpenerTokenType(%v) = %t, want %t", tt.tokenType, got, wantOpener)
+		if got := tt.tokenType.IsBlockOpener(); got != wantOpener {
+			t.Errorf("%v.IsBlockOpener() = %t, want %t", tt.tokenType, got, wantOpener)
 		}
 		wantCloser := tt.tokenType == RightParenthesis || tt.tokenType == RightSquareBracket || tt.tokenType == RightCurlyBracket
-		if got := ts.IsBlockCloserTokenType(tt.tokenType); got != wantCloser {
-			t.Errorf("IsBlockCloserTokenType(%v) = %t, want %t", tt.tokenType, got, wantCloser)
+		if got := tt.tokenType.IsBlockCloser(); got != wantCloser {
+			t.Errorf("%v.IsBlockCloser() = %t, want %t", tt.tokenType, got, wantCloser)
 		}
 	}
 }
@@ -853,6 +853,18 @@ func TestTokenTypeString(t *testing.T) {
 	} {
 		if got := tt.tokenType.String(); got != tt.want {
 			t.Errorf("TokenType(%d).String() = %q, want %q", int(tt.tokenType), got, tt.want)
+		}
+	}
+}
+
+// Block predicates answer false for types outside the defined range.
+func TestTokenTypeBlockOutOfRange(t *testing.T) {
+	for _, tokenType := range []TokenType{-1, Comment + 1, 32, 1 << 20} {
+		if tokenType.IsBlockOpener() || tokenType.IsBlockCloser() {
+			t.Errorf("TokenType(%d) IsBlockOpener() = %t, IsBlockCloser() = %t, want false, false", int(tokenType), tokenType.IsBlockOpener(), tokenType.IsBlockCloser())
+		}
+		if got := tokenType.closer(); got != EOF {
+			t.Errorf("TokenType(%d).closer() = %v, want %v", int(tokenType), got, EOF)
 		}
 	}
 }

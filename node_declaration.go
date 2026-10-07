@@ -284,7 +284,7 @@ func isDeclarationAhead(p *Parser) bool {
 			other = true
 		}
 		// skip the rest of a block
-		if p.IsBlockOpenerTokenType(tokenType) && p.Balance[j] > j {
+		if tokenType.IsBlockOpener() && p.Balance[j] > j {
 			j = p.Balance[j]
 		}
 	}

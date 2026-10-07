@@ -10,8 +10,7 @@ const (
 )
 
 // balancePair maps a block opener to its closer. It is read-only.
-// 32b of memory ought to be enough for anyone (any number of tokens)
-var balancePair = [32]TokenType{
+var balancePair = [Comment + 1]TokenType{
 	Function:          RightParenthesis,
 	LeftParenthesis:   RightParenthesis,
 	LeftSquareBracket: RightSquareBracket,
@@ -19,7 +18,7 @@ var balancePair = [32]TokenType{
 }
 
 // blockTokens marks block openers and closers. It is read-only.
-var blockTokens = [32]uint8{
+var blockTokens = [Comment + 1]uint8{
 	Function:           blockOpenToken,
 	LeftParenthesis:    blockOpenToken,
 	LeftSquareBracket:  blockOpenToken,
@@ -27,6 +26,34 @@ var blockTokens = [32]uint8{
 	RightParenthesis:   blockCloseToken,
 	RightSquareBracket: blockCloseToken,
 	RightCurlyBracket:  blockCloseToken,
+}
+
+// blockKind returns blockOpenToken, blockCloseToken or 0 for t.
+func (t TokenType) blockKind() uint8 {
+	if uint(t) < uint(len(blockTokens)) {
+		return blockTokens[t]
+	}
+	return 0
+}
+
+// closer returns the type of the token that closes a block opened by t, or
+// EOF when t opens no block.
+func (t TokenType) closer() TokenType {
+	if uint(t) < uint(len(balancePair)) {
+		return balancePair[t]
+	}
+	return EOF
+}
+
+// IsBlockOpener reports whether t opens a block: a function, (, [ or {
+// token.
+func (t TokenType) IsBlockOpener() bool {
+	return t.blockKind() == blockOpenToken
+}
+
+// IsBlockCloser reports whether t closes a block: a ), ] or } token.
+func (t TokenType) IsBlockCloser() bool {
+	return t.blockKind() == blockCloseToken
 }
 
 func boundIndex(index, minimum, maximum int) int {
@@ -126,11 +153,11 @@ func (ts *TokenStream) SetSource(source string, tokenize func(source string, onT
 
 			// pop state
 			balanceStart = prevBalanceStart
-			balanceCloseType = balancePair[offsetAndType[prevBalanceStart]>>typeShift]
-		} else if ts.IsBlockOpenerTokenType(tokenType) { // check for FunctionToken, <(-token>, <[-token> and <{-token>
+			balanceCloseType = TokenType(offsetAndType[prevBalanceStart] >> typeShift).closer()
+		} else if tokenType.IsBlockOpener() { // check for FunctionToken, <(-token>, <[-token> and <{-token>
 			// push state
 			balanceStart = index
-			balanceCloseType = balancePair[tokenType]
+			balanceCloseType = tokenType.closer()
 		}
 	})
 
@@ -302,48 +329,29 @@ func (ts *TokenStream) SubstrToCursor(start int) string {
 	return substring(ts.Source, start, ts.TokenStart)
 }
 
-// IsBlockOpenerTokenType reports whether tokenType opens a block: a
-// function, (, [ or { token.
-func (ts *TokenStream) IsBlockOpenerTokenType(tokenType TokenType) bool {
-	return blockTokens[tokenType] == blockOpenToken
-}
-
-// IsBlockCloserTokenType reports whether tokenType closes a block: a ), ] or
-// } token.
-func (ts *TokenStream) IsBlockCloserTokenType(tokenType TokenType) bool {
-	return blockTokens[tokenType] == blockCloseToken
-}
-
 // GetBlockTokenPairIndex returns the index of the token that closes (or
 // opens) the block token at tokenIndex, or -1 when it is not a block token
 // or has no pair.
 func (ts *TokenStream) GetBlockTokenPairIndex(tokenIndex int) int {
 	tokenType := ts.GetTokenType(tokenIndex)
 
-	if blockTokens[tokenType] == 1 {
-		// block open token
+	switch tokenType.blockKind() {
+	case blockOpenToken:
 		pairIndex, ok := ts.balanceAt(tokenIndex)
 		if !ok {
 			return -1 // upstream: no cell, so the pair's type is 0 and matches no closer
 		}
-		closeType := ts.GetTokenType(pairIndex)
-
-		if balancePair[tokenType] == closeType {
+		if tokenType.closer() == ts.GetTokenType(pairIndex) {
 			return pairIndex
 		}
-		return -1
-	} else if blockTokens[tokenType] == 2 {
-		// block close token
+	case blockCloseToken:
 		pairIndex, ok := ts.balanceAt(tokenIndex)
 		if !ok {
 			return -1 // upstream: no cell, so the pair's type is 0 and opens nothing
 		}
-		openType := ts.GetTokenType(pairIndex)
-
-		if balancePair[openType] == tokenType {
+		if ts.GetTokenType(pairIndex).closer() == tokenType {
 			return pairIndex
 		}
-		return -1
 	}
 
 	return -1
@@ -456,7 +464,7 @@ loop:
 
 		default:
 			// fast forward to the end of balanced block for an open block tokens
-			if ts.IsBlockOpenerTokenType(TokenType(ts.offsetAndType[cursor] >> typeShift)) {
+			if TokenType(ts.offsetAndType[cursor] >> typeShift).IsBlockOpener() {
 				cursor = balanceEnd
 			}
 		}

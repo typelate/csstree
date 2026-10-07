@@ -109,12 +109,12 @@ func (api *TokenIterateAPI) Substring(start, end int) string {
 
 // IsBlockOpenerTokenType reports whether tokenType opens a block.
 func (api *TokenIterateAPI) IsBlockOpenerTokenType(tokenType tokenizer.TokenType) bool {
-	return api.parser.IsBlockOpenerTokenType(tokenType)
+	return tokenType.IsBlockOpener()
 }
 
 // IsBlockCloserTokenType reports whether tokenType closes a block.
 func (api *TokenIterateAPI) IsBlockCloserTokenType(tokenType tokenizer.TokenType) bool {
-	return api.parser.IsBlockCloserTokenType(tokenType)
+	return tokenType.IsBlockCloser()
 }
 
 // GetBlockTokenPairIndex returns the index of the token paired with the
@@ -369,7 +369,7 @@ func (p *Parser) scanUntilBalanced(start int, stop ...tokenizer.TokenType) int {
 		}
 
 		// fast forward to the end of a block
-		if p.IsBlockOpenerTokenType(tokenType) {
+		if tokenType.IsBlockOpener() {
 			cursor = balanceEnd
 		}
 	}
