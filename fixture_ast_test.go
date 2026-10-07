@@ -12,7 +12,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -422,17 +421,39 @@ func toPlainJSON(t *testing.T, v any) any {
 	return result
 }
 
+// jsonText encodes v as JSON without escaping HTML characters, indenting
+// with indent ("" for one line). Map keys come out sorted, so two plain JSON
+// values (see toPlainJSON) are equal if and only if their jsonText is.
+func jsonText(t *testing.T, v any, indent string) string {
+	t.Helper()
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", indent)
+	if err := encoder.Encode(v); err != nil {
+		t.Fatalf("encoding JSON: %v", err)
+	}
+	return strings.TrimSuffix(buf.String(), "\n")
+}
+
+// assertJSONEqual reports an error, printing both values as indented JSON,
+// if the plain JSON values got and want differ; call says what produced got.
+func assertJSONEqual(t *testing.T, call string, got, want any) {
+	t.Helper()
+	gotJSON := jsonText(t, got, "    ")
+	wantJSON := jsonText(t, want, "    ")
+	if gotJSON != wantJSON {
+		t.Errorf("%s =\n%s\nwant\n%s", call, gotJSON, wantJSON)
+	}
+}
+
 // assertASTEqualNoLoc is assert.strictEqual(stringifyWithNoLoc(actual),
 // stringifyWithNoLoc(expected)).
 func assertASTEqualNoLoc(t *testing.T, source string, actual, expected any) {
 	t.Helper()
 	got := stripLoc(toPlainJSON(t, actual))
 	want := stripLoc(toPlainJSON(t, expected))
-	if !reflect.DeepEqual(got, want) {
-		gotJSON, _ := json.MarshalIndent(got, "", "    ")
-		wantJSON, _ := json.MarshalIndent(want, "", "    ")
-		t.Errorf("Parse(%q) =\n%s\nwant\n%s", source, gotJSON, wantJSON)
-	}
+	assertJSONEqual(t, fmt.Sprintf("Parse(%q)", source), got, want)
 }
 
 // orderedObject is a JSON object with its keys in source order.

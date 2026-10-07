@@ -3,7 +3,7 @@
 package csstree
 
 import (
-	"reflect"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -93,11 +93,7 @@ func createGenerateTests(t *testing.T, test astFixtureTest) {
 		// that is, parsing the stylesheet must produce the same data structures as parsing,
 		// serializing, and parsing again, except for consecutive <whitespace-token>s,
 		// which may be collapsed into a single token.
-		got := toPlainJSON(t, actualAST)
-		want := toPlainJSON(t, expectedAST)
-		if !reflect.DeepEqual(got, want) {
-			t.Errorf("Parse(Generate(Parse(%q))) = %v, want %v", test.Source, got, want)
-		}
+		assertJSONEqual(t, fmt.Sprintf("Parse(Generate(Parse(%q)))", test.Source), toPlainJSON(t, actualAST), toPlainJSON(t, expectedAST))
 	})
 }
 

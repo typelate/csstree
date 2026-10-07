@@ -1,8 +1,6 @@
 package csstree
 
 import (
-	"bytes"
-	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -26,41 +24,6 @@ func parseCollectingErrors(t *testing.T, source string, options ParseOptions) (N
 	return ast, parseErrors
 }
 
-// plainJSON returns the JSON of node without locations.
-func plainJSON(t *testing.T, node Node) string {
-	t.Helper()
-	data, err := json.Marshal(node)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var plain any
-	if err := json.Unmarshal(data, &plain); err != nil {
-		t.Fatal(err)
-	}
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(dropLocations(plain)); err != nil {
-		t.Fatal(err)
-	}
-	return strings.TrimSuffix(buf.String(), "\n")
-}
-
-func dropLocations(value any) any {
-	switch value := value.(type) {
-	case map[string]any:
-		delete(value, "loc")
-		for key, item := range value {
-			value[key] = dropLocations(item)
-		}
-	case []any:
-		for i, item := range value {
-			value[i] = dropLocations(item)
-		}
-	}
-	return value
-}
-
 // specParseTest is a source parsed in a context, with the expected plain
 // object (JSON without locations; "" skips the check), node types in walk
 // order ("" skips the check), generated CSS and recovered errors.
@@ -79,8 +42,8 @@ func runSpecParseTests(t *testing.T, tests []specParseTest) {
 		t.Run(tt.source, func(t *testing.T) {
 			ast, parseErrors := parseCollectingErrors(t, tt.source, ParseOptions{Context: tt.context})
 			if tt.json != "" {
-				if got := plainJSON(t, ast); got != tt.json {
-					t.Errorf("Parse(%q) = %s, want %s", tt.source, got, tt.json)
+				if got := jsonText(t, stripLoc(toPlainJSON(t, ast)), ""); got != tt.json {
+					t.Errorf("Parse(%q) =\n%s\nwant\n%s", tt.source, got, tt.json)
 				}
 			}
 			if tt.types != "" {

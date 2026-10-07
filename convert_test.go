@@ -45,8 +45,10 @@ func TestConvert(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			// DeepEqual, not JSON: the plain object has the Go types
+			// json.Unmarshal decodes to
 			if !reflect.DeepEqual(any(actual), expected) {
-				t.Errorf("ToPlainObject(Parse(%q)) = %v, want %v", css, actual, expected)
+				t.Errorf("ToPlainObject(Parse(%q)) =\n%s\nwant\n%s", css, jsonText(t, actual, "    "), jsonText(t, expected, "    "))
 			}
 		})
 
@@ -62,9 +64,7 @@ func TestConvert(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got, want := toPlainJSON(t, converted), toPlainJSON(t, ast); !reflect.DeepEqual(got, want) {
-				t.Errorf("FromPlainObject(ToPlainObject(ast)) = %v, want %v", got, want)
-			}
+			assertJSONEqual(t, "FromPlainObject(ToPlainObject(ast))", toPlainJSON(t, converted), toPlainJSON(t, ast))
 		})
 
 		t.Run("fromPlainObject errors", func(t *testing.T) {

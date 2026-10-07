@@ -5,6 +5,7 @@ package csstree
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"regexp"
@@ -183,7 +184,7 @@ func TestParse(t *testing.T) {
 					}
 
 					// AST should not be equal
-					if reflect.DeepEqual(stripLoc(toPlainJSON(t, actual)), stripLoc(toPlainJSON(t, expected))) {
+					if jsonText(t, stripLoc(toPlainJSON(t, actual)), "") == jsonText(t, stripLoc(toPlainJSON(t, expected)), "") {
 						t.Errorf("Parse(%q) = Value[Raw %q], want an error or another AST", value, value)
 					}
 				})
@@ -208,9 +209,7 @@ func TestParse(t *testing.T) {
 					},
 				},
 			}
-			if got := toPlainJSON(t, ast); !reflect.DeepEqual(got, want) {
-				t.Errorf("Parse(%q) = %v, want %v", "property: value", got, want)
-			}
+			assertJSONEqual(t, fmt.Sprintf("Parse(%q)", "property: value"), toPlainJSON(t, ast), want)
 
 			ast, err = Parse("property: value", ParseOptions{
 				Context: "declaration",
@@ -235,9 +234,7 @@ func TestParse(t *testing.T) {
 					},
 				},
 			}
-			if got := toPlainJSON(t, ast); !reflect.DeepEqual(got, want) {
-				t.Errorf("Parse(%q, declaration) = %v, want %v", "property: value", got, want)
-			}
+			assertJSONEqual(t, fmt.Sprintf("Parse(%q, declaration)", "property: value"), toPlainJSON(t, ast), want)
 		})
 
 		t.Run("wrong context", func(t *testing.T) {
@@ -480,7 +477,7 @@ func TestParse(t *testing.T) {
 				{Value: "567*", Loc: nil},
 			}
 			if !reflect.DeepEqual(actual, want) {
-				t.Errorf("comments = %+v, want %+v", actual, want)
+				t.Errorf("comments =\n%s\nwant\n%s", jsonText(t, actual, "    "), jsonText(t, want, "    "))
 			}
 		})
 
@@ -519,7 +516,7 @@ func TestParse(t *testing.T) {
 				{Value: "567*", Loc: loc(83, 89)},
 			}
 			if !reflect.DeepEqual(actual, want) {
-				t.Errorf("comments = %+v, want %+v", actual, want)
+				t.Errorf("comments =\n%s\nwant\n%s", jsonText(t, actual, "    "), jsonText(t, want, "    "))
 			}
 		})
 	})
@@ -648,7 +645,7 @@ func TestParse(t *testing.T) {
 				})
 			}
 			if !reflect.DeepEqual(actual, want) {
-				t.Errorf("tokens =\n%+v\nwant\n%+v", actual, want)
+				t.Errorf("tokens =\n%s\nwant\n%s", jsonText(t, actual, "    "), jsonText(t, want, "    "))
 			}
 		})
 

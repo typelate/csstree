@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"maps"
 	"os"
-	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -115,11 +114,7 @@ func TestExports(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got := stripLoc(toPlainJSON(t, ast))
-			want := stripLoc(any(expectedPlain))
-			if !reflect.DeepEqual(got, want) {
-				t.Errorf("Parse(stringify.css) differs from stringify.ast")
-			}
+			assertJSONEqual(t, "Parse(stringify.css)", stripLoc(toPlainJSON(t, ast)), stripLoc(any(expectedPlain)))
 		})
 
 		t.Run("selector-parser", func(t *testing.T) {

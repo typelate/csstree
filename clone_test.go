@@ -3,7 +3,6 @@
 package csstree
 
 import (
-	"reflect"
 	"slices"
 	"testing"
 )
@@ -32,9 +31,7 @@ func createCloneTest(t *testing.T, name string, getAST func(t *testing.T) Node) 
 		}
 
 		// Go only: the copy is equal to the original
-		if got, want := toPlainJSON(t, astCopy), toPlainJSON(t, ast); !reflect.DeepEqual(got, want) {
-			t.Errorf("Clone() = %v, want %v", got, want)
-		}
+		assertJSONEqual(t, "Clone()", toPlainJSON(t, astCopy), toPlainJSON(t, ast))
 	})
 }
 

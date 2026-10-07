@@ -2,7 +2,6 @@ package csstree
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 
 	"github.com/typelate/csstree/tokenizer"
@@ -213,8 +212,8 @@ func TestCloneASTFixtures(t *testing.T) {
 		}
 		astCopy := Clone(ast)
 
-		if got, want := toPlainJSON(t, astCopy), toPlainJSON(t, ast); !reflect.DeepEqual(got, want) {
-			t.Fatalf("Clone() = %v, want %v", got, want)
+		if got, want := jsonText(t, toPlainJSON(t, astCopy), "    "), jsonText(t, toPlainJSON(t, ast), "    "); got != want {
+			t.Fatalf("Clone() =\n%s\nwant\n%s", got, want)
 		}
 
 		originals := map[any]bool{}
