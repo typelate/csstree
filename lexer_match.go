@@ -191,6 +191,47 @@ type matcher struct {
 	// (upstream: null, false, a state snapshot)
 	syntaxStash         *elseStackItem
 	syntaxStashDisabled bool
+
+	// the stack items, allocated a chunk at a time
+	matchItems  slab[matchStackItem]
+	syntaxItems slab[syntaxStackItem]
+	thenItems   slab[thenStackItem]
+	elseItems   slab[elseStackItem]
+}
+
+// slab hands out pointers to items it allocates a chunk at a time, each
+// chunk twice the size of the one before up to maxSlabChunk items. The
+// matcher allocates its stack items from slabs since it pushes many and
+// drops them all when it is done.
+type slab[T any] struct {
+	chunk []T
+}
+
+const (
+	minSlabChunk = 4
+	maxSlabChunk = 128
+)
+
+// alloc returns a pointer to a new zero item.
+func (s *slab[T]) alloc() *T {
+	if len(s.chunk) == cap(s.chunk) {
+		s.chunk = make([]T, 0, min(max(2*cap(s.chunk), minSlabChunk), maxSlabChunk))
+	}
+	s.chunk = s.chunk[:len(s.chunk)+1]
+
+	return &s.chunk[len(s.chunk)-1]
+}
+
+// pushMatch pushes an item onto the match stack.
+func (m *matcher) pushMatch(kind stackItemKind, syntax definitionsyntax.Node, token *matchToken) {
+	item := m.matchItems.alloc()
+	*item = matchStackItem{
+		kind:   kind,
+		syntax: syntax,
+		token:  token,
+		prev:   m.matchStack,
+	}
+	m.matchStack = item
 }
 
 func (m *matcher) moveToNextToken() {
@@ -207,7 +248,8 @@ func (m *matcher) moveToNextToken() {
 }
 
 func (m *matcher) stateSnapshotFromSyntax(nextState *matchGraphNode, prev *elseStackItem) *elseStackItem {
-	return &elseStackItem{
+	item := m.elseItems.alloc()
+	*item = elseStackItem{
 		nextState:   nextState,
 		matchStack:  m.matchStack,
 		syntaxStack: m.syntaxStack,
@@ -215,15 +257,19 @@ func (m *matcher) stateSnapshotFromSyntax(nextState *matchGraphNode, prev *elseS
 		tokenIndex:  m.tokenIndex,
 		prev:        prev,
 	}
+
+	return item
 }
 
 func (m *matcher) pushThenStack(nextState *matchGraphNode) {
-	m.thenStack = &thenStackItem{
+	item := m.thenItems.alloc()
+	*item = thenStackItem{
 		nextState:   nextState,
 		matchStack:  m.matchStack,
 		syntaxStack: m.syntaxStack,
 		prev:        m.thenStack,
 	}
+	m.thenStack = item
 }
 
 func (m *matcher) pushElseStack(nextState *matchGraphNode) {
@@ -231,12 +277,7 @@ func (m *matcher) pushElseStack(nextState *matchGraphNode) {
 }
 
 func (m *matcher) addTokenToMatch() {
-	m.matchStack = &matchStackItem{
-		kind:   tokenItem,
-		syntax: m.state.syntax,
-		token:  m.token,
-		prev:   m.matchStack,
-	}
+	m.pushMatch(tokenItem, m.state.syntax, m.token)
 
 	m.moveToNextToken()
 	m.syntaxStash = nil
@@ -252,31 +293,23 @@ func (m *matcher) openSyntax() {
 	if bounds == nil && m.syntaxStack != nil {
 		bounds = m.syntaxStack.bounds
 	}
-	m.syntaxStack = &syntaxStackItem{
+	item := m.syntaxItems.alloc()
+	*item = syntaxStackItem{
 		syntax:         m.state.syntax,
 		bounds:         bounds,
 		percentSibling: m.state.percentSibling,
 		prev:           m.syntaxStack,
 	}
+	m.syntaxStack = item
 
-	m.matchStack = &matchStackItem{
-		kind:   openSyntaxItem,
-		syntax: m.state.syntax,
-		token:  m.matchStack.token,
-		prev:   m.matchStack,
-	}
+	m.pushMatch(openSyntaxItem, m.state.syntax, m.matchStack.token)
 }
 
 func (m *matcher) closeSyntax() {
 	if m.matchStack.kind == openSyntaxItem {
 		m.matchStack = m.matchStack.prev
 	} else {
-		m.matchStack = &matchStackItem{
-			kind:   closeSyntaxItem,
-			syntax: m.syntaxStack.syntax,
-			token:  m.matchStack.token,
-			prev:   m.matchStack,
-		}
+		m.pushMatch(closeSyntaxItem, m.syntaxStack.syntax, m.matchStack.token)
 	}
 
 	m.syntaxStack = m.syntaxStack.prev
@@ -291,8 +324,8 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 		syntaxes:   syntaxes,
 		state:      state,
 		tokenIndex: -1,
-		matchStack: &matchStackItem{kind: stubItem},
 	}
+	m.pushMatch(stubItem, nil, nil)
 
 	return m.run()
 }
