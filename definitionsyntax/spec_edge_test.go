@@ -174,8 +174,8 @@ func TestWalkNilTerm(t *testing.T) {
 		err := definitionsyntax.Walk(node, definitionsyntax.WalkOptions{Leave: func(n definitionsyntax.Node) {
 			left = append(left, n.Type())
 		}})
-		if err == nil || err.Error() != "Unknown type: <nil>" {
-			t.Errorf("Walk(%s with a nil term) error = %v, want %q", node.Type(), err, "Unknown type: <nil>")
+		if !errors.Is(err, definitionsyntax.ErrNilNode) {
+			t.Errorf("Walk(%s with a nil term) error = %v, want %v", node.Type(), err, definitionsyntax.ErrNilNode)
 		}
 		if len(left) != 0 {
 			t.Errorf("Walk(%s with a nil term) left %v, want none", node.Type(), left)

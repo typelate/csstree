@@ -5,6 +5,7 @@ package definitionsyntax_test
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -72,7 +73,7 @@ func TestNilNode(t *testing.T) {
 		t.Errorf("Generate(nil) = %q, want %q", got, "")
 	}
 	err := definitionsyntax.Walk(&definitionsyntax.Multiplier{}, definitionsyntax.WalkOptions{Enter: func(definitionsyntax.Node) {}})
-	if err == nil || err.Error() != "Unknown type: <nil>" {
-		t.Errorf("Walk(&Multiplier{}) = %v, want Unknown type: <nil>", err)
+	if !errors.Is(err, definitionsyntax.ErrNilNode) {
+		t.Errorf("Walk(&Multiplier{}) = %v, want %v", err, definitionsyntax.ErrNilNode)
 	}
 }
