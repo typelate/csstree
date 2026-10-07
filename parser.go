@@ -4,6 +4,7 @@
 package csstree
 
 import (
+	"fmt"
 	"maps"
 	"strings"
 	"sync"
@@ -52,11 +53,11 @@ type ParseOptions struct {
 	// instead of Raw nodes.
 	ParseCustomProperty bool
 
-	// OnParseError is called when the parser recovers from a syntax error
-	// by producing fallbackNode (usually a Raw node). Returning a non-nil
-	// error stops the parse with that error, as throwing from upstream's
-	// onParseError does.
-	OnParseError func(err *SyntaxError, fallbackNode Node) error
+	// OnParseError is called when the parser recovers from an error
+	// (usually a *SyntaxError) by producing fallbackNode (usually a Raw
+	// node). Returning a non-nil error stops the parse with that error, as
+	// throwing from upstream's onParseError does.
+	OnParseError func(err error, fallbackNode Node) error
 	// OnComment is called for every comment with its text (without /* and
 	// */) and its location, which is nil unless Positions is set.
 	OnComment func(value string, loc *Location)
@@ -170,7 +171,7 @@ type Parser struct {
 
 	filename          string
 	needPositions     bool
-	onParseError      func(err *SyntaxError, fallbackNode Node) error
+	onParseError      func(err error, fallbackNode Node) error
 	onParseErrorThrow bool
 	locationMap       *tokenizer.OffsetToLocation
 }
@@ -289,14 +290,12 @@ func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error
 
 	defer func() {
 		if r := recover(); r != nil {
-			switch r := r.(type) {
-			case *SyntaxError:
-				ast, err = nil, r
-			case parseAbort:
-				ast, err = nil, r.err
-			default:
-				panic(r)
+			if abort, ok := r.(parseAbort); ok {
+				ast, err = nil, abort.err
+				return
 			}
+			// upstream: whatever the parse throws reaches the caller
+			ast, err = nil, recoveredError(r)
 		}
 	}()
 
@@ -408,18 +407,28 @@ func (p *Parser) ParseWithFallback(consumer, fallback func() Node) Node {
 }
 
 // try calls fn and returns the *SyntaxError it panics with, if any.
-func (p *Parser) try(fn func() Node) (node Node, err *SyntaxError) {
+func (p *Parser) try(fn func() Node) (node Node, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			syntaxError, ok := r.(*SyntaxError)
-			if !ok {
-				panic(r)
+			if abort, ok := r.(parseAbort); ok {
+				panic(abort)
 			}
-			node, err = nil, syntaxError
+			// upstream catches any exception, not only syntax errors
+			node, err = nil, recoveredError(r)
 		}
 	}()
 
 	return fn(), nil
+}
+
+// recoveredError is the error upstream's catch would receive for a recovered
+// panic value: the value itself when it is an error (a *SyntaxError, or a
+// runtime error where upstream gets a TypeError), otherwise its text.
+func recoveredError(r any) error {
+	if err, ok := r.(error); ok {
+		return err
+	}
+	return fmt.Errorf("%v", r)
 }
 
 // LookupNonWSType returns the type of the first token at or after offset

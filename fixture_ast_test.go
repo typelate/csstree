@@ -77,7 +77,7 @@ func (test astFixtureTest) ParseOptions(throwOnError bool) ParseOptions {
 		options.ParseCustomProperty = *o.ParseCustomProperty
 	}
 	if throwOnError {
-		options.OnParseError = func(err *SyntaxError, _ Node) error {
+		options.OnParseError = func(err error, _ Node) error {
 			return err
 		}
 	}

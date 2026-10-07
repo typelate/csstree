@@ -484,7 +484,8 @@ func processTokenizeTests(t *testing.T, tests map[string][]json.RawMessage, key,
 }
 
 // TestPortDeviations covers the places where the Go port differs from
-// upstream (see PORTING.md, Deviations). It has no upstream counterpart.
+// upstream: BOM length, buffer reuse, byte columns and escape decoding. It has
+// no upstream counterpart.
 func TestPortDeviations(t *testing.T) {
 	t.Run("BOM is skipped as 3 bytes", func(t *testing.T) {
 		const source = "\uFEFFa b"

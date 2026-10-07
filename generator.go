@@ -182,11 +182,12 @@ func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (s
 
 		defer func() {
 			if r := recover(); r != nil {
-				failure, ok := r.(generateFailure)
-				if !ok {
-					panic(r)
+				if failure, ok := r.(generateFailure); ok {
+					result, err = "", failure.err
+					return
 				}
-				result, err = "", failure.err
+				// upstream: whatever a generate function throws reaches the caller
+				result, err = "", recoveredError(r)
 			}
 		}()
 

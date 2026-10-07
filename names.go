@@ -5,7 +5,7 @@ package csstree
 import "strings"
 
 // Upstream memoizes descriptors in two unbounded Maps keyed by every name it
-// has seen; this port computes them on each call (see PORTING.md).
+// has seen; this port computes them on each call to avoid package-level state.
 
 const hyphenMinus = '-' // '-'.charCodeAt()
 

@@ -270,13 +270,13 @@ func TestParse(t *testing.T) {
 
 	t.Run("should call onParseError when handler is passed", func(t *testing.T) {
 		type parseError struct {
-			err          *SyntaxError
+			err          error
 			fallbackNode Node
 		}
 		var errs []parseError
 		ast, err := Parse("{a: 1!; foo; b: 2}", ParseOptions{
 			Context: "block",
-			OnParseError: func(err *SyntaxError, fallbackNode Node) error {
+			OnParseError: func(err error, fallbackNode Node) error {
 				errs = append(errs, parseError{err, fallbackNode})
 				return nil
 			},
@@ -291,13 +291,13 @@ func TestParse(t *testing.T) {
 		if len(errs) != 2 {
 			t.Fatalf("len(errors) = %d, want 2", len(errs))
 		}
-		if got := errs[0].err.Message; got != "Identifier is expected" {
+		if got := errs[0].err.Error(); got != "Identifier is expected" {
 			t.Errorf("errors[0].error.message = %q, want %q", got, "Identifier is expected")
 		}
 		if got := errs[0].fallbackNode.(*Raw).Value; got != "a: 1!;" {
 			t.Errorf("errors[0].fallbackNode.value = %q, want %q", got, "a: 1!;")
 		}
-		if got := errs[1].err.Message; got != "Colon is expected" {
+		if got := errs[1].err.Error(); got != "Colon is expected" {
 			t.Errorf("errors[1].error.message = %q, want %q", got, "Colon is expected")
 		}
 		if got := errs[1].fallbackNode.(*Raw).Value; got != "foo;" {
@@ -307,7 +307,7 @@ func TestParse(t *testing.T) {
 
 	t.Run("errors", func(t *testing.T) {
 		throwOnParseErrorOptions := ParseOptions{
-			OnParseError: func(err *SyntaxError, _ Node) error {
+			OnParseError: func(err error, _ Node) error {
 				return err
 			},
 		}
