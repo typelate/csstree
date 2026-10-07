@@ -102,7 +102,8 @@ func withB(tokens []matchToken, offset int) int {
 	return next + 1
 }
 
-// An+B microsyntax https://www.w3.org/TR/css-syntax-3/#anb
+// anPlusB is the generic type <an-plus-b>, the An+B microsyntax
+// https://www.w3.org/TR/css-syntax-3/#anb.
 func anPlusB(tokens []matchToken, _ *definitionsyntax.Range) int {
 	if len(tokens) == 0 {
 		return 0

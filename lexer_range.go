@@ -1,3 +1,6 @@
+// Go only: comparison of range bounds with units, which upstream skips (a
+// FIXME in lib/lexer/generic.js).
+
 package csstree
 
 import (

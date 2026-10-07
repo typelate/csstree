@@ -16,7 +16,7 @@ func cssWideKeywords() []string {
 }
 
 // isCSSWideKeyword reports whether name, which is lowercase, is one of
-// cssWideKeywords.
+// the keywords cssWideKeywords returns.
 func isCSSWideKeyword(name string) bool {
 	switch name {
 	case "initial", "inherit", "unset", "revert", "revert-layer":

@@ -14,6 +14,7 @@ import (
 // counting question marks as hex digits.
 const maxURangeDigits = 6
 
+// tokenStartsWith reports whether the value of token starts with c.
 func tokenStartsWith(token *matchToken, c rune) bool {
 	return tokenizer.CharCodeAt(token.value, 0) == int(c)
 }
@@ -67,6 +68,8 @@ func withQuestionMarkSequence(consumed, length int, tokens []matchToken) int {
 	return length
 }
 
+// urange is the generic type <urange>.
+//
 // https://drafts.csswg.org/css-syntax/#urange
 // Informally, the <urange> production has three forms:
 // U+0001

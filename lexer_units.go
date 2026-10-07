@@ -45,6 +45,7 @@ func (g unitGroup) info() unitGroupInfo {
 	}[g]
 }
 
+// name returns the name of the unit group g (see unitGroupInfo.name).
 func (g unitGroup) name() string {
 	return g.info().name
 }

@@ -1,3 +1,6 @@
+// Go only: comparison of identifiers by their value, escapes decoded,
+// where upstream compares their source text.
+
 package csstree
 
 import (

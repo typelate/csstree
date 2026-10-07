@@ -49,7 +49,8 @@ func balancePair(tokenType tokenizer.TokenType) tokenizer.TokenType {
 	return 0
 }
 
-// IE postfix hack, i.e. 123\0 or 123px\9
+// isPostfixIeHack reports whether str has the IE postfix hack, i.e. 123\0
+// or 123px\9, at offset.
 func isPostfixIeHack(str string, offset int) bool {
 	if offset != len(str)-2 {
 		return false
@@ -141,6 +142,7 @@ func consumeFunction(tokens []matchToken) int {
 	return length
 }
 
+// tokenType returns a generic type that takes a token of expectedTokenType.
 func tokenType(expectedTokenType tokenizer.TokenType) genericFunc {
 	return func(tokens []matchToken, _ *definitionsyntax.Range) int {
 		if len(tokens) == 0 || tokens[0].typ != expectedTokenType {
@@ -155,6 +157,8 @@ func tokenType(expectedTokenType tokenizer.TokenType) genericFunc {
 // Complex types
 //
 
+// customIdent is the generic type <custom-ident>.
+//
 // https://drafts.csswg.org/css-values-4/#custom-idents
 // 4.2. Author-defined Identifiers: the <custom-ident> type
 // Some properties accept arbitrary author-defined identifiers as a component value.
@@ -191,6 +195,8 @@ func customIdent(tokens []matchToken, _ *definitionsyntax.Range) int {
 	return 1
 }
 
+// dashedIdent is the generic type <dashed-ident>.
+//
 // https://drafts.csswg.org/css-values-4/#dashed-idents
 // The <dashed-ident> production is a <custom-ident>, with all the case-sensitivity that implies,
 // with the additional restriction that it must start with two dashes (U+002D HYPHEN-MINUS).
@@ -210,6 +216,8 @@ func dashedIdent(tokens []matchToken, _ *definitionsyntax.Range) int {
 	return 1
 }
 
+// customPropertyName is the generic type <custom-property-name>.
+//
 // https://drafts.csswg.org/css-variables/#typedef-custom-property-name
 // A custom property is any property whose name starts with two dashes (U+002D HYPHEN-MINUS), like --foo.
 // The <custom-property-name> production corresponds to this: it’s defined as any <dashed-ident>
@@ -228,6 +236,8 @@ func customPropertyName(tokens []matchToken, bounds *definitionsyntax.Range) int
 	return 1
 }
 
+// hexColor is the generic type <hex-color>.
+//
 // https://drafts.csswg.org/css-color-4/#hex-notation
 // The syntax of a <hex-color> is a <hash-token> token whose value consists of 3, 4, 6, or 8 hexadecimal digits.
 // In other words, a hex color is written as a hash character, "#", followed by some number of digits 0-9 or
@@ -254,6 +264,8 @@ func hexColor(tokens []matchToken, _ *definitionsyntax.Range) int {
 	return 1
 }
 
+// idSelector is the generic type <id-selector>: a hash token whose value
+// is an identifier.
 func idSelector(tokens []matchToken, _ *definitionsyntax.Range) int {
 	if len(tokens) == 0 || tokens[0].typ != tokenizer.Hash {
 		return 0
@@ -267,6 +279,8 @@ func idSelector(tokens []matchToken, _ *definitionsyntax.Range) int {
 	return 1
 }
 
+// declarationValue is the generic type <declaration-value>.
+//
 // https://drafts.csswg.org/css-syntax/#any-value
 // It represents the entirety of what a valid declaration can have as its value.
 func declarationValue(tokens []matchToken, _ *definitionsyntax.Range) int {
@@ -290,6 +304,8 @@ func declarationValue(tokens []matchToken, _ *definitionsyntax.Range) int {
 	})
 }
 
+// anyValue is the generic type <any-value>.
+//
 // https://drafts.csswg.org/css-syntax/#any-value
 // The <any-value> production is identical to <declaration-value>, but also
 // allows top-level <semicolon-token> tokens and <delim-token> tokens
@@ -360,6 +376,8 @@ func dimensionTokenUnit(tokens []matchToken, bounds *definitionsyntax.Range) (st
 // Percentage
 //
 
+// percentage is the generic type <percentage>.
+//
 // §5.5. Percentages: the <percentage> type
 // https://drafts.csswg.org/css-values-4/#percentages
 func percentage(tokens []matchToken, bounds *definitionsyntax.Range) int {
@@ -381,6 +399,8 @@ func percentage(tokens []matchToken, bounds *definitionsyntax.Range) int {
 // Numeric
 //
 
+// zero is the generic type <zero>.
+//
 // https://drafts.csswg.org/css-values-4/#numbers
 // The value <zero> represents a literal number with the value 0. Expressions that merely
 // evaluate to a <number> with the value 0 (for example, calc(0)) do not match <zero>;
@@ -410,6 +430,8 @@ func zeroOr(next genericFunc) genericFunc {
 	}
 }
 
+// number is the generic type <number>.
+//
 // § 5.3. Real Numbers: the <number> type
 // https://drafts.csswg.org/css-values-4/#numbers
 // Number values are denoted by <number>, and represent real numbers, possibly with a fractional component.
@@ -437,6 +459,8 @@ func number(tokens []matchToken, bounds *definitionsyntax.Range) int {
 	return 1
 }
 
+// integer is the generic type <integer>.
+//
 // §5.2. Integers: the <integer> type
 // https://drafts.csswg.org/css-values-4/#integers
 func integer(tokens []matchToken, bounds *definitionsyntax.Range) int {
@@ -467,7 +491,7 @@ func integer(tokens []matchToken, bounds *definitionsyntax.Range) int {
 	return 1
 }
 
-// token types
+// tokenTypes returns the generic types of the token types.
 func tokenTypes() []genericType {
 	return []genericType{
 		{name: "ident-token", fn: tokenType(tokenizer.Ident)},
@@ -547,6 +571,9 @@ func createDimensionTypes(units map[string][]string, bases calcUnits) []genericT
 	return types
 }
 
+// createAttrUnit returns the generic type <attr-unit> for the units of
+// each unit group.
+//
 // The <attr-unit> production matches any identifier that is an ASCII case-insensitive
 // match for the name of a CSS dimension unit, such as px, or the <delim-token> %.
 func createAttrUnit(units map[string][]string) genericFunc {
@@ -576,6 +603,8 @@ func createAttrUnit(units map[string][]string) genericFunc {
 	}
 }
 
+// createGenericTypes returns the generic types for the units of each unit
+// group, in upstream's key order.
 func createGenericTypes(units map[string][]string) []genericType {
 	bases := newCalcUnits(units)
 	return slices.Concat(

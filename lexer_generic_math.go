@@ -1,5 +1,5 @@
-// Type checking of math functions, which upstream csstree consumes without
-// looking at their arguments.
+// Go only: type checking of math functions, which upstream csstree
+// consumes without looking at their arguments.
 //
 // CSS Values and Units Level 4 §10 https://drafts.csswg.org/css-values-4/#math
 // CSS Typed OM Level 1 §4.3.2 (types) https://drafts.css-houdini.org/css-typed-om-1/#numeric-typing
@@ -56,6 +56,7 @@ func numberCalcType() calcType {
 	return calcType{hint: calcNoHint}
 }
 
+// baseCalcType is «[ base → 1 ]», the type of a value of the base type.
 func baseCalcType(base calcBase) calcType {
 	t := numberCalcType()
 	t.exp[base] = 1
@@ -127,6 +128,8 @@ func addCalcTypes(a, b calcType) (calcType, bool) {
 	return calcType{}, false
 }
 
+// hasNonPercentEntry reports whether t has a non-zero entry other than
+// percent.
 func (t calcType) hasNonPercentEntry() bool {
 	for base := range calcNonPercentCount {
 		if t.exp[base] != 0 {
@@ -452,6 +455,7 @@ func (p *calcParser) enter() bool {
 	return p.depth <= maxCalcDepth
 }
 
+// leave counts the end of a level of nesting.
 func (p *calcParser) leave() {
 	p.depth--
 }
@@ -660,6 +664,8 @@ func (p *calcParser) loneKeyword() (string, bool) {
 	return tokenName(t), true
 }
 
+// noKeywords is the isKeyword of arguments for functions without
+// keyword arguments.
 func noKeywords(int, string) bool {
 	return false
 }
