@@ -2,6 +2,8 @@
 
 package tokenizer
 
+import "slices"
+
 // Position is a point in a source: upstream's {offset, line, column}.
 // Offsets and columns count bytes; lines and columns start at 1 unless the
 // OffsetToLocation says otherwise.
@@ -29,7 +31,7 @@ type Location struct {
 // OffsetToLocation converts byte offsets in Source to positions. The zero
 // value converts offsets in an empty source.
 //
-// The line table is computed on the first lookup and again whenever Source
+// The line index is computed on the first lookup and again whenever Source
 // has changed since, so an OffsetToLocation can be reused for several
 // sources by setting its fields.
 type OffsetToLocation struct {
@@ -44,51 +46,40 @@ type OffsetToLocation struct {
 	StartLine   int
 	StartColumn int
 
-	// indexed is the Source that lines describes.
+	// indexed is the Source that lineStarts describes.
 	indexed  string
 	computed bool
 	// bomLen is the length of a leading byte order mark, which belongs to
 	// no line.
 	bomLen int
-	// lines holds, for every offset from bomLen to len(indexed), the line
-	// (counted from 0) and the column in it (counted from 0).
-	lines []lineColumn
+	// lineStarts holds the offset of the first char of every line; the
+	// first line starts at bomLen.
+	lineStarts []int
 }
 
-type lineColumn struct {
-	line, column int
-}
-
-func (l *OffsetToLocation) computeLinesAndColumns() {
+// computeLineStarts indexes the lines of Source. A line ends after an LF,
+// a CR, an FF or a CRLF pair.
+func (l *OffsetToLocation) computeLineStarts() {
 	source := l.Source
 	startOffset := bomLen(source)
-	lines := l.lines[:0]
-	line := 0
-	column := 0
+	lineStarts := append(l.lineStarts[:0], startOffset)
 
 	for i := startOffset; i < len(source); i++ {
 		code := source[i]
 
-		lines = append(lines, lineColumn{line, column})
-		column++
-
 		if code == '\n' || code == '\r' || code == '\f' {
 			if code == '\r' && i+1 < len(source) && source[i+1] == '\n' {
 				i++
-				lines = append(lines, lineColumn{line, column})
 			}
 
-			line++
-			column = 0
+			lineStarts = append(lineStarts, i+1)
 		}
 	}
-
-	lines = append(lines, lineColumn{line, column})
 
 	l.indexed = source
 	l.computed = true
 	l.bomLen = startOffset
-	l.lines = lines
+	l.lineStarts = lineStarts
 }
 
 // Position returns the position of offset, clamped to [0, len(Source)].
@@ -96,7 +87,7 @@ func (l *OffsetToLocation) computeLinesAndColumns() {
 // upstream's tables leave them.
 func (l *OffsetToLocation) Position(offset int) Position {
 	if !l.computed || l.indexed != l.Source {
-		l.computeLinesAndColumns()
+		l.computeLineStarts()
 	}
 
 	offset = min(max(offset, 0), len(l.Source))
@@ -104,16 +95,19 @@ func (l *OffsetToLocation) Position(offset int) Position {
 		return Position{Offset: l.StartOffset + offset}
 	}
 
-	lc := l.lines[offset-l.bomLen]
-	line := max(l.StartLine, 1) + lc.line
-	column := 1 + lc.column
-	if lc.line == 0 {
-		column = max(l.StartColumn, 1) + lc.column
+	// the last line that starts at or before offset
+	line, found := slices.BinarySearch(l.lineStarts, offset)
+	if !found {
+		line--
+	}
+	column := 1 + offset - l.lineStarts[line]
+	if line == 0 {
+		column = max(l.StartColumn, 1) + offset - l.lineStarts[0]
 	}
 
 	return Position{
 		Offset: l.StartOffset + offset,
-		Line:   line,
+		Line:   max(l.StartLine, 1) + line,
 		Column: column,
 	}
 }

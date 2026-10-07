@@ -2,7 +2,10 @@
 
 package tokenizer
 
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 const (
 	offsetMask      = 1<<typeShift - 1
@@ -128,8 +131,12 @@ func (ts *TokenStream) SetSource(source string) {
 	// references are reversed below (upstream uses source.length).
 	const topLevel = math.MaxInt
 
-	offsetAndType := ts.offsetAndType[:0]
-	balance := ts.Balance[:0]
+	// Tokenizing twice, to count the tokens first, costs less than growing
+	// the buffers while appending.
+	tokenCount := 0
+	Tokenize(source, func(TokenType, int, int) { tokenCount++ })
+	offsetAndType := slices.Grow(ts.offsetAndType[:0], tokenCount+1) // +1 for the EOF token
+	balance := slices.Grow(ts.Balance[:0], tokenCount+1)
 	firstCharOffset := -1
 	balanceCloseType := EOF // no token closes the top level
 	balanceStart := topLevel
@@ -167,7 +174,6 @@ func (ts *TokenStream) SetSource(source string) {
 	})
 
 	// finalize buffers
-	tokenCount := len(offsetAndType)
 	offsetAndType = append(offsetAndType, uint64(EOF)<<typeShift|uint64(len(source))) // <EOF-token>
 	balance = append(balance, tokenCount)                                             // prevents false positive balance match with any token
 
