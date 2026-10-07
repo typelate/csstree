@@ -1016,7 +1016,8 @@
     ],
     "rule with a bad-string token (issue #93)": {
         "source": ".first{color:red\"\n}.thisAndAllFollowingRulesGetSwallowed {\n  color: red\n}",
-        "generate": ".first{color:red\"\n}.thisAndAllFollowingRulesGetSwallowed{color:red}",
+        "generate": ".first{color:red\"}.thisAndAllFollowingRulesGetSwallowed{color:red}",
+        "skipRoundtrip": "broken round-trip since a bad-string ends before the newline (CSS Syntax 4.3.5), so the Raw value loses the newline that ended the string",
         "ast": {
             "type": "StyleSheet",
             "children": [
@@ -1045,7 +1046,7 @@
                                 "property": "color",
                                 "value": {
                                     "type": "Raw",
-                                    "value": "red\"\n"
+                                    "value": "red\""
                                 }
                             }
                         ]

@@ -3,7 +3,8 @@ package tokenizer
 // Edge cases from CSS Syntax Module Level 3 (§3.3 preprocessing, §4.2
 // definitions, §4.3 tokenization). Every expected value is what upstream
 // csstree 3.2.1 produces for the same input; where upstream departs from the
-// spec the case name says so, and the port keeps upstream's behaviour.
+// spec the case name says so, and the port keeps upstream's behaviour unless
+// spec_fixes_test.go covers it.
 
 import (
 	"slices"
@@ -25,10 +26,6 @@ func TestTokenizeSpecEdges(t *testing.T) {
 		source string
 		want   []tokenChunk
 	}{
-		{"§4.3.5 a newline ends a string as a bad-string (upstream keeps the newline in it)", "\"a\nb\"", []tokenChunk{{"bad-string-token", "\"a\n"}, {"ident-token", "b"}, {"string-token", "\""}}},
-		{"§4.3.5 CR is a newline", "\"a\rb\"", []tokenChunk{{"bad-string-token", "\"a\r"}, {"ident-token", "b"}, {"string-token", "\""}}},
-		{"§4.3.5 CRLF is one newline", "\"a\r\nb\"", []tokenChunk{{"bad-string-token", "\"a\r\n"}, {"ident-token", "b"}, {"string-token", "\""}}},
-		{"§4.3.5 FF is a newline", "\"a\fb\"", []tokenChunk{{"bad-string-token", "\"a\f"}, {"ident-token", "b"}, {"string-token", "\""}}},
 		{"§4.3.5 escaped CRLF continues the string", "\"a\\\r\nb\"", []tokenChunk{{"string-token", "\"a\\\r\nb\""}}},
 		{"§4.3.5 escaped LF continues the string", "'a\\\nb'", []tokenChunk{{"string-token", "'a\\\nb'"}}},
 		{"§4.3.5 an escape is consumed whole", "\"\\61\" a", []tokenChunk{{"string-token", "\"\\61\""}, {"whitespace-token", " "}, {"ident-token", "a"}}},

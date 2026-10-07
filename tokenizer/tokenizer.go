@@ -131,7 +131,8 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 				if IsNewline(code) {
 					// This is a parse error. Reconsume the current input code point,
 					// create a <bad-string-token>, and return it.
-					offset += GetNewlineLength(source, offset, code)
+					// (upstream consumes the newline into the bad-string; the
+					// port leaves it for the next token, as the spec says)
 					tokenType = BadString
 					return
 				}
