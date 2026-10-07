@@ -69,7 +69,7 @@ func isCombinator(node Node) bool {
 }
 
 // scanInt reads a number for a multiplier range.
-func scanInt(s *scanner) int {
+func (s *scanner) scanInt() int {
 	start := s.pos
 	digits := s.scanNumber()
 	value, err := strconv.Atoi(digits)
@@ -84,7 +84,7 @@ func scanInt(s *scanner) int {
 
 // scanFloat reads a number for a bracketed range; like Number(), it gives
 // ±Inf for a number too large for a float64.
-func scanFloat(s *scanner) float64 {
+func (s *scanner) scanFloat() float64 {
 	value, err := strconv.ParseFloat(s.scanNumber(), 64)
 	if err != nil {
 		// digits are 0-9 only, so the only possible error is ErrRange,
@@ -94,11 +94,11 @@ func scanFloat(s *scanner) float64 {
 	return value
 }
 
-func readMultiplierRange(s *scanner) (min, max int) {
+func (s *scanner) readMultiplierRange() (min, max int) {
 	s.eat(leftCurlyBracket)
 	s.skipWs()
 
-	min = scanInt(s)
+	min = s.scanInt()
 	s.skipWs()
 
 	if s.charCode() == comma {
@@ -109,7 +109,7 @@ func readMultiplierRange(s *scanner) (min, max int) {
 		if s.charCode() != rightCurlyBracket {
 			// {A,B}: "at least A and at most B"; upstream accepts B < A
 			maxStart := s.pos
-			max = scanInt(s)
+			max = s.scanInt()
 			if max < min {
 				s.pos = maxStart
 				s.error("Wrong multiplier range")
@@ -125,7 +125,7 @@ func readMultiplierRange(s *scanner) (min, max int) {
 	return min, max
 }
 
-func readMultiplier(s *scanner) *Multiplier {
+func (s *scanner) readMultiplier() *Multiplier {
 	var min, max int
 	isComma := false
 
@@ -151,7 +151,7 @@ func readMultiplier(s *scanner) *Multiplier {
 		isComma = true
 
 		if s.charCode() == leftCurlyBracket {
-			min, max = readMultiplierRange(s)
+			min, max = s.readMultiplierRange()
 		} else if s.charCode() == questionMark {
 			// https://www.w3.org/TR/css-values-4/#component-multipliers
 			// > the # and ? multipliers may be stacked as #?
@@ -164,7 +164,7 @@ func readMultiplier(s *scanner) *Multiplier {
 		}
 
 	case leftCurlyBracket:
-		min, max = readMultiplierRange(s)
+		min, max = s.readMultiplierRange()
 
 	default:
 		return nil
@@ -178,8 +178,8 @@ func readMultiplier(s *scanner) *Multiplier {
 	}
 }
 
-func maybeMultiplied(s *scanner, node Node) Node {
-	multiplier := readMultiplier(s)
+func (s *scanner) maybeMultiplied(node Node) Node {
+	multiplier := s.readMultiplier()
 
 	if multiplier != nil {
 		multiplier.Term = node
@@ -195,7 +195,7 @@ func maybeMultiplied(s *scanner, node Node) Node {
 		// }
 		if s.charCode() == numberSign &&
 			s.charCodeAt(s.pos-1) == plusSign {
-			return maybeMultiplied(s, multiplier)
+			return s.maybeMultiplied(multiplier)
 		}
 
 		// https://www.w3.org/TR/css-values-4/#component-multipliers
@@ -205,7 +205,7 @@ func maybeMultiplied(s *scanner, node Node) Node {
 		// The "#?" case is already handled above, in maybeMultiplied()
 		if s.charCode() == questionMark &&
 			s.charCodeAt(s.pos-1) == rightCurlyBracket {
-			return maybeMultiplied(s, multiplier)
+			return s.maybeMultiplied(multiplier)
 		}
 
 		return multiplier
@@ -214,19 +214,19 @@ func maybeMultiplied(s *scanner, node Node) Node {
 	return node
 }
 
-func maybeToken(s *scanner) Node {
+func (s *scanner) maybeToken() Node {
 	ch := s.peek()
 
 	if ch == "" {
 		return nil
 	}
 
-	return maybeMultiplied(s, &Token{
+	return s.maybeMultiplied(&Token{
 		Value: ch,
 	})
 }
 
-func readProperty(s *scanner) Node {
+func (s *scanner) readProperty() Node {
 	s.eat(lessThanSign)
 	s.eat(apostrophe)
 
@@ -235,7 +235,7 @@ func readProperty(s *scanner) Node {
 	s.eat(apostrophe)
 	s.eat(greaterThanSign)
 
-	return maybeMultiplied(s, &Property{
+	return s.maybeMultiplied(&Property{
 		Name: name,
 	})
 }
@@ -247,7 +247,7 @@ func readProperty(s *scanner) Node {
 // range notation—[min,max]—within the angle brackets, after the identifying keyword,
 // indicating a closed range between (and including) min and max.
 // For example, <integer [0, 10]> indicates an integer between 0 and 10, inclusive.
-func readTypeRange(s *scanner) *Range {
+func (s *scanner) readTypeRange() *Range {
 	// use nil for Infinity to make AST format JSON serializable/deserializable
 	var min *RangeBound // -Infinity
 	var max *RangeBound // Infinity
@@ -255,12 +255,12 @@ func readTypeRange(s *scanner) *Range {
 
 	s.eat(leftSquareBracket)
 
-	sign = readSign(s)
+	sign = s.readSign()
 
 	if sign == -1 && s.hasPrefix(infinity) {
 		s.peek()
 	} else {
-		min = &RangeBound{Value: sign * scanFloat(s)}
+		min = &RangeBound{Value: sign * s.scanFloat()}
 
 		if s.isNameCharCode(s.charCode()) {
 			min.Unit = s.scanWord()
@@ -274,9 +274,9 @@ func readTypeRange(s *scanner) *Range {
 	if s.hasPrefix(infinity) {
 		s.peek()
 	} else {
-		sign = readSign(s)
+		sign = s.readSign()
 
-		max = &RangeBound{Value: sign * scanFloat(s)}
+		max = &RangeBound{Value: sign * s.scanFloat()}
 
 		if s.isNameCharCode(s.charCode()) {
 			max.Unit = s.scanWord()
@@ -294,7 +294,7 @@ func readTypeRange(s *scanner) *Range {
 // readSign moves past a U+002D HYPHEN-MINUS or a U+2212 MINUS SIGN and
 // returns -1, or returns 1 when there is neither (upstream accepts only the
 // hyphen-minus).
-func readSign(s *scanner) float64 {
+func (s *scanner) readSign() float64 {
 	if s.charCode() == hyphenMinus {
 		s.pos++
 		return -1
@@ -306,7 +306,7 @@ func readSign(s *scanner) float64 {
 	return 1
 }
 
-func readType(s *scanner) Node {
+func (s *scanner) readType() Node {
 	var opts *Range
 
 	s.eat(lessThanSign)
@@ -316,7 +316,7 @@ func readType(s *scanner) Node {
 	if name == "boolean-expr" {
 		s.eat(leftSquareBracket)
 
-		implicitGroup := readImplicitGroup(s, rightSquareBracket)
+		implicitGroup := s.readImplicitGroup(rightSquareBracket)
 
 		s.eat(rightSquareBracket)
 		s.eat(greaterThanSign)
@@ -326,7 +326,7 @@ func readType(s *scanner) Node {
 			term = implicitGroup.Terms[0]
 		}
 
-		return maybeMultiplied(s, &Boolean{
+		return s.maybeMultiplied(&Boolean{
 			Term: term,
 		})
 	}
@@ -339,18 +339,18 @@ func readType(s *scanner) Node {
 
 	if s.charCodeAt(s.findWsEnd(s.pos)) == leftSquareBracket {
 		s.skipWs()
-		opts = readTypeRange(s)
+		opts = s.readTypeRange()
 	}
 
 	s.eat(greaterThanSign)
 
-	return maybeMultiplied(s, &Type{
+	return s.maybeMultiplied(&Type{
 		Name: name,
 		Opts: opts,
 	})
 }
 
-func readKeywordOrFunction(s *scanner) Node {
+func (s *scanner) readKeywordOrFunction() Node {
 	name := s.scanWord()
 
 	if s.charCode() == leftParenthesis {
@@ -361,7 +361,7 @@ func readKeywordOrFunction(s *scanner) Node {
 		}
 	}
 
-	return maybeMultiplied(s, &Keyword{
+	return s.maybeMultiplied(&Keyword{
 		Name: name,
 	})
 }
@@ -427,20 +427,33 @@ func regroupTerms(terms []Node, combinators map[Combinator]bool) ([]Node, Combin
 	return terms, combinator
 }
 
-// readImplicitGroup reads terms until stopCharCode; -1 reads to the end.
-func readImplicitGroup(s *scanner, stopCharCode int) *Group {
+// readImplicitGroup reads the terms up to the first stop char outside a
+// nested group, which it leaves unread, or to the end of the source.
+func (s *scanner) readImplicitGroup(stop byte) *Group {
+	return s.readTerms(func() bool { return s.charCode() == stop })
+}
+
+// readSourceGroup reads the terms of the whole source: upstream's
+// readImplicitGroup without a stop char code.
+func (s *scanner) readSourceGroup() *Group {
+	return s.readTerms(func() bool { return false })
+}
+
+// readTerms reads terms until atStop reports true or there is no term left,
+// and groups them by their combinators.
+func (s *scanner) readTerms(atStop func() bool) *Group {
 	combinators := make(map[Combinator]bool)
 	terms := []Node{}
 	var prevToken Node
 	prevTokenPos := s.pos
 	prevTokenIsFunction := false
 
-	for int(s.charCode()) != stopCharCode {
+	for !atStop() {
 		var token Node
 		if prevTokenIsFunction {
-			token = readImplicitGroup(s, rightParenthesis)
+			token = s.readImplicitGroup(rightParenthesis)
 		} else {
-			token = peek(s)
+			token = s.readTerm()
 		}
 
 		if token == nil {
@@ -495,6 +508,11 @@ func readImplicitGroup(s *scanner, stopCharCode int) *Group {
 
 	// check for combinator in group ending
 	if prevToken != nil && isCombinator(prevToken) {
+		// Upstream subtracts (this.pos -= prevTokenPos) where it surely
+		// means to assign: the offset becomes the number of bytes read after
+		// the trailing combinator, usually 0, which the error message shows
+		// as the end of the input. The port keeps the quirk, since the error
+		// fixtures compare the offset and message.
 		s.pos -= prevTokenPos
 		s.error("Unexpected combinator")
 	}
@@ -512,9 +530,9 @@ func readImplicitGroup(s *scanner, stopCharCode int) *Group {
 	}
 }
 
-func readGroup(s *scanner) *Group {
+func (s *scanner) readGroup() *Group {
 	s.eat(leftSquareBracket)
-	result := readImplicitGroup(s, rightSquareBracket)
+	result := s.readImplicitGroup(rightSquareBracket)
 	s.eat(rightSquareBracket)
 
 	result.Explicit = true
@@ -527,8 +545,8 @@ func readGroup(s *scanner) *Group {
 	return result
 }
 
-// peek returns nil where upstream returns undefined.
-func peek(s *scanner) Node {
+// readTerm returns nil where upstream returns undefined.
+func (s *scanner) readTerm() Node {
 	code := s.charCode()
 
 	switch code {
@@ -536,13 +554,13 @@ func peek(s *scanner) Node {
 		// don't eat, stop scan a group
 
 	case leftSquareBracket:
-		return maybeMultiplied(s, readGroup(s))
+		return s.maybeMultiplied(s.readGroup())
 
 	case lessThanSign:
 		if s.nextCharCode() == apostrophe {
-			return readProperty(s)
+			return s.readProperty()
 		}
-		return readType(s)
+		return s.readType()
 
 	case verticalLine:
 		end := s.pos + 1
@@ -566,7 +584,7 @@ func peek(s *scanner) Node {
 		return &Comma{}
 
 	case apostrophe:
-		return maybeMultiplied(s, &String{
+		return s.maybeMultiplied(&String{
 			Value: s.scanString(),
 		})
 
@@ -585,7 +603,7 @@ func peek(s *scanner) Node {
 			}
 		}
 
-		return maybeToken(s)
+		return s.maybeToken()
 
 	case asterisk, plusSign, questionMark, numberSign, exclamationMark:
 		// prohibited tokens (used as a multiplier start)
@@ -596,15 +614,15 @@ func peek(s *scanner) Node {
 		code = s.nextCharCode()
 
 		if code < 48 || code > 57 {
-			return maybeToken(s)
+			return s.maybeToken()
 		}
 
 	default:
 		if s.isNameCharCode(code) {
-			return readKeywordOrFunction(s)
+			return s.readKeywordOrFunction()
 		}
 
-		return maybeToken(s)
+		return s.maybeToken()
 	}
 
 	return nil
@@ -624,7 +642,7 @@ func Parse(source string) (result *Group, err error) {
 	}()
 
 	s := newScanner(source)
-	result = readImplicitGroup(s, -1)
+	result = s.readSourceGroup()
 
 	if s.pos != len(source) {
 		s.error("Unexpected input")
