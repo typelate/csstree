@@ -93,7 +93,7 @@ func createGenerateWithSourceMapTest(t *testing.T, test astFixtureTest) {
 		t.Fatalf("Parse(%q) error = %v", test.Source, err)
 	}
 
-	actual, err := Generate(ast, GenerateOptions{SourceMap: new(SourceMapGenerator)})
+	actual, _, err := GenerateWithSourceMap(ast, GenerateOptions{})
 	if err != nil {
 		t.Fatalf("Generate(Parse(%q), {sourceMap: true}) error = %v", test.Source, err)
 	}
@@ -129,10 +129,9 @@ func TestGenerate(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Parse(%q, ...): %v", ".a {\n  color: red;\n}\n", err)
 			}
-			sourceMap := new(SourceMapGenerator)
-			css, err := Generate(ast, GenerateOptions{SourceMap: sourceMap})
+			css, sourceMap, err := GenerateWithSourceMap(ast, GenerateOptions{})
 			if err != nil {
-				t.Fatalf("Generate(ast, ...): %v", err)
+				t.Fatalf("GenerateWithSourceMap(ast, ...): %v", err)
 			}
 
 			if want := ".a{color:red}"; css != want {
@@ -151,10 +150,9 @@ func TestGenerate(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Parse(%q, ...): %v", ".a { color: #ff0000; } .b { display: block; float: left; } @media foo { .c { color: red } }", err)
 			}
-			sourceMap := new(SourceMapGenerator)
-			css, err := Generate(ast, GenerateOptions{SourceMap: sourceMap})
+			css, sourceMap, err := GenerateWithSourceMap(ast, GenerateOptions{})
 			if err != nil {
-				t.Fatalf("Generate(ast, ...): %v", err)
+				t.Fatalf("GenerateWithSourceMap(ast, ...): %v", err)
 			}
 
 			if want := ".a{color:#ff0000}.b{display:block;float:left}@media foo{.c{color:red}}"; css != want {

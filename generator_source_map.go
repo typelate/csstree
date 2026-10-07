@@ -15,125 +15,126 @@ import (
 	"github.com/typelate/csstree/tokenizer"
 )
 
-func isTrackNode(nodeType string) bool {
-	switch nodeType {
-	case "Atrule", "Selector", "Declaration":
+// isTrackNode reports whether the source map maps the output of node.
+func isTrackNode(node Node) bool {
+	switch node.(type) {
+	case *Atrule, *Selector, *Declaration:
 		return true
 	}
 	return false
 }
 
-// generateSourceMap decorates handlers to record in sourceMap where the
-// output of Atrule, Selector and Declaration nodes comes from (upstream
-// returns handlers whose result is { css, map }; here the map is
-// sourceMap and the result stays the CSS).
-func generateSourceMap(handlers GenerateHandlers, sourceMap *SourceMapGenerator) GenerateHandlers {
-	generated := SourceMapPosition{
-		Line:   1,
-		Column: 0,
-	}
-	original := SourceMapPosition{
-		Line:   0, // should be zero to add first mapping
-		Column: 0,
-	}
-	activatedGenerated := SourceMapPosition{
-		Line:   1,
-		Column: 0,
-	}
-	line := 1
-	column := 0
-	sourceMappingActive := false
-
-	addMapping := func(mapping SourceMapping) {
-		if err := sourceMap.AddMapping(mapping); err != nil {
-			panic(generateFailure{err})
+// sourceMapDecorator decorates the handlers of a generation to record in
+// sourceMap where the output of Atrule, Selector and Declaration nodes
+// comes from (upstream returns handlers whose result is { css, map }; here
+// the map is sourceMap and the result stays the CSS).
+func sourceMapDecorator(sourceMap *SourceMapGenerator) generateDecorator {
+	return func(h *generateHandlers) {
+		generated := sourceMapPosition{
+			Line:   1,
+			Column: 0,
 		}
-	}
+		original := sourceMapPosition{
+			Line:   0, // should be zero to add first mapping
+			Column: 0,
+		}
+		activatedGenerated := sourceMapPosition{
+			Line:   1,
+			Column: 0,
+		}
+		line := 1
+		column := 0
+		sourceMappingActive := false
 
-	origHandlersNode := handlers.Node
-	handlers.Node = func(h *GenerateHandlers, node Node) {
-		if node != nil && node.Location() != nil && isTrackNode(node.Type()) {
-			loc := node.Location()
-			nodeLine := loc.Start.Line
-			nodeColumn := loc.Start.Column - 1
+		addMapping := func(mapping sourceMapping) {
+			if err := sourceMap.addMapping(mapping); err != nil {
+				panic(generateFailure{err})
+			}
+		}
 
-			if original.Line != nodeLine ||
-				original.Column != nodeColumn {
-				original.Line = nodeLine
-				original.Column = nodeColumn
+		origNode := h.node
+		h.node = func(node Node) {
+			if isTrackNode(node) && node.Location() != nil {
+				loc := node.Location()
+				nodeLine := loc.Start.Line
+				nodeColumn := loc.Start.Column - 1
 
-				generated.Line = line
-				generated.Column = column
+				if original.Line != nodeLine ||
+					original.Column != nodeColumn {
+					original.Line = nodeLine
+					original.Column = nodeColumn
 
-				if sourceMappingActive {
-					sourceMappingActive = false
-					if generated.Line != activatedGenerated.Line ||
-						generated.Column != activatedGenerated.Column {
-						addMapping(SourceMapping{Generated: activatedGenerated})
+					generated.Line = line
+					generated.Column = column
+
+					if sourceMappingActive {
+						sourceMappingActive = false
+						if generated.Line != activatedGenerated.Line ||
+							generated.Column != activatedGenerated.Column {
+							addMapping(sourceMapping{Generated: activatedGenerated})
+						}
 					}
+
+					sourceMappingActive = true
+					addMapping(sourceMapping{
+						Source:    loc.Filename,
+						Original:  &original,
+						Generated: generated,
+					})
 				}
+			}
 
-				sourceMappingActive = true
-				addMapping(SourceMapping{
-					Source:    loc.Filename,
-					Original:  &original,
-					Generated: generated,
-				})
+			origNode(node)
+
+			if sourceMappingActive && isTrackNode(node) {
+				activatedGenerated.Line = line
+				activatedGenerated.Column = column
 			}
 		}
 
-		origHandlersNode(h, node)
-
-		if sourceMappingActive && node != nil && isTrackNode(node.Type()) {
-			activatedGenerated.Line = line
-			activatedGenerated.Column = column
-		}
-	}
-
-	origHandlersEmit := handlers.Emit
-	handlers.Emit = func(h *GenerateHandlers, value string, tokenType tokenizer.TokenType, auto bool) {
-		for i := 0; i < len(value); i++ {
-			if value[i] == '\n' {
-				line++
-				column = 0
-			} else {
-				column++
+		origEmit := h.emit
+		h.emit = func(tokenType tokenizer.TokenType, value string, auto bool) {
+			for i := 0; i < len(value); i++ {
+				if value[i] == '\n' {
+					line++
+					column = 0
+				} else {
+					column++
+				}
 			}
+
+			origEmit(tokenType, value, auto)
 		}
 
-		origHandlersEmit(h, value, tokenType, auto)
-	}
+		origResult := h.result
+		h.result = func() string {
+			if sourceMappingActive {
+				addMapping(sourceMapping{Generated: activatedGenerated})
+			}
 
-	origHandlersResult := handlers.Result
-	handlers.Result = func(h *GenerateHandlers) string {
-		if sourceMappingActive {
-			addMapping(SourceMapping{Generated: activatedGenerated})
+			return origResult()
 		}
-
-		return origHandlersResult(h)
 	}
-
-	return handlers
 }
 
-// SourceMapPosition is a position in a source map: a 1-based line and a
+// sourceMapPosition is a position in a source map: a 1-based line and a
 // 0-based column.
-type SourceMapPosition struct {
+type sourceMapPosition struct {
 	Line   int `json:"line"`
 	Column int `json:"column"`
 }
 
-// SourceMapping maps a position of the generated text to a position of a
+// sourceMapping maps a position of the generated text to a position of a
 // source (upstream addMapping's { generated, original, source, name }).
 // Original nil, Source "" and Name "" are upstream null.
-type SourceMapping struct {
-	Generated SourceMapPosition
-	Original  *SourceMapPosition
+type sourceMapping struct {
+	Generated sourceMapPosition
+	Original  *sourceMapPosition
 	Source    string
 	Name      string
 }
 
-// mapping is a stored SourceMapping (upstream { generatedLine,
+// mapping is a stored sourceMapping (upstream { generatedLine,
 // generatedColumn, originalLine, originalColumn, source, name }).
 type mapping struct {
 	generatedLine   int
@@ -144,9 +145,10 @@ type mapping struct {
 	name            string
 }
 
-// SourceMapGenerator builds a Source Map revision 3 (the part of
-// source-map-js's SourceMapGenerator that generation needs). The zero
-// value is an empty source map ready to use.
+// SourceMapGenerator is a Source Map revision 3, as GenerateWithSourceMap
+// returns it (the part of source-map-js's SourceMapGenerator that
+// generation needs). Set File and the sources' content before encoding it
+// with String or MarshalJSON.
 type SourceMapGenerator struct {
 	// File is the name of the generated file ("" omits it).
 	File string
@@ -157,10 +159,10 @@ type SourceMapGenerator struct {
 	sourcesContents map[string]string
 }
 
-// AddMapping adds a mapping. A mapping has a generated position only, or
+// addMapping adds a mapping. A mapping has a generated position only, or
 // also an original position and a source; anything else is an error
-// ("Invalid mapping: ...").
-func (g *SourceMapGenerator) AddMapping(m SourceMapping) error {
+// (upstream "Invalid mapping: ...").
+func (g *SourceMapGenerator) addMapping(m sourceMapping) error {
 	if err := validateMapping(m); err != nil {
 		return err
 	}
@@ -188,7 +190,9 @@ func (g *SourceMapGenerator) AddMapping(m SourceMapping) error {
 	return nil
 }
 
-func validateMapping(m SourceMapping) error {
+// validateMapping returns the error of an invalid mapping: its message
+// shows the mapping as upstream's does.
+func validateMapping(m sourceMapping) error {
 	generatedValid := m.Generated.Line > 0 && m.Generated.Column >= 0
 
 	if generatedValid && m.Original == nil && m.Source == "" && m.Name == "" {
@@ -202,7 +206,7 @@ func validateMapping(m SourceMapping) error {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, `Invalid mapping: {"generated":{"line":%d,"column":%d},"source":`, m.Generated.Line, m.Generated.Column)
+	fmt.Fprintf(&b, `csstree: invalid source mapping: {"generated":{"line":%d,"column":%d},"source":`, m.Generated.Line, m.Generated.Column)
 	writeNullableJSONString(&b, m.Source)
 	b.WriteString(`,"original":`)
 	if m.Original != nil {

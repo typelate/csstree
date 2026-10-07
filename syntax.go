@@ -15,7 +15,7 @@ type Syntax struct {
 	config    *Config
 	parse     parseFunc
 	walker    *walker
-	generate  func(node Node, options GenerateOptions) (string, error)
+	generate  generateFunc
 	convertor *convertor
 	clone     func(node Node) Node
 }
@@ -114,7 +114,22 @@ func (s *Syntax) Parse(source string, options ParseOptions) (Node, error) {
 // generate function, or with an *InternalError when a generate function
 // panics, e.g. on a hand-built node missing a required field.
 func (s *Syntax) Generate(node Node, options GenerateOptions) (string, error) {
-	return s.generate(node, options)
+	return s.generate(node, options.Mode, nil)
+}
+
+// GenerateWithSourceMap is Generate also returning a source map of the
+// generated CSS (upstream generate with sourceMap: true, which returns
+// { css, map }). Only Atrule, Selector and Declaration nodes with a
+// location (see ParseOptions.Positions) are mapped. It also fails when such
+// a location is not a valid source position (a Line below 1, a Column below
+// 1 or an empty Filename).
+func (s *Syntax) GenerateWithSourceMap(node Node, options GenerateOptions) (css string, sourceMap *SourceMapGenerator, err error) {
+	sourceMap = new(SourceMapGenerator)
+	css, err = s.generate(node, options.Mode, sourceMapDecorator(sourceMap))
+	if err != nil {
+		return "", nil, err
+	}
+	return css, sourceMap, nil
 }
 
 // Walk traverses root depth-first, calling options.Enter before and

@@ -17,11 +17,11 @@ func TestSourceMapSourcesFileAndContent(t *testing.T) {
 	a.Children.AppendList(b.Children)
 	a.Children.AppendList(c.Children)
 
-	sourceMap := &SourceMapGenerator{File: "out\n.css"}
-	css, err := Generate(a, GenerateOptions{SourceMap: sourceMap})
+	css, sourceMap, err := GenerateWithSourceMap(a, GenerateOptions{})
 	if err != nil {
-		t.Fatalf("Generate(a, ...): %v", err)
+		t.Fatalf("GenerateWithSourceMap(a, ...): %v", err)
 	}
+	sourceMap.File = "out\n.css"
 	sourceMap.SetSourceContent("a.css", "a{b:c}\n\"x\"")
 
 	if want := "a{b:c}@media x{d{e:f}}g{h:i}j{k:l}"; css != want {
@@ -40,62 +40,73 @@ func TestSourceMapSourcesFileAndContent(t *testing.T) {
 	}
 }
 
+// A location that is not a source position fails the source map, as
+// upstream's addMapping throws.
+func TestGenerateWithSourceMapBadLocation(t *testing.T) {
+	loc := &Location{Start: tokenizer.Position{Line: 1, Column: 1}}
+	css, sourceMap, err := GenerateWithSourceMap(&Declaration{Property: "a", Value: &Raw{Value: "b"}, Loc: loc}, GenerateOptions{})
+	want := `csstree: invalid source mapping: {"generated":{"line":1,"column":0},"source":null,"original":{"line":1,"column":0},"name":null}`
+	if css != "" || sourceMap != nil || err == nil || err.Error() != want {
+		t.Errorf("GenerateWithSourceMap() = %q, %v, %v; want %s", css, sourceMap, err, want)
+	}
+}
+
 func TestSourceMapGeneratorAddMapping(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		for _, tt := range []struct {
-			mapping SourceMapping
+			mapping sourceMapping
 			want    string
 		}{
 			{
-				mapping: SourceMapping{Generated: SourceMapPosition{Line: 0, Column: 0}},
-				want:    `Invalid mapping: {"generated":{"line":0,"column":0},"source":null,"original":null,"name":null}`,
+				mapping: sourceMapping{Generated: sourceMapPosition{Line: 0, Column: 0}},
+				want:    `csstree: invalid source mapping: {"generated":{"line":0,"column":0},"source":null,"original":null,"name":null}`,
 			},
 			{
-				mapping: SourceMapping{Generated: SourceMapPosition{Line: 1, Column: -1}},
-				want:    `Invalid mapping: {"generated":{"line":1,"column":-1},"source":null,"original":null,"name":null}`,
+				mapping: sourceMapping{Generated: sourceMapPosition{Line: 1, Column: -1}},
+				want:    `csstree: invalid source mapping: {"generated":{"line":1,"column":-1},"source":null,"original":null,"name":null}`,
 			},
 			{
-				mapping: SourceMapping{Generated: SourceMapPosition{Line: 1}, Source: "x"},
-				want:    `Invalid mapping: {"generated":{"line":1,"column":0},"source":"x","original":null,"name":null}`,
+				mapping: sourceMapping{Generated: sourceMapPosition{Line: 1}, Source: "x"},
+				want:    `csstree: invalid source mapping: {"generated":{"line":1,"column":0},"source":"x","original":null,"name":null}`,
 			},
 			{
-				mapping: SourceMapping{Generated: SourceMapPosition{Line: 1}, Original: &SourceMapPosition{Line: 1}},
-				want:    `Invalid mapping: {"generated":{"line":1,"column":0},"source":null,"original":{"line":1,"column":0},"name":null}`,
+				mapping: sourceMapping{Generated: sourceMapPosition{Line: 1}, Original: &sourceMapPosition{Line: 1}},
+				want:    `csstree: invalid source mapping: {"generated":{"line":1,"column":0},"source":null,"original":{"line":1,"column":0},"name":null}`,
 			},
 			{
-				mapping: SourceMapping{Generated: SourceMapPosition{Line: 1}, Original: &SourceMapPosition{Line: 0}, Source: "x"},
-				want:    `Invalid mapping: {"generated":{"line":1,"column":0},"source":"x","original":{"line":0,"column":0},"name":null}`,
+				mapping: sourceMapping{Generated: sourceMapPosition{Line: 1}, Original: &sourceMapPosition{Line: 0}, Source: "x"},
+				want:    `csstree: invalid source mapping: {"generated":{"line":1,"column":0},"source":"x","original":{"line":0,"column":0},"name":null}`,
 			},
 			{
-				mapping: SourceMapping{Generated: SourceMapPosition{Line: 1}, Original: &SourceMapPosition{Line: 1, Column: -1}, Source: "x", Name: `n"`},
-				want:    `Invalid mapping: {"generated":{"line":1,"column":0},"source":"x","original":{"line":1,"column":-1},"name":"n\""}`,
+				mapping: sourceMapping{Generated: sourceMapPosition{Line: 1}, Original: &sourceMapPosition{Line: 1, Column: -1}, Source: "x", Name: `n"`},
+				want:    `csstree: invalid source mapping: {"generated":{"line":1,"column":0},"source":"x","original":{"line":1,"column":-1},"name":"n\""}`,
 			},
 			{
-				mapping: SourceMapping{Generated: SourceMapPosition{Line: 1}, Name: "n"},
-				want:    `Invalid mapping: {"generated":{"line":1,"column":0},"source":null,"original":null,"name":"n"}`,
+				mapping: sourceMapping{Generated: sourceMapPosition{Line: 1}, Name: "n"},
+				want:    `csstree: invalid source mapping: {"generated":{"line":1,"column":0},"source":null,"original":null,"name":"n"}`,
 			},
 		} {
 			var g SourceMapGenerator
-			err := g.AddMapping(tt.mapping)
+			err := g.addMapping(tt.mapping)
 			if err == nil || err.Error() != tt.want {
-				t.Errorf("AddMapping(%+v) = %v, want %s", tt.mapping, err, tt.want)
+				t.Errorf("addMapping(%+v) = %v, want %s", tt.mapping, err, tt.want)
 			}
 		}
 	})
 
 	t.Run("names, order and duplicates", func(t *testing.T) {
 		var g SourceMapGenerator
-		for _, m := range []SourceMapping{
-			{Generated: SourceMapPosition{Line: 2, Column: 5}, Original: &SourceMapPosition{Line: 1, Column: 0}, Source: "z", Name: "n1"},
-			{Generated: SourceMapPosition{Line: 1, Column: 3}, Original: &SourceMapPosition{Line: 3, Column: 7}, Source: "y", Name: "n2"},
-			{Generated: SourceMapPosition{Line: 1, Column: 3}, Original: &SourceMapPosition{Line: 3, Column: 7}, Source: "y", Name: "n2"},
-			{Generated: SourceMapPosition{Line: 1, Column: 3}, Original: &SourceMapPosition{Line: 3, Column: 7}, Source: "x"},
-			{Generated: SourceMapPosition{Line: 1, Column: 3}},
-			{Generated: SourceMapPosition{Line: 1, Column: 3}, Original: &SourceMapPosition{Line: 2, Column: 7}, Source: "y", Name: "n1"},
-			{Generated: SourceMapPosition{Line: 1, Column: 3}, Original: &SourceMapPosition{Line: 3, Column: 6}, Source: "y"},
-			{Generated: SourceMapPosition{Line: 1, Column: 1000}, Original: &SourceMapPosition{Line: 300, Column: 0}, Source: "y"},
+		for _, m := range []sourceMapping{
+			{Generated: sourceMapPosition{Line: 2, Column: 5}, Original: &sourceMapPosition{Line: 1, Column: 0}, Source: "z", Name: "n1"},
+			{Generated: sourceMapPosition{Line: 1, Column: 3}, Original: &sourceMapPosition{Line: 3, Column: 7}, Source: "y", Name: "n2"},
+			{Generated: sourceMapPosition{Line: 1, Column: 3}, Original: &sourceMapPosition{Line: 3, Column: 7}, Source: "y", Name: "n2"},
+			{Generated: sourceMapPosition{Line: 1, Column: 3}, Original: &sourceMapPosition{Line: 3, Column: 7}, Source: "x"},
+			{Generated: sourceMapPosition{Line: 1, Column: 3}},
+			{Generated: sourceMapPosition{Line: 1, Column: 3}, Original: &sourceMapPosition{Line: 2, Column: 7}, Source: "y", Name: "n1"},
+			{Generated: sourceMapPosition{Line: 1, Column: 3}, Original: &sourceMapPosition{Line: 3, Column: 6}, Source: "y"},
+			{Generated: sourceMapPosition{Line: 1, Column: 1000}, Original: &sourceMapPosition{Line: 300, Column: 0}, Source: "y"},
 		} {
-			if err := g.AddMapping(m); err != nil {
+			if err := g.addMapping(m); err != nil {
 				t.Fatalf("g.AddMapping(m): %v", err)
 			}
 		}
@@ -145,10 +156,9 @@ func TestGenerateTokens(t *testing.T) {
 // A panic in a handler ends the generation with an *InternalError, as an
 // exception thrown by an upstream handler reaches the caller of generate.
 func TestGenerateHandlerPanics(t *testing.T) {
-	css, err := Generate(&Identifier{Name: "a"}, GenerateOptions{Decorator: func(handlers GenerateHandlers) GenerateHandlers {
-		handlers.Emit = func(*GenerateHandlers, string, tokenizer.TokenType, bool) { panic("boom") }
-		return handlers
-	}})
+	css, err := defaultParseSyntax().generate(&Identifier{Name: "a"}, "", func(h *generateHandlers) {
+		h.emit = func(tokenizer.TokenType, string, bool) { panic("boom") }
+	})
 	var internal *InternalError
 	if css != "" || !errors.As(err, &internal) || internal.Value != "boom" {
 		t.Errorf("Generate() = %q, %v; want an *InternalError of boom", css, err)

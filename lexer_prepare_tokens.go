@@ -42,18 +42,18 @@ func (v matchInput) truthy() bool {
 
 // astToTokens is the generator decorator collecting the emitted tokens
 // with the node being generated (upstream astToTokens.decorator).
-func astToTokens(tokens *[]matchToken) func(handlers GenerateHandlers) GenerateHandlers {
-	return func(handlers GenerateHandlers) GenerateHandlers {
+func astToTokens(tokens *[]matchToken) generateDecorator {
+	return func(h *generateHandlers) {
 		var curNode Node
-		node := handlers.Node
+		node := h.node
 
-		handlers.Node = func(h *GenerateHandlers, n Node) {
+		h.node = func(n Node) {
 			tmp := curNode
 			curNode = n
-			node(h, n)
+			node(n)
 			curNode = tmp
 		}
-		handlers.Emit = func(_ *GenerateHandlers, value string, tokenType tokenizer.TokenType, auto bool) {
+		h.emit = func(tokenType tokenizer.TokenType, value string, auto bool) {
 			token := matchToken{
 				typ:   tokenType,
 				value: value,
@@ -63,11 +63,9 @@ func astToTokens(tokens *[]matchToken) func(handlers GenerateHandlers) GenerateH
 			}
 			*tokens = append(*tokens, token)
 		}
-		handlers.Result = func(*GenerateHandlers) string {
+		h.result = func() string {
 			return ""
 		}
-
-		return handlers
 	}
 }
 
@@ -93,7 +91,7 @@ func prepareTokens(value matchInput, syntax *Syntax) ([]matchToken, error) {
 	}
 
 	var tokens []matchToken
-	if _, err := syntax.Generate(value.node, GenerateOptions{Decorator: astToTokens(&tokens)}); err != nil {
+	if _, err := syntax.generate(value.node, "", astToTokens(&tokens)); err != nil {
 		return nil, err
 	}
 

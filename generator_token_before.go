@@ -191,12 +191,12 @@ func safePairs() [][2]int {
 	}...)
 }
 
-// TokenBeforeFunc decides whether the generator emits whitespace before a
+// tokenBeforeFunc decides whether the generator emits whitespace before a
 // token: given the code returned for the previous token, it returns the
 // code of this token with bit 0 set when whitespace is needed.
-type TokenBeforeFunc func(prevCode int, tokenType tokenizer.TokenType, value string) int
+type tokenBeforeFunc func(prevCode int, tokenType tokenizer.TokenType, value string) int
 
-func createMap(pairs [][2]int) TokenBeforeFunc {
+func createMap(pairs [][2]int) tokenBeforeFunc {
 	isWhiteSpaceRequired := make(map[int]struct{}, len(pairs))
 	for _, pair := range pairs {
 		isWhiteSpaceRequired[pair[0]<<16|pair[1]] = struct{}{}
@@ -226,6 +226,6 @@ func createMap(pairs [][2]int) TokenBeforeFunc {
 // specTokenBefore and safeTokenBefore are upstream's spec and safe exports;
 // their tables are built once and only read.
 var (
-	specTokenBefore = sync.OnceValue(func() TokenBeforeFunc { return createMap(specPairs()) })
-	safeTokenBefore = sync.OnceValue(func() TokenBeforeFunc { return createMap(safePairs()) })
+	specTokenBefore = sync.OnceValue(func() tokenBeforeFunc { return createMap(specPairs()) })
+	safeTokenBefore = sync.OnceValue(func() tokenBeforeFunc { return createMap(safePairs()) })
 )

@@ -118,7 +118,7 @@ func BenchmarkGenerateSourceMap(b *testing.B) {
 			b.SetBytes(int64(len(input.source)))
 			b.ReportAllocs()
 			for b.Loop() {
-				if _, err := Generate(ast, GenerateOptions{SourceMap: new(SourceMapGenerator)}); err != nil {
+				if _, _, err := GenerateWithSourceMap(ast, GenerateOptions{}); err != nil {
 					b.Fatalf("Generate(Parse(%s), source map): %v", input.name, err)
 				}
 			}

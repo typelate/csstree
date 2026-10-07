@@ -36,7 +36,7 @@ func TestConcurrentReads(t *testing.T) {
 			if got, err := Generate(ast, GenerateOptions{}); err != nil || got != want {
 				t.Errorf("Generate(ast) = %q, %v, want %q", got, err, want)
 			}
-			if _, err := Generate(ast, GenerateOptions{SourceMap: new(SourceMapGenerator)}); err != nil {
+			if _, _, err := GenerateWithSourceMap(ast, GenerateOptions{}); err != nil {
 				t.Errorf("Generate(ast) with a source map: %v", err)
 			}
 			if Find(ast, isDeclaration) == nil || FindLast(ast, isDeclaration) == nil || len(FindAll(ast, isDeclaration)) == 0 {
