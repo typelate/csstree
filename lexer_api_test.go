@@ -552,7 +552,7 @@ func TestLexerFunctionFragmentsAndTrace(t *testing.T) {
 	traceNames := func(trace []MatchSyntax) []string {
 		names := []string{}
 		for _, syntax := range trace {
-			names = append(names, syntax.Type()+":"+syntaxName(syntax))
+			names = append(names, syntax.Type()+":"+SyntaxName(syntax))
 		}
 		return names
 	}

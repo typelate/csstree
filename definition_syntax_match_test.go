@@ -153,7 +153,7 @@ func processMatchResult(mr any) any {
 	}
 
 	if node.Syntax != nil && node.Match != nil {
-		syntax := syntaxName(node.Syntax)
+		syntax := SyntaxName(node.Syntax)
 		switch node.Syntax.Type() {
 		case "Type":
 			syntax = "<" + syntax + ">"

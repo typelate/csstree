@@ -55,7 +55,7 @@ func (r *MatchResult) Trace(node Node) []MatchSyntax {
 // typ) led to node in the match.
 func (r *MatchResult) IsType(node Node, typ string) bool {
 	return testNode(r, node, func(match MatchSyntax) bool {
-		return match.Type() == "Type" && syntaxName(match) == typ
+		return match.Type() == "Type" && SyntaxName(match) == typ
 	})
 }
 
@@ -63,7 +63,7 @@ func (r *MatchResult) IsType(node Node, typ string) bool {
 // match.
 func (r *MatchResult) IsProperty(node Node, property string) bool {
 	return testNode(r, node, func(match MatchSyntax) bool {
-		return match.Type() == "Property" && syntaxName(match) == property
+		return match.Type() == "Property" && SyntaxName(match) == property
 	})
 }
 

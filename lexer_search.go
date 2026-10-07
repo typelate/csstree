@@ -47,7 +47,7 @@ func matchFragments(lexer *Lexer, ast Node, match *MatchResult, target SyntaxRef
 	findFragments = func(matchNode *MatchNode) error {
 		if matchNode.Syntax != nil &&
 			matchNode.Syntax.Type() == string(target.Kind) &&
-			syntaxName(matchNode.Syntax) == target.Name {
+			SyntaxName(matchNode.Syntax) == target.Name {
 			start, err := getFirstMatchNode(matchNode)
 			if err != nil {
 				return err

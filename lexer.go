@@ -41,7 +41,8 @@ func (e *AtruleSyntaxError) Error() string {
 
 // MatchSyntax is the syntax a match tree node matched: a definition syntax
 // node (definitionsyntax.Node: Type, Property, Keyword, ...), or a
-// *SyntaxRef naming the syntax at the root of a match.
+// *SyntaxRef naming the syntax at the root of a match. SyntaxName returns
+// its name.
 type MatchSyntax interface {
 	Type() string
 }
@@ -72,8 +73,10 @@ func (r *SyntaxRef) Type() string {
 	return string(r.Kind)
 }
 
-// syntaxName returns the name of a match syntax ("" when it has none).
-func syntaxName(syntax MatchSyntax) string {
+// SyntaxName returns the name of a match syntax: the Name of a *SyntaxRef
+// or of a definition syntax Type, Property, Keyword, AtKeyword or Function
+// node, and "" for other syntaxes.
+func SyntaxName(syntax MatchSyntax) string {
 	switch syntax := syntax.(type) {
 	case *SyntaxRef:
 		return syntax.Name

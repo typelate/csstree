@@ -17,7 +17,7 @@ func formatTrace(trace []MatchSyntax) []string {
 	}
 	result := []string{}
 	for _, syntax := range trace {
-		result = append(result, syntax.Type()+" "+syntaxName(syntax))
+		result = append(result, syntax.Type()+" "+SyntaxName(syntax))
 	}
 	return result
 }
