@@ -60,7 +60,7 @@ func (p *Parser) LayerList() *LayerList {
 	p.SkipSC()
 
 	for !p.EOF {
-		children.Push(p.Layer())
+		children.AppendData(p.Layer())
 
 		if p.LookupTypeNonSC(0) != tokenizer.Comma {
 			break

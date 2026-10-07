@@ -13,13 +13,13 @@ loop:
 	for !p.EOF {
 		switch p.TokenType {
 		case tokenizer.Ident:
-			children.Push(p.Identifier())
+			children.AppendData(p.Identifier())
 
 		case tokenizer.String:
-			children.Push(p.String())
+			children.AppendData(p.String())
 
 		case tokenizer.Comma:
-			children.Push(p.Operator())
+			children.AppendData(p.Operator())
 
 		case tokenizer.RightParenthesis:
 			break loop

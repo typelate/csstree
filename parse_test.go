@@ -282,8 +282,8 @@ func TestParse(t *testing.T) {
 			t.Fatalf("Parse(%q, ...): %v", "{a: 1!; foo; b: 2}", err)
 		}
 
-		if got := ast.(*Block).Children.Size(); got != 3 {
-			t.Errorf("Children.Size() = %d, want 3", got)
+		if got := ast.(*Block).Children.Len(); got != 3 {
+			t.Errorf("Children.Len() = %d, want 3", got)
 		}
 		if len(errs) != 2 {
 			t.Fatalf("len(errors) = %d, want 2", len(errs))

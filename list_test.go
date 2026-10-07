@@ -23,33 +23,35 @@ func getData(item *ListItem[string]) string {
 	return item.Data
 }
 
-// iteratorState drops upstream's thisArg: Go callbacks are closures.
+// iteratorState drops upstream's thisArg (Go callbacks are closures) and
+// list (the callbacks are methods of the list they iterate).
 type iteratorState struct {
 	data string
 	item *ListItem[string]
-	list *List[string]
 }
 
-func getIteratorState(data string, item *ListItem[string], list *List[string]) iteratorState {
+func getIteratorState(data string, item *ListItem[string]) iteratorState {
 	return iteratorState{
 		data: data,
 		item: item,
-		list: list,
 	}
 }
 
 type iteratorStateCollector struct {
-	states   []iteratorState
-	retValue bool
+	states []iteratorState
 }
 
-func (c *iteratorStateCollector) collect(data string, item *ListItem[string], list *List[string]) bool {
-	c.states = append(c.states, getIteratorState(data, item, list))
-	return c.retValue
+func (c *iteratorStateCollector) collect(data string, item *ListItem[string]) {
+	c.states = append(c.states, getIteratorState(data, item))
 }
 
-func createIteratorStateCollector(retValue bool) *iteratorStateCollector {
-	return &iteratorStateCollector{retValue: retValue}
+// newList returns a list of data (upstream new List().fromArray(data)).
+func newList(data ...string) *List[string] {
+	list := new(List[string])
+	for _, d := range data {
+		list.AppendData(d)
+	}
+	return list
 }
 
 // toArray checks every link of list before returning its data.
@@ -80,57 +82,47 @@ func toArray(t *testing.T, list *List[string]) []string {
 		t.Fatal("Wrong next reference")
 	}
 
-	return list.ToArray()
+	if got := list.Len(); got != count(list) {
+		t.Fatalf("Len() = %d, want %d", got, count(list))
+	}
+
+	return slices.Collect(list.All())
+}
+
+// count counts the items of list by following the links.
+func count(list *List[string]) int {
+	n := 0
+	for item := list.Head(); item != nil; item = item.Next {
+		n++
+	}
+	return n
 }
 
 // iterateFunc adapts one List iteration method to a common shape so the
 // shared iterator tests can drive it, like upstream's list[method].bind(...).
-// until is the start item for nextUntil and prevUntil and ignored otherwise.
-type iterateFunc func(list *List[string], until *ListItem[string], fn func(data string, item *ListItem[string], list *List[string]) bool)
+type iterateFunc func(list *List[string], fn func(data string, item *ListItem[string]))
 
 var iterateMethods = map[string]iterateFunc{
-	"forEach": func(list *List[string], _ *ListItem[string], fn func(string, *ListItem[string], *List[string]) bool) {
-		list.ForEach(func(data string, item *ListItem[string], list *List[string]) {
-			fn(data, item, list)
-		})
+	"forEach": func(list *List[string], fn func(string, *ListItem[string])) {
+		list.ForEach(fn)
 	},
-	"forEachRight": func(list *List[string], _ *ListItem[string], fn func(string, *ListItem[string], *List[string]) bool) {
-		list.ForEachRight(func(data string, item *ListItem[string], list *List[string]) {
-			fn(data, item, list)
-		})
-	},
-	"nextUntil": func(list *List[string], until *ListItem[string], fn func(string, *ListItem[string], *List[string]) bool) {
-		list.NextUntil(until, fn)
-	},
-	"prevUntil": func(list *List[string], until *ListItem[string], fn func(string, *ListItem[string], *List[string]) bool) {
-		list.PrevUntil(until, fn)
-	},
-	"some": func(list *List[string], _ *ListItem[string], fn func(string, *ListItem[string], *List[string]) bool) {
-		list.Some(fn)
-	},
-	"map": func(list *List[string], _ *ListItem[string], fn func(string, *ListItem[string], *List[string]) bool) {
-		list.Map(func(data string, item *ListItem[string], list *List[string]) string {
-			fn(data, item, list)
-			return data
-		})
-	},
-	"filter": func(list *List[string], _ *ListItem[string], fn func(string, *ListItem[string], *List[string]) bool) {
-		list.Filter(fn)
+	"forEachRight": func(list *List[string], fn func(string, *ListItem[string])) {
+		list.ForEachRight(fn)
 	},
 }
 
-func createIteratorTests(t *testing.T, list *List[string], method string, items []*ListItem[string], until *ListItem[string], retValue bool) {
-	iterate := func(fn func(string, *ListItem[string], *List[string]) bool) {
-		iterateMethods[method](list, until, fn)
+func createIteratorTests(t *testing.T, list *List[string], method string, items []*ListItem[string]) {
+	iterate := func(fn func(string, *ListItem[string])) {
+		iterateMethods[method](list, fn)
 	}
 
 	t.Run("iterate", func(t *testing.T) {
-		collector := createIteratorStateCollector(retValue)
+		collector := new(iteratorStateCollector)
 
 		iterate(collector.collect)
 		var want []iteratorState
 		for _, item := range items {
-			want = append(want, getIteratorState(item.Data, item, list))
+			want = append(want, getIteratorState(item.Data, item))
 		}
 		if !slices.Equal(collector.states, want) {
 			t.Errorf("%s visited %+v, want %+v", method, collector.states, want)
@@ -142,17 +134,16 @@ func createIteratorTests(t *testing.T, list *List[string], method string, items 
 	})
 
 	t.Run("nested iterate", func(t *testing.T) {
-		collector := createIteratorStateCollector(retValue)
+		collector := new(iteratorStateCollector)
 
-		iterate(func(string, *ListItem[string], *List[string]) bool {
+		iterate(func(string, *ListItem[string]) {
 			iterate(collector.collect)
-			return retValue
 		})
 
 		var want []iteratorState
 		for range items {
 			for _, item := range items {
-				want = append(want, getIteratorState(item.Data, item, list))
+				want = append(want, getIteratorState(item.Data, item))
 			}
 		}
 		if !slices.Equal(collector.states, want) {
@@ -163,33 +154,18 @@ func createIteratorTests(t *testing.T, list *List[string], method string, items 
 
 var insertedData = regexp.MustCompile(`^ins\d+$`)
 
-func createIteratorWithModificationTests(t *testing.T, list *List[string], method string, items []*ListItem[string], until *ListItem[string], retValue bool) {
-	iterate := func(list *List[string], fn func(string, *ListItem[string], *List[string]) bool) {
-		var untilCopy *ListItem[string]
-		if until != nil {
-			cursor := list.Head()
-
-			for cursor != nil {
-				if cursor.Data == until.Data {
-					untilCopy = cursor
-					break
-				}
-
-				cursor = cursor.Next
-			}
-		}
-
-		iterateMethods[method](list, untilCopy, fn)
+func createIteratorWithModificationTests(t *testing.T, list *List[string], method string, items []*ListItem[string]) {
+	iterate := func(list *List[string], fn func(string, *ListItem[string])) {
+		iterateMethods[method](list, fn)
 	}
 
 	t.Run("remove items on iterate", func(t *testing.T) {
 		iterateList := list.Copy()
 		var removed []string
 
-		iterate(iterateList, func(data string, item *ListItem[string], _ *List[string]) bool {
+		iterate(iterateList, func(data string, item *ListItem[string]) {
 			removed = append(removed, data)
 			iterateList.Remove(item)
-			return retValue
 		})
 
 		if iterateList.Head() != nil {
@@ -210,7 +186,7 @@ func createIteratorWithModificationTests(t *testing.T, list *List[string], metho
 		var order []string
 		idx := 0
 
-		iterate(iterateList, func(data string, item *ListItem[string], _ *List[string]) bool {
+		iterate(iterateList, func(data string, item *ListItem[string]) {
 			if !insertedData.MatchString(data) {
 				before := NewListItem("ins" + strconv.Itoa(idx))
 				after := NewListItem("ins" + strconv.Itoa(idx))
@@ -221,8 +197,6 @@ func createIteratorWithModificationTests(t *testing.T, list *List[string], metho
 				inserted = append(inserted, data, "ins"+strconv.Itoa(idx))
 				idx++
 			}
-
-			return retValue
 		})
 
 		var wantInserted []string
@@ -279,8 +253,8 @@ func TestList(t *testing.T) {
 		t.Helper()
 		t.Run(name, func(t *testing.T) {
 			empty = new(List[string])
-			list1 = new(List[string]).FromArray([]string{foo})
-			list2 = new(List[string]).FromArray([]string{foo, bar})
+			list1 = newList(foo)
+			list2 = newList(foo, bar)
 			fn(t)
 		})
 	}
@@ -291,13 +265,7 @@ func TestList(t *testing.T) {
 		}
 	})
 
-	run(t, "#createItem()", func(t *testing.T) {
-		if got, want := *empty.CreateItem(foo), (ListItem[string]{Prev: nil, Next: nil, Data: foo}); got != want {
-			t.Errorf("CreateItem(%q) = %+v, want %+v", foo, got, want)
-		}
-	})
-
-	run(t, "#size", func(t *testing.T) {
+	run(t, "#size (Len)", func(t *testing.T) {
 		for _, tt := range []struct {
 			name string
 			list *List[string]
@@ -307,35 +275,8 @@ func TestList(t *testing.T) {
 			{"list1", list1, 1},
 			{"list2", list2, 2},
 		} {
-			if got := tt.list.Size(); got != tt.want {
-				t.Errorf("%s.Size() = %d, want %d", tt.name, got, tt.want)
-			}
-		}
-	})
-
-	run(t, "#fromArray()", func(t *testing.T) {
-		list := new(List[string]).FromArray([]string{foo, bar})
-
-		if got := list.Head().Data; got != foo {
-			t.Errorf("Head().Data = %q, want %q", got, foo)
-		}
-		if got := list.Tail().Data; got != bar {
-			t.Errorf("Tail().Data = %q, want %q", got, bar)
-		}
-	})
-
-	run(t, "#toArray()", func(t *testing.T) {
-		for _, tt := range []struct {
-			name string
-			list *List[string]
-			want []string
-		}{
-			{"empty", empty, []string{}},
-			{"list1", list1, []string{foo}},
-			{"list2", list2, []string{foo, bar}},
-		} {
-			if got := tt.list.ToArray(); !slices.Equal(got, tt.want) {
-				t.Errorf("%s.ToArray() = %q, want %q", tt.name, got, tt.want)
+			if got := tt.list.Len(); got != tt.want {
+				t.Errorf("%s.Len() = %d, want %d", tt.name, got, tt.want)
 			}
 		}
 	})
@@ -409,199 +350,33 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("#forEach()", func(t *testing.T) {
-		iterateList := new(List[string]).FromArray([]string{foo, bar})
-		createIteratorTests(t, iterateList, "forEach", []*ListItem[string]{iterateList.Head(), iterateList.Tail()}, nil, false)
-		createIteratorWithModificationTests(t, iterateList, "forEach", []*ListItem[string]{iterateList.Head(), iterateList.Tail()}, nil, false)
+		iterateList := newList(foo, bar)
+		createIteratorTests(t, iterateList, "forEach", []*ListItem[string]{iterateList.Head(), iterateList.Tail()})
+		createIteratorWithModificationTests(t, iterateList, "forEach", []*ListItem[string]{iterateList.Head(), iterateList.Tail()})
 	})
 
 	t.Run("#forEachRight()", func(t *testing.T) {
-		iterateList := new(List[string]).FromArray([]string{foo, bar})
-		createIteratorTests(t, iterateList, "forEachRight", []*ListItem[string]{iterateList.Tail(), iterateList.Head()}, nil, false)
-		createIteratorWithModificationTests(t, iterateList, "forEachRight", []*ListItem[string]{iterateList.Tail(), iterateList.Head()}, nil, false)
+		iterateList := newList(foo, bar)
+		createIteratorTests(t, iterateList, "forEachRight", []*ListItem[string]{iterateList.Tail(), iterateList.Head()})
+		createIteratorWithModificationTests(t, iterateList, "forEachRight", []*ListItem[string]{iterateList.Tail(), iterateList.Head()})
 	})
 
-	run(t, "#reduce()", func(t *testing.T) {
-		expected := "foobar"
-		actual := Reduce(new(List[string]).FromArray([]string{"foo", "bar"}), func(res string, data string, _ *ListItem[string], _ *List[string]) string {
-			return res + data
-		}, "")
-
-		if actual != expected {
-			t.Errorf("Reduce(...) = %q, want %q", actual, expected)
+	run(t, "All and Backward", func(t *testing.T) {
+		if got, want := slices.Collect(list2.All()), []string{foo, bar}; !slices.Equal(got, want) {
+			t.Errorf("All() = %q, want %q", got, want)
 		}
-	})
-
-	run(t, "#reduceRight()", func(t *testing.T) {
-		expected := "barfoo"
-		actual := ReduceRight(new(List[string]).FromArray([]string{"foo", "bar"}), func(res string, data string, _ *ListItem[string], _ *List[string]) string {
-			return res + data
-		}, "")
-
-		if actual != expected {
-			t.Errorf("ReduceRight(...) = %q, want %q", actual, expected)
+		if got, want := slices.Collect(list2.Backward()), []string{bar, foo}; !slices.Equal(got, want) {
+			t.Errorf("Backward() = %q, want %q", got, want)
 		}
-	})
-
-	t.Run("#nextUntil()", func(t *testing.T) {
-		run(t, "should not iterate when start is null", func(t *testing.T) {
-			count := 0
-
-			list2.NextUntil(nil, func(string, *ListItem[string], *List[string]) bool {
-				count++
-				return false
-			})
-
-			if count != 0 {
-				t.Errorf("callback called %d times, want 0", count)
-			}
-		})
-
-		run(t, "should stop iterate when callback returns true", func(t *testing.T) {
-			count := 0
-
-			list2.NextUntil(list2.Head(), func(string, *ListItem[string], *List[string]) bool {
-				count++
-				return true
-			})
-
-			if count != 1 {
-				t.Errorf("callback called %d times, want 1", count)
-			}
-		})
-
-		iterateList := new(List[string]).FromArray([]string{foo, bar})
-		createIteratorTests(t, iterateList, "nextUntil", []*ListItem[string]{iterateList.Head(), iterateList.Tail()}, iterateList.Head(), false)
-		createIteratorWithModificationTests(t, iterateList, "nextUntil", []*ListItem[string]{iterateList.Head(), iterateList.Tail()}, iterateList.Head(), false)
-	})
-
-	t.Run("#prevUntil()", func(t *testing.T) {
-		run(t, "should not iterate when start is null", func(t *testing.T) {
-			count := 0
-
-			list2.PrevUntil(nil, func(string, *ListItem[string], *List[string]) bool {
-				count++
-				return false
-			})
-
-			if count != 0 {
-				t.Errorf("callback called %d times, want 0", count)
-			}
-		})
-
-		run(t, "should stop iterate when callback returns true", func(t *testing.T) {
-			count := 0
-
-			list2.PrevUntil(list2.Tail(), func(string, *ListItem[string], *List[string]) bool {
-				count++
-				return true
-			})
-
-			if count != 1 {
-				t.Errorf("callback called %d times, want 1", count)
-			}
-		})
-
-		iterateList := new(List[string]).FromArray([]string{foo, bar})
-		createIteratorTests(t, iterateList, "prevUntil", []*ListItem[string]{iterateList.Tail(), iterateList.Head()}, iterateList.Tail(), false)
-		createIteratorWithModificationTests(t, iterateList, "prevUntil", []*ListItem[string]{iterateList.Tail(), iterateList.Head()}, iterateList.Tail(), false)
-	})
-
-	// truthy stands in for upstream's Boolean: every test datum is a
-	// non-empty string, as every upstream datum is an object.
-	truthy := func(data string, _ *ListItem[string], _ *List[string]) bool {
-		return data != ""
-	}
-
-	t.Run("#some()", func(t *testing.T) {
-		run(t, "basic", func(t *testing.T) {
-			if got := list2.Some(truthy); got != true {
-				t.Errorf("Some(truthy) = %t, want true", got)
-			}
-			if got := list2.Some(func(string, *ListItem[string], *List[string]) bool { return false }); got != false {
-				t.Errorf("Some(always false) = %t, want false", got)
-			}
-			if got := list2.Some(func(data string, _ *ListItem[string], _ *List[string]) bool {
-				return data == bar
-			}); got != true {
-				t.Errorf("Some(data == bar) = %t, want true", got)
-			}
-		})
-
-		run(t, "should stop on first match", func(t *testing.T) {
-			count := 0
-			if got := list2.Some(func(data string, _ *ListItem[string], _ *List[string]) bool {
-				count++
-				return data == foo
-			}); got != true {
-				t.Errorf("Some(data == foo) = %t, want true", got)
-			}
-			if count != 1 {
-				t.Errorf("callback called %d times, want 1", count)
-			}
-		})
-
-		iterateList := new(List[string]).FromArray([]string{foo, bar})
-		createIteratorTests(t, iterateList, "some", []*ListItem[string]{iterateList.Head(), iterateList.Tail()}, nil, false)
-	})
-
-	t.Run("#map()", func(t *testing.T) {
-		getFirstArg := func(data string, _ *ListItem[string], _ *List[string]) string {
-			return data
+		if got := slices.Collect(empty.Backward()); len(got) != 0 {
+			t.Errorf("empty.Backward() = %q, want none", got)
 		}
-
-		run(t, "basic", func(t *testing.T) {
-			if got := empty.Map(getFirstArg).ToArray(); !slices.Equal(got, []string{}) {
-				t.Errorf("empty.Map(getFirstArg) = %q, want []", got)
+		for data := range list2.Backward() {
+			if data != bar {
+				t.Errorf("Backward() after break yielded %q", data)
 			}
-			if got := list1.Map(getFirstArg).ToArray(); !slices.Equal(got, []string{foo}) {
-				t.Errorf("list1.Map(getFirstArg) = %q, want %q", got, []string{foo})
-			}
-
-			const (
-				foo2 = "foo2"
-				bar2 = "bar2"
-			)
-			mapped := list2.Map(func(node string, _ *ListItem[string], _ *List[string]) string {
-				if node == foo {
-					return foo2
-				}
-				return bar2
-			})
-			if got, want := mapped.ToArray(), []string{foo2, bar2}; !slices.Equal(got, want) {
-				t.Errorf("mapped = %q, want %q", got, want)
-			}
-			if got, want := list2.ToArray(), []string{foo, bar}; !slices.Equal(got, want) {
-				t.Errorf("list2 after Map = %q, want %q", got, want)
-			}
-		})
-
-		iterateList := new(List[string]).FromArray([]string{foo, bar})
-		createIteratorTests(t, iterateList, "map", []*ListItem[string]{iterateList.Head(), iterateList.Tail()}, nil, false)
-	})
-
-	t.Run("#filter()", func(t *testing.T) {
-		run(t, "basic", func(t *testing.T) {
-			// upstream filters the empty list with getFirstArg; any predicate will do
-			if got := empty.Filter(truthy).ToArray(); !slices.Equal(got, []string{}) {
-				t.Errorf("empty.Filter(truthy) = %q, want []", got)
-			}
-			if got, want := list2.Filter(truthy).ToArray(), []string{foo, bar}; !slices.Equal(got, want) {
-				t.Errorf("list2.Filter(truthy) = %q, want %q", got, want)
-			}
-
-			filtered := list2.Filter(func(node string, _ *ListItem[string], _ *List[string]) bool {
-				return node == bar
-			})
-			if got, want := filtered.ToArray(), []string{bar}; !slices.Equal(got, want) {
-				t.Errorf("filtered = %q, want %q", got, want)
-			}
-			if got, want := list2.ToArray(), []string{foo, bar}; !slices.Equal(got, want) {
-				t.Errorf("list2 after Filter = %q, want %q", got, want)
-			}
-		})
-
-		iterateList := new(List[string]).FromArray([]string{foo, bar})
-		createIteratorTests(t, iterateList, "filter", []*ListItem[string]{iterateList.Head(), iterateList.Tail()}, nil, false)
+			break
+		}
 	})
 
 	t.Run("#clear()", func(t *testing.T) {
@@ -680,50 +455,6 @@ func TestList(t *testing.T) {
 		}
 	})
 
-	run(t, "#unshift()", func(t *testing.T) {
-		const qux = "qux"
-
-		empty.Unshift(qux)
-		if got, want := empty.ToArray(), []string{qux}; !slices.Equal(got, want) {
-			t.Errorf("empty after Unshift = %q, want %q", got, want)
-		}
-
-		list1.Unshift(qux)
-		if got, want := list1.ToArray(), []string{qux, foo}; !slices.Equal(got, want) {
-			t.Errorf("list1 after Unshift = %q, want %q", got, want)
-		}
-
-		list2.Unshift(qux)
-		if got, want := list2.ToArray(), []string{qux, foo, bar}; !slices.Equal(got, want) {
-			t.Errorf("list2 after Unshift = %q, want %q", got, want)
-		}
-
-		// upstream asserts unshift returns undefined; Unshift has no result.
-	})
-
-	t.Run("#shift()", func(t *testing.T) {
-		run(t, "should remove first item", func(t *testing.T) {
-			head := list2.Head()
-			tail := list2.Tail()
-
-			if got := list2.Shift(); got != head {
-				t.Errorf("Shift() = %p, want head %p", got, head)
-			}
-			if got := list2.Shift(); got != tail {
-				t.Errorf("Shift() = %p, want tail %p", got, tail)
-			}
-			if list2.Head() != nil {
-				t.Errorf("Head() = %p, want nil", list2.Head())
-			}
-		})
-
-		run(t, "should return an undefined for an empty list", func(t *testing.T) {
-			if got := empty.Shift(); got != nil {
-				t.Errorf("Shift() = %+v, want nil", got)
-			}
-		})
-	})
-
 	run(t, "#append()", func(t *testing.T) {
 		const qux = "qux"
 
@@ -756,50 +487,6 @@ func TestList(t *testing.T) {
 		if got := list2.AppendData(qux); got != list2 {
 			t.Error("AppendData did not return its receiver")
 		}
-	})
-
-	run(t, "#push()", func(t *testing.T) {
-		const qux = "qux"
-
-		empty.Push(qux)
-		if got, want := empty.ToArray(), []string{qux}; !slices.Equal(got, want) {
-			t.Errorf("empty after Push = %q, want %q", got, want)
-		}
-
-		list1.Push(qux)
-		if got, want := list1.ToArray(), []string{foo, qux}; !slices.Equal(got, want) {
-			t.Errorf("list1 after Push = %q, want %q", got, want)
-		}
-
-		list2.Push(qux)
-		if got, want := list2.ToArray(), []string{foo, bar, qux}; !slices.Equal(got, want) {
-			t.Errorf("list2 after Push = %q, want %q", got, want)
-		}
-
-		// upstream asserts push returns undefined; Push has no result.
-	})
-
-	t.Run("#pop()", func(t *testing.T) {
-		run(t, "should remove last item", func(t *testing.T) {
-			head := list2.Head()
-			tail := list2.Tail()
-
-			if got := list2.Pop(); got != tail {
-				t.Errorf("Pop() = %p, want tail %p", got, tail)
-			}
-			if got := list2.Pop(); got != head {
-				t.Errorf("Pop() = %p, want head %p", got, head)
-			}
-			if list2.Head() != nil {
-				t.Errorf("Head() = %p, want nil", list2.Head())
-			}
-		})
-
-		run(t, "should return an undefined for an empty list", func(t *testing.T) {
-			if got := empty.Pop(); got != nil {
-				t.Errorf("Pop() = %+v, want nil", got)
-			}
-		})
 	})
 
 	t.Run("#insert()", func(t *testing.T) {
@@ -1118,49 +805,17 @@ func TestList(t *testing.T) {
 // has not reached yet must be seen by the iteration, which only the cursor
 // updates guarantee.
 func TestListMutateAhead(t *testing.T) {
-	type visitFunc = func(data string, item *ListItem[string], list *List[string])
-
-	forward := map[string]func(list *List[string], fn visitFunc){
-		"forEach": func(list *List[string], fn visitFunc) { list.ForEach(fn) },
-		"reduce": func(list *List[string], fn visitFunc) {
-			Reduce(list, func(acc int, data string, item *ListItem[string], list *List[string]) int {
-				fn(data, item, list)
-				return acc
-			}, 0)
-		},
-		"nextUntil": func(list *List[string], fn visitFunc) {
-			list.NextUntil(list.Head(), func(data string, item *ListItem[string], list *List[string]) bool {
-				fn(data, item, list)
-				return false
-			})
-		},
-	}
-	backward := map[string]func(list *List[string], fn visitFunc){
-		"forEachRight": func(list *List[string], fn visitFunc) { list.ForEachRight(fn) },
-		"reduceRight": func(list *List[string], fn visitFunc) {
-			ReduceRight(list, func(acc int, data string, item *ListItem[string], list *List[string]) int {
-				fn(data, item, list)
-				return acc
-			}, 0)
-		},
-		"prevUntil": func(list *List[string], fn visitFunc) {
-			list.PrevUntil(list.Tail(), func(data string, item *ListItem[string], list *List[string]) bool {
-				fn(data, item, list)
-				return false
-			})
-		},
-	}
+	type mutateFunc = func(list *List[string], data string, item *ListItem[string])
 
 	for _, tt := range []struct {
 		name    string
-		methods map[string]func(list *List[string], fn visitFunc)
-		mutate  func(data string, item *ListItem[string], list *List[string])
+		reverse bool
+		mutate  mutateFunc
 		want    []string
 	}{
 		{
-			name:    "remove next",
-			methods: forward,
-			mutate: func(data string, item *ListItem[string], list *List[string]) {
+			name: "remove next",
+			mutate: func(list *List[string], data string, item *ListItem[string]) {
 				if data == "a" {
 					list.Remove(item.Next)
 				}
@@ -1168,9 +823,8 @@ func TestListMutateAhead(t *testing.T) {
 			want: []string{"a", "c"},
 		},
 		{
-			name:    "insert before next",
-			methods: forward,
-			mutate: func(data string, item *ListItem[string], list *List[string]) {
+			name: "insert before next",
+			mutate: func(list *List[string], data string, item *ListItem[string]) {
 				if data == "a" {
 					list.InsertData("x", item.Next)
 				}
@@ -1179,8 +833,8 @@ func TestListMutateAhead(t *testing.T) {
 		},
 		{
 			name:    "remove prev",
-			methods: backward,
-			mutate: func(data string, item *ListItem[string], list *List[string]) {
+			reverse: true,
+			mutate: func(list *List[string], data string, item *ListItem[string]) {
 				if data == "c" {
 					list.Remove(item.Prev)
 				}
@@ -1189,32 +843,121 @@ func TestListMutateAhead(t *testing.T) {
 		},
 		{
 			name:    "insert before current",
-			methods: backward,
-			mutate: func(data string, item *ListItem[string], list *List[string]) {
+			reverse: true,
+			mutate: func(list *List[string], data string, item *ListItem[string]) {
 				if data == "c" {
 					list.InsertData("x", item)
 				}
 			},
 			want: []string{"c", "x", "b", "a"},
 		},
+		{
+			name: "clear",
+			mutate: func(list *List[string], data string, _ *ListItem[string]) {
+				if data == "a" {
+					list.Clear()
+				}
+			},
+			want: []string{"a"},
+		},
 	} {
-		for method, iterate := range tt.methods {
-			t.Run(method+"/"+tt.name, func(t *testing.T) {
-				list := new(List[string]).FromArray([]string{"a", "b", "c"})
-				var visited []string
+		t.Run(tt.name, func(t *testing.T) {
+			list := newList("a", "b", "c")
+			var visited []string
 
-				iterate(list, func(data string, item *ListItem[string], list *List[string]) {
-					visited = append(visited, data)
-					tt.mutate(data, item, list)
-				})
+			visit := func(data string, item *ListItem[string]) {
+				visited = append(visited, data)
+				tt.mutate(list, data, item)
+			}
+			if tt.reverse {
+				list.ForEachRight(visit)
+			} else {
+				list.ForEach(visit)
+			}
 
-				if !slices.Equal(visited, tt.want) {
-					t.Errorf("%s visited %q, want %q", method, visited, tt.want)
-				}
-				if list.cursor != nil {
-					t.Errorf("%s left a cursor on the list", method)
-				}
-			})
-		}
+			if !slices.Equal(visited, tt.want) {
+				t.Errorf("visited %q, want %q", visited, tt.want)
+			}
+			if list.cursor != nil {
+				t.Error("the iteration left a cursor on the list")
+			}
+		})
 	}
+}
+
+// Not in upstream: an item belongs to one list, and the methods taking an
+// item panic rather than corrupt a list when it belongs to another one.
+func TestListOwnership(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		want error
+		fn   func(a, b *List[string])
+	}{
+		{"Remove an item of another list", errItemNotInList, func(a, b *List[string]) { b.Remove(a.Head().Next) }},
+		{"Remove an unlinked item", errItemNotInList, func(_, b *List[string]) { b.Remove(NewListItem("x")) }},
+		{"Remove a removed item", errItemNotInList, func(a, _ *List[string]) {
+			item := a.Head()
+			a.Remove(item)
+			a.Remove(item)
+		}},
+		{"Insert an item of another list", errItemInList, func(a, b *List[string]) { b.Insert(a.Head(), nil) }},
+		{"Insert an item of the same list", errItemInList, func(a, _ *List[string]) { a.Insert(a.Head(), nil) }},
+		{"Append an item of another list", errItemInList, func(a, b *List[string]) { b.Append(a.Tail()) }},
+		{"Prepend an item of another list", errItemInList, func(a, b *List[string]) { b.Prepend(a.Tail()) }},
+		{"Insert before an item of another list", errBeforeNotInList, func(a, b *List[string]) { b.InsertData("x", a.Tail()) }},
+		{"Replace an item of another list", errBeforeNotInList, func(a, b *List[string]) { b.Replace(a.Tail(), NewListItem("x")) }},
+		{"Replace with a linked item", errItemInList, func(a, b *List[string]) { b.Replace(b.Head(), a.Head()) }},
+		{"InsertList before an item of another list", errBeforeNotInList, func(a, b *List[string]) { b.InsertList(newList("x"), a.Head()) }},
+		{"InsertList into itself", errListIntoItself, func(a, _ *List[string]) { a.AppendList(a) }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			a := newList("a1", "a2", "a3")
+			b := newList("b1", "b2")
+
+			assertPanicsWith(t, tt.want, func() { tt.fn(a, b) })
+
+			if got, want := toArray(t, b), []string{"b1", "b2"}; !slices.Equal(got, want) {
+				t.Errorf("b = %q after the panic, want %q", got, want)
+			}
+		})
+	}
+
+	t.Run("moved items belong to their new list", func(t *testing.T) {
+		a := newList("a1", "a2")
+		b := newList("b1")
+		item := a.Head()
+
+		b.AppendList(a)
+		b.Remove(item)
+		if got, want := toArray(t, b), []string{"b1", "a2"}; !slices.Equal(got, want) {
+			t.Errorf("b = %q, want %q", got, want)
+		}
+		if got := toArray(t, a); len(got) != 0 {
+			t.Errorf("a = %q, want empty", got)
+		}
+	})
+
+	t.Run("a removed item can be inserted again", func(t *testing.T) {
+		a := newList("a1", "a2")
+		b := newList("b1")
+
+		b.Append(a.Remove(a.Head()))
+		if got, want := toArray(t, b), []string{"b1", "a1"}; !slices.Equal(got, want) {
+			t.Errorf("b = %q, want %q", got, want)
+		}
+		if got, want := toArray(t, a), []string{"a2"}; !slices.Equal(got, want) {
+			t.Errorf("a = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("a cleared item can be inserted again", func(t *testing.T) {
+		a := newList("a1")
+		item := a.Head()
+		a.Clear()
+
+		a.Append(item)
+		if got, want := toArray(t, a), []string{"a1"}; !slices.Equal(got, want) {
+			t.Errorf("a = %q, want %q", got, want)
+		}
+	})
 }

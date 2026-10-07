@@ -46,7 +46,7 @@ func TestParseNULSpecFixes(t *testing.T) {
 		t.Fatalf("Parse error = %v", err)
 	}
 	value, ok := ast.(*Value)
-	if !ok || value.Children.Size() != 2 {
+	if !ok || value.Children.Len() != 2 {
 		t.Fatalf("Parse = %#v, want a Value with two children", ast)
 	}
 	if url, ok := value.Children.First().(*URL); !ok || url.Value != "a\uFFFDb" {

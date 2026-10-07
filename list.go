@@ -24,16 +24,25 @@ import (
 //          └──────┘    └──────┘    └──────┘    └──────┘
 //
 
+// The values List methods panic with when they are given an item of
+// another list (upstream throws for two of these programming errors; the
+// owner check catches the cases upstream silently corrupts).
 var (
-	errBeforeNotInList = errors.New("before doesn't belong to list")
-	errItemNotInList   = errors.New("item doesn't belong to list")
+	errBeforeNotInList = errors.New("csstree: list: before item does not belong to the list")
+	errItemNotInList   = errors.New("csstree: list: item does not belong to the list")
+	errItemInList      = errors.New("csstree: list: item is already in a list")
+	errListIntoItself  = errors.New("csstree: list: cannot insert a list into itself")
 )
 
-// ListItem is one link of a List. Prev and Next are nil at the ends.
+// ListItem is one link of a List. Prev and Next are nil at the ends; they
+// are exported for traversal and must not be set directly.
 type ListItem[T any] struct {
 	Prev *ListItem[T]
 	Next *ListItem[T]
 	Data T
+
+	// list is the list the item is linked into, nil when unlinked.
+	list *List[T]
 }
 
 // listCursor records where an in-progress iteration continues, so that
@@ -45,37 +54,36 @@ type listCursor[T any] struct {
 	cursor *listCursor[T]
 }
 
-// List is a doubly linked list whose iteration methods (ForEach,
-// ForEachRight, Reduce, ReduceRight, NextUntil, PrevUntil) tolerate the
-// callback inserting or removing items of the list being iterated.
+// List is a doubly linked list. ForEach and ForEachRight tolerate their
+// callback inserting or removing items of the list being iterated; All and
+// Backward do not, and do not write to the list, so any number of
+// goroutines may range over a list that nobody modifies.
 //
-// The zero value is an empty list ready to use. A List must not be used by
-// more than one goroutine at a time: even the iteration methods update the
-// list's internal cursor stack.
+// An item belongs to at most one list. The methods that take an item panic
+// when it belongs to another list (Remove, Replace, the before argument of
+// Insert) or is already in a list (the item Insert, Prepend and Append
+// link): such misuse would otherwise corrupt both lists.
+//
+// The zero value is an empty list ready to use. ForEach and ForEachRight
+// update the list's internal cursor stack, so they, like every mutating
+// method, must not run concurrently with other uses of the list.
 type List[T any] struct {
 	head   *ListItem[T]
 	tail   *ListItem[T]
+	len    int
 	cursor *listCursor[T]
 
 	// releasedCursors is a free list of cursors for reuse.
 	releasedCursors *listCursor[T]
 }
 
-// NewListItem returns an unlinked item holding data (upstream List.createItem).
+// NewListItem returns an unlinked item holding data (upstream
+// List.createItem).
 //
 // Type inference picks T from data, so for a List[Node] holding an
-// *Identifier use list.CreateItem or NewListItem[Node].
+// *Identifier write NewListItem[Node].
 func NewListItem[T any](data T) *ListItem[T] {
-	return &ListItem[T]{
-		Prev: nil,
-		Next: nil,
-		Data: data,
-	}
-}
-
-// CreateItem returns an unlinked item holding data, typed for l.
-func (l *List[T]) CreateItem(data T) *ListItem[T] {
-	return NewListItem(data)
+	return &ListItem[T]{Data: data}
 }
 
 // cursor helpers
@@ -128,12 +136,24 @@ func (l *List[T]) updateCursors(prevOld, prevNew, nextOld, nextNew *ListItem[T])
 }
 
 // All returns an iterator over the data of l from head to tail
-// (upstream [Symbol.iterator]). Unlike ForEach it does not track
-// mutation: removing the current item ends the iteration.
+// (upstream [Symbol.iterator]). It only reads the list; removing the
+// current item during the iteration ends it (use ForEach to mutate).
 func (l *List[T]) All() iter.Seq[T] {
 	return func(yield func(T) bool) {
-		for cursor := l.head; cursor != nil; cursor = cursor.Next {
-			if !yield(cursor.Data) {
+		for item := l.head; item != nil; item = item.Next {
+			if !yield(item.Data) {
+				return
+			}
+		}
+	}
+}
+
+// Backward returns an iterator over the data of l from tail to head. Like
+// All, it only reads the list.
+func (l *List[T]) Backward() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for item := l.tail; item != nil; item = item.Prev {
+			if !yield(item.Data) {
 				return
 			}
 		}
@@ -150,17 +170,9 @@ func (l *List[T]) Tail() *ListItem[T] {
 	return l.tail
 }
 
-// getters
-
-// Size counts the items of l.
-func (l *List[T]) Size() int {
-	size := 0
-
-	for cursor := l.head; cursor != nil; cursor = cursor.Next {
-		size++
-	}
-
-	return size
+// Len returns the number of items of l.
+func (l *List[T]) Len() int {
+	return l.len
 }
 
 // IsEmpty reports whether l has no items.
@@ -188,59 +200,26 @@ func (l *List[T]) Last() T {
 	return data
 }
 
-// convertors
-
-// FromArray replaces the items of l with new items holding array's
-// elements, and returns l.
-func (l *List[T]) FromArray(array []T) *List[T] {
-	var cursor *ListItem[T]
-	l.head = nil
-
-	for _, data := range array {
-		item := NewListItem(data)
-
-		if cursor != nil {
-			cursor.Next = item
-		} else {
-			l.head = item
-		}
-
-		item.Prev = cursor
-		cursor = item
-	}
-
-	l.tail = cursor
-	return l
-}
-
-// ToArray returns the data of l from head to tail. The result is non-nil
-// even when l is empty.
-func (l *List[T]) ToArray() []T {
-	array := []T{}
+// MarshalJSON encodes l as a JSON array of its data (upstream toJSON).
+func (l *List[T]) MarshalJSON() ([]byte, error) {
+	array := make([]T, 0, l.len)
 	for data := range l.All() {
 		array = append(array, data)
 	}
-	return array
+	return json.Marshal(array)
 }
-
-// MarshalJSON encodes l as a JSON array of its data (upstream toJSON).
-func (l *List[T]) MarshalJSON() ([]byte, error) {
-	return json.Marshal(l.ToArray())
-}
-
-// array-like methods
 
 // ForEach calls fn for each item from head to tail. fn may insert or remove
-// items of list: items removed before they are reached are skipped and
-// items inserted ahead of the current one are visited.
-func (l *List[T]) ForEach(fn func(data T, item *ListItem[T], list *List[T])) {
+// items of l: items removed before they are reached are skipped and items
+// inserted ahead of the current one are visited.
+func (l *List[T]) ForEach(fn func(data T, item *ListItem[T])) {
 	// push cursor
 	cursor := l.allocateCursor(nil, l.head)
 
 	for cursor.next != nil {
 		item := cursor.next
 		cursor.next = item.Next
-		fn(item.Data, item, l)
+		fn(item.Data, item)
 	}
 
 	// pop cursor
@@ -248,139 +227,14 @@ func (l *List[T]) ForEach(fn func(data T, item *ListItem[T], list *List[T])) {
 }
 
 // ForEachRight is ForEach from tail to head.
-func (l *List[T]) ForEachRight(fn func(data T, item *ListItem[T], list *List[T])) {
+func (l *List[T]) ForEachRight(fn func(data T, item *ListItem[T])) {
 	// push cursor
 	cursor := l.allocateCursor(l.tail, nil)
 
 	for cursor.prev != nil {
 		item := cursor.prev
 		cursor.prev = item.Prev
-		fn(item.Data, item, l)
-	}
-
-	// pop cursor
-	l.releaseCursor()
-}
-
-// Reduce folds l from head to tail, starting from initialValue, with the
-// same tolerance of mutation as ForEach. It is a function rather than a
-// method because Go methods cannot add the type parameter R.
-func Reduce[T, R any](l *List[T], fn func(acc R, data T, item *ListItem[T], list *List[T]) R, initialValue R) R {
-	// push cursor
-	cursor := l.allocateCursor(nil, l.head)
-	acc := initialValue
-	var item *ListItem[T]
-
-	for cursor.next != nil {
-		item = cursor.next
-		cursor.next = item.Next
-
-		acc = fn(acc, item.Data, item, l)
-	}
-
-	// pop cursor
-	l.releaseCursor()
-
-	return acc
-}
-
-// ReduceRight is Reduce from tail to head.
-func ReduceRight[T, R any](l *List[T], fn func(acc R, data T, item *ListItem[T], list *List[T]) R, initialValue R) R {
-	// push cursor
-	cursor := l.allocateCursor(l.tail, nil)
-	acc := initialValue
-	var item *ListItem[T]
-
-	for cursor.prev != nil {
-		item = cursor.prev
-		cursor.prev = item.Prev
-
-		acc = fn(acc, item.Data, item, l)
-	}
-
-	// pop cursor
-	l.releaseCursor()
-
-	return acc
-}
-
-// Some reports whether fn returns true for any item, stopping at the first
-// that does. fn must not mutate l.
-func (l *List[T]) Some(fn func(data T, item *ListItem[T], list *List[T]) bool) bool {
-	for cursor := l.head; cursor != nil; cursor = cursor.Next {
-		if fn(cursor.Data, cursor, l) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// Map returns a new list of the results of fn for each item. fn must not
-// mutate l. The result has the same element type as l: upstream only maps
-// nodes to nodes (clone), and Go methods cannot add a type parameter.
-func (l *List[T]) Map(fn func(data T, item *ListItem[T], list *List[T]) T) *List[T] {
-	result := new(List[T])
-
-	for cursor := l.head; cursor != nil; cursor = cursor.Next {
-		result.AppendData(fn(cursor.Data, cursor, l))
-	}
-
-	return result
-}
-
-// Filter returns a new list of the data for which fn returns true. fn must
-// not mutate l.
-func (l *List[T]) Filter(fn func(data T, item *ListItem[T], list *List[T]) bool) *List[T] {
-	result := new(List[T])
-
-	for cursor := l.head; cursor != nil; cursor = cursor.Next {
-		if fn(cursor.Data, cursor, l) {
-			result.AppendData(cursor.Data)
-		}
-	}
-
-	return result
-}
-
-// NextUntil calls fn for start and each following item until fn returns
-// true. It does nothing when start is nil. It tolerates mutation like
-// ForEach.
-func (l *List[T]) NextUntil(start *ListItem[T], fn func(data T, item *ListItem[T], list *List[T]) bool) {
-	if start == nil {
-		return
-	}
-
-	// push cursor
-	cursor := l.allocateCursor(nil, start)
-
-	for cursor.next != nil {
-		item := cursor.next
-		cursor.next = item.Next
-		if fn(item.Data, item, l) {
-			break
-		}
-	}
-
-	// pop cursor
-	l.releaseCursor()
-}
-
-// PrevUntil is NextUntil towards the head.
-func (l *List[T]) PrevUntil(start *ListItem[T], fn func(data T, item *ListItem[T], list *List[T]) bool) {
-	if start == nil {
-		return
-	}
-
-	// push cursor
-	cursor := l.allocateCursor(start, nil)
-
-	for cursor.prev != nil {
-		item := cursor.prev
-		cursor.prev = item.Prev
-		if fn(item.Data, item, l) {
-			break
-		}
+		fn(item.Data, item)
 	}
 
 	// pop cursor
@@ -389,10 +243,25 @@ func (l *List[T]) PrevUntil(start *ListItem[T], fn func(data T, item *ListItem[T
 
 // mutation
 
-// Clear unlinks l from its items. The items keep their links to each other.
+// Clear removes every item of l. An iteration of l in progress ends after
+// the current item.
 func (l *List[T]) Clear() {
+	for cursor := l.cursor; cursor != nil; cursor = cursor.cursor {
+		cursor.prev = nil
+		cursor.next = nil
+	}
+
+	for item := l.head; item != nil; {
+		next := item.Next
+		item.Prev = nil
+		item.Next = nil
+		item.list = nil
+		item = next
+	}
+
 	l.head = nil
 	l.tail = nil
+	l.len = 0
 }
 
 // Copy returns a new list with new items holding the same data.
@@ -406,8 +275,11 @@ func (l *List[T]) Copy() *List[T] {
 	return result
 }
 
-// Prepend links item before the head and returns l.
+// Prepend links item before the head and returns l. It panics if item is
+// already in a list.
 func (l *List[T]) Prepend(item *ListItem[T]) *List[T] {
+	l.link(item)
+
 	//      head
 	//    ^
 	// item
@@ -435,7 +307,8 @@ func (l *List[T]) PrependData(data T) *List[T] {
 	return l.Prepend(NewListItem(data))
 }
 
-// Append links item after the tail and returns l.
+// Append links item after the tail and returns l. It panics if item is
+// already in a list.
 func (l *List[T]) Append(item *ListItem[T]) *List[T] {
 	return l.Insert(item, nil)
 }
@@ -445,12 +318,24 @@ func (l *List[T]) AppendData(data T) *List[T] {
 	return l.Insert(NewListItem(data), nil)
 }
 
+// link claims item for l, panicking if it is already in a list.
+func (l *List[T]) link(item *ListItem[T]) {
+	if item.list != nil {
+		panic(errItemInList)
+	}
+	item.list = l
+	l.len++
+}
+
 // Insert links item before the item before, or after the tail when before
-// is nil, and returns l.
-//
-// It panics if before is the first item of a different list; upstream
-// throws for this programming error.
+// is nil, and returns l. It panics if item is already in a list or before
+// does not belong to l.
 func (l *List[T]) Insert(item, before *ListItem[T]) *List[T] {
+	if before != nil && before.list != l {
+		panic(errBeforeNotInList)
+	}
+	l.link(item)
+
 	if before != nil {
 		// prev   before
 		//      ^
@@ -459,11 +344,6 @@ func (l *List[T]) Insert(item, before *ListItem[T]) *List[T] {
 
 		if before.Prev == nil {
 			// insert to the beginning of list
-			if l.head != before {
-				panic(errBeforeNotInList)
-			}
-			// since head points to before therefore list doesn't empty
-			// no need to check tail
 			l.head = item
 			before.Prev = item
 			item.Next = before
@@ -503,16 +383,19 @@ func (l *List[T]) Insert(item, before *ListItem[T]) *List[T] {
 }
 
 // InsertData links a new item holding data before the item before, or
-// after the tail when before is nil, and returns l. It panics like Insert.
+// after the tail when before is nil, and returns l. It panics if before
+// does not belong to l.
 func (l *List[T]) InsertData(data T, before *ListItem[T]) *List[T] {
 	return l.Insert(NewListItem(data), before)
 }
 
-// Remove unlinks item from l and returns it.
-//
-// It panics if item is the head or tail of a different list; upstream
-// throws for this programming error.
+// Remove unlinks item from l and returns it. It panics if item does not
+// belong to l.
 func (l *List[T]) Remove(item *ListItem[T]) *ListItem[T] {
+	if item.list != l {
+		panic(errItemNotInList)
+	}
+
 	//      item
 	//       ^
 	// prev     next
@@ -521,53 +404,21 @@ func (l *List[T]) Remove(item *ListItem[T]) *ListItem[T] {
 	if item.Prev != nil {
 		item.Prev.Next = item.Next
 	} else {
-		if l.head != item {
-			panic(errItemNotInList)
-		}
-
 		l.head = item.Next
 	}
 
 	if item.Next != nil {
 		item.Next.Prev = item.Prev
 	} else {
-		if l.tail != item {
-			panic(errItemNotInList)
-		}
-
 		l.tail = item.Prev
 	}
 
 	item.Prev = nil
 	item.Next = nil
+	item.list = nil
+	l.len--
 
 	return item
-}
-
-// Push links a new item holding data after the tail.
-func (l *List[T]) Push(data T) {
-	l.Insert(NewListItem(data), nil)
-}
-
-// Pop unlinks and returns the tail item, or returns nil when l is empty.
-func (l *List[T]) Pop() *ListItem[T] {
-	if l.tail != nil {
-		return l.Remove(l.tail)
-	}
-	return nil
-}
-
-// Unshift links a new item holding data before the head.
-func (l *List[T]) Unshift(data T) {
-	l.Prepend(NewListItem(data))
-}
-
-// Shift unlinks and returns the head item, or returns nil when l is empty.
-func (l *List[T]) Shift() *ListItem[T] {
-	if l.head != nil {
-		return l.Remove(l.head)
-	}
-	return nil
 }
 
 // PrependList moves the items of list before the head of l, leaving list
@@ -583,12 +434,25 @@ func (l *List[T]) AppendList(list *List[T]) *List[T] {
 }
 
 // InsertList moves the items of list before the item before, or after the
-// tail when before is nil, leaving list empty, and returns l.
+// tail when before is nil, leaving list empty, and returns l. It panics if
+// list is l or before does not belong to l.
 func (l *List[T]) InsertList(list *List[T], before *ListItem[T]) *List[T] {
+	if list == l {
+		panic(errListIntoItself)
+	}
+	if before != nil && before.list != l {
+		panic(errBeforeNotInList)
+	}
+
 	// ignore empty lists
 	if list.head == nil {
 		return l
 	}
+
+	for item := list.head; item != nil; item = item.Next {
+		item.list = l
+	}
+	l.len += list.len
 
 	if before != nil {
 		l.updateCursors(before.Prev, list.tail, before, list.head)
@@ -627,11 +491,13 @@ func (l *List[T]) InsertList(list *List[T], before *ListItem[T]) *List[T] {
 
 	list.head = nil
 	list.tail = nil
+	list.len = 0
 	return l
 }
 
-// Replace links newItem in place of oldItem and unlinks oldItem. Upstream
-// replace takes an item or a list; ReplaceList takes the list.
+// Replace links newItem in place of oldItem and unlinks oldItem. It panics
+// if oldItem does not belong to l or newItem is already in a list.
+// Upstream replace takes an item or a list; ReplaceList takes the list.
 func (l *List[T]) Replace(oldItem, newItem *ListItem[T]) {
 	l.Insert(newItem, oldItem)
 
@@ -639,7 +505,7 @@ func (l *List[T]) Replace(oldItem, newItem *ListItem[T]) {
 }
 
 // ReplaceList moves the items of list in place of oldItem, leaving list
-// empty, and unlinks oldItem.
+// empty, and unlinks oldItem. It panics like InsertList.
 func (l *List[T]) ReplaceList(oldItem *ListItem[T], list *List[T]) {
 	l.InsertList(list, oldItem)
 

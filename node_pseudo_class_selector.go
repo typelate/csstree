@@ -80,7 +80,7 @@ func (p *Parser) PseudoClassSelector() *PseudoClassSelector {
 			p.SkipSC()
 		} else {
 			children = p.CreateList()
-			children.Push(
+			children.AppendData(
 				p.Raw(nil, false),
 			)
 		}

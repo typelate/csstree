@@ -137,13 +137,13 @@ scan:
 			p.Next()
 
 		case tokenizer.AtKeyword:
-			children.Push(p.ParseWithFallback(func() Node { return p.Atrule(isStyleBlock) }, func() Node { return blockConsumeRaw(p) }))
+			children.AppendData(p.ParseWithFallback(func() Node { return p.Atrule(isStyleBlock) }, func() Node { return blockConsumeRaw(p) }))
 
 		default:
 			if isStyleBlock && (p.IsDelim(ampersand, 0) || nestedRules && isNestedRuleAhead(p)) {
-				children.Push(blockConsumeRule(p))
+				children.AppendData(blockConsumeRule(p))
 			} else {
-				children.Push(consumer(p))
+				children.AppendData(consumer(p))
 			}
 		}
 	}

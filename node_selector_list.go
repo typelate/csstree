@@ -60,7 +60,7 @@ func (p *Parser) SelectorList() *SelectorList {
 	children := p.CreateList()
 
 	for !p.EOF {
-		children.Push(p.Selector())
+		children.AppendData(p.Selector())
 
 		if p.TokenType == tokenizer.Comma {
 			p.Next()

@@ -176,14 +176,14 @@ func getTypesFromConfig(config *Config) (map[string]*walkerType, error) {
 
 // typeIterator walks the fields of a node and reports whether the walk
 // broke.
-type typeIterator func(node Node, context *WalkContext, walk func(node Node) bool, walkReducer func(ret bool, data Node, item *ListItem[Node], list *List[Node]) bool) bool
+type typeIterator func(node Node, context *WalkContext, walk func(node Node) bool, walkItem func(node Node, item *ListItem[Node], list *List[Node]) bool) bool
 
 func createTypeIterator(config *walkerType, reverse bool) typeIterator {
 	fields := config.fields
 	contextName := config.context
 	useContext := contextName != ""
 
-	return func(node Node, context *WalkContext, walk func(node Node) bool, walkReducer func(ret bool, data Node, item *ListItem[Node], list *List[Node]) bool) bool {
+	return func(node Node, context *WalkContext, walk func(node Node) bool, walkItem func(node Node, item *ListItem[Node], list *List[Node]) bool) bool {
 		var prevContextValue Node
 
 		if useContext {
@@ -192,10 +192,16 @@ func createTypeIterator(config *walkerType, reverse bool) typeIterator {
 		}
 
 		walkList := func(ref *List[Node]) bool {
-			if reverse {
-				return ReduceRight(ref, walkReducer, false)
+			broke := false
+			visit := func(data Node, item *ListItem[Node]) {
+				broke = broke || walkItem(data, item, ref)
 			}
-			return Reduce(ref, walkReducer, false)
+			if reverse {
+				ref.ForEachRight(visit)
+			} else {
+				ref.ForEach(visit)
+			}
+			return broke
 		}
 
 		if fields(node, reverse, walk, walkList) {
@@ -327,7 +333,6 @@ func (w *Walker) Walk(root Node, options WalkOptions) error {
 
 // walkAST is the traversal of upstream walk once the options are resolved.
 func walkAST(root Node, enter, leave WalkHandler, iterators map[string]typeIterator) {
-	var walkReducer func(ret bool, data Node, item *ListItem[Node], list *List[Node]) bool
 	var walkNode func(node Node, item *ListItem[Node], list *List[Node]) bool
 	context := &WalkContext{
 		Root: root,
@@ -349,7 +354,7 @@ func walkAST(root Node, enter, leave WalkHandler, iterators map[string]typeItera
 		}
 
 		if iterator, ok := iterators[node.Type()]; ok {
-			if iterator(node, context, func(node Node) bool { return walkNode(node, nil, nil) }, walkReducer) {
+			if iterator(node, context, func(node Node) bool { return walkNode(node, nil, nil) }, walkNode) {
 				return true
 			}
 		}
@@ -359,10 +364,6 @@ func walkAST(root Node, enter, leave WalkHandler, iterators map[string]typeItera
 		}
 
 		return false
-	}
-
-	walkReducer = func(ret bool, data Node, item *ListItem[Node], list *List[Node]) bool {
-		return ret || walkNode(data, item, list)
 	}
 
 	walkNode(root, nil, nil)

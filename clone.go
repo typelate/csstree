@@ -67,7 +67,9 @@ func cloneList(list *List[Node], clone func(Node) Node) *List[Node] {
 		return nil
 	}
 
-	return list.Map(func(data Node, _ *ListItem[Node], _ *List[Node]) Node {
-		return clone(data)
-	})
+	result := new(List[Node])
+	for data := range list.All() {
+		result.AppendData(clone(data))
+	}
+	return result
 }

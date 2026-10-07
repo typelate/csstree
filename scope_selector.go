@@ -15,7 +15,7 @@ const (
 func selectorOnWhiteSpace(_ *Parser, next Node, children *List[Node], _ *SequenceContext) {
 	if last := children.Last(); last != nil && last.Type() != "Combinator" &&
 		next != nil && next.Type() != "Combinator" {
-		children.Push(&Combinator{ // FIXME: this.Combinator() should be used instead
+		children.AppendData(&Combinator{ // FIXME: this.Combinator() should be used instead
 			Loc:  nil,
 			Name: " ",
 		})

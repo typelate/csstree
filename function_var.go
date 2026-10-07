@@ -11,12 +11,12 @@ func varFunction(p *Parser, _ *Recognizer) *List[Node] {
 	p.SkipSC()
 
 	// NOTE: Don't check more than a first argument is an ident, rest checks are for lexer
-	children.Push(p.Identifier())
+	children.AppendData(p.Identifier())
 
 	p.SkipSC()
 
 	if p.TokenType == tokenizer.Comma {
-		children.Push(p.Operator())
+		children.AppendData(p.Operator())
 
 		startIndex := p.TokenIndex
 		var value Node
@@ -38,7 +38,7 @@ func varFunction(p *Parser, _ *Recognizer) *List[Node] {
 			}
 		}
 
-		children.Push(value)
+		children.AppendData(value)
 	}
 
 	return children

@@ -25,11 +25,11 @@ func containerAtrule() AtruleParser {
 				name := p.Substring(p.TokenStart, p.TokenEnd)
 
 				if !isNonContainerNameKeyword(toLowerCase(name)) {
-					children.Push(p.Identifier())
+					children.AppendData(p.Identifier())
 				}
 			}
 
-			children.Push(p.Condition("container"))
+			children.AppendData(p.Condition("container"))
 
 			return children
 		},

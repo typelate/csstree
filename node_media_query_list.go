@@ -60,7 +60,7 @@ func (p *Parser) MediaQueryList() *MediaQueryList {
 	p.SkipSC()
 
 	for !p.EOF {
-		children.Push(p.MediaQuery())
+		children.AppendData(p.MediaQuery())
 
 		if p.TokenType != tokenizer.Comma {
 			break

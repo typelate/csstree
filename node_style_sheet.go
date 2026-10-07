@@ -101,7 +101,7 @@ func (p *Parser) StyleSheet() *StyleSheet {
 			child = p.ParseWithFallback(func() Node { return p.Rule() }, func() Node { return styleSheetConsumeRaw(p) })
 		}
 
-		children.Push(child)
+		children.AppendData(child)
 	}
 
 	return &StyleSheet{

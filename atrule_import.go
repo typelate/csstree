@@ -40,7 +40,7 @@ func importParseFunctions() *Recognizer {
 				node := importParseWithFallback(p, func() Node { return p.Layer() }, nil)
 
 				if !isEmptyRaw(node) {
-					children.Push(node)
+					children.AppendData(node)
 				}
 
 				return children
@@ -58,7 +58,7 @@ func importParseFunctions() *Recognizer {
 				)
 
 				if !isEmptyRaw(node) {
-					children.Push(node)
+					children.AppendData(node)
 				}
 
 				return children
@@ -74,10 +74,10 @@ func importAtrule() AtruleParser {
 
 			switch p.TokenType {
 			case tokenizer.String:
-				children.Push(p.String())
+				children.AppendData(p.String())
 
 			case tokenizer.URL, tokenizer.Function:
-				children.Push(p.URL())
+				children.AppendData(p.URL())
 
 			default:
 				p.Error("String or url() is expected", -1)
@@ -87,22 +87,22 @@ func importAtrule() AtruleParser {
 
 			if p.TokenType == tokenizer.Ident &&
 				p.CmpStr(p.TokenStart, p.TokenEnd, "layer") {
-				children.Push(p.Identifier())
+				children.AppendData(p.Identifier())
 			} else if p.TokenType == tokenizer.Function &&
 				p.CmpStr(p.TokenStart, p.TokenEnd, "layer(") {
-				children.Push(p.Function(nil, importParseFunctions()))
+				children.AppendData(p.Function(nil, importParseFunctions()))
 			}
 
 			p.SkipSC()
 
 			if p.TokenType == tokenizer.Function &&
 				p.CmpStr(p.TokenStart, p.TokenEnd, "supports(") {
-				children.Push(p.Function(nil, importParseFunctions()))
+				children.AppendData(p.Function(nil, importParseFunctions()))
 			}
 
 			if p.LookupNonWSType(0) == tokenizer.Ident ||
 				p.LookupNonWSType(0) == tokenizer.LeftParenthesis {
-				children.Push(p.MediaQueryList())
+				children.AppendData(p.MediaQueryList())
 			}
 
 			return children

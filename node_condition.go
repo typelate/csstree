@@ -126,7 +126,7 @@ scan:
 		case tokenizer.Ident:
 			keyword = conditionKeyword(p, keyword, children.IsEmpty(), expectTerm, allowOr)
 			expectTerm = true
-			children.Push(p.Identifier())
+			children.AppendData(p.Identifier())
 
 		case tokenizer.LeftParenthesis:
 			if !expectTerm {
@@ -160,7 +160,7 @@ scan:
 				)
 			}
 
-			children.Push(term)
+			children.AppendData(term)
 
 		case tokenizer.Function:
 			if !expectTerm {
@@ -177,7 +177,7 @@ scan:
 				term = p.GeneralEnclosed(kind)
 			}
 
-			children.Push(term)
+			children.AppendData(term)
 
 		default:
 			break scan
@@ -242,7 +242,7 @@ func conditionTermError(p *Parser, keyword string, allowOr bool) {
 
 func generateCondition(g *Generator, node Node) {
 	n := node.(*Condition)
-	n.Children.ForEach(func(child Node, _ *ListItem[Node], _ *List[Node]) {
+	n.Children.ForEach(func(child Node, _ *ListItem[Node]) {
 		if child.Type() == "Condition" {
 			g.Token(tokenizer.LeftParenthesis, "(")
 			g.Node(child)

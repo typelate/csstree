@@ -72,7 +72,7 @@ func (g *Generator) Children(children *List[Node], delimiter func(prev Node)) {
 	if delimiter != nil {
 		var prev Node
 
-		children.ForEach(func(node Node, _ *ListItem[Node], _ *List[Node]) {
+		children.ForEach(func(node Node, _ *ListItem[Node]) {
 			if prev != nil {
 				delimiter(prev)
 			}
@@ -84,7 +84,7 @@ func (g *Generator) Children(children *List[Node], delimiter func(prev Node)) {
 		return
 	}
 
-	children.ForEach(func(node Node, _ *ListItem[Node], _ *List[Node]) {
+	children.ForEach(func(node Node, _ *ListItem[Node]) {
 		g.Node(node)
 	})
 }

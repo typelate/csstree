@@ -61,7 +61,7 @@ loop:
 			space = false
 		}
 
-		children.Push(child)
+		children.AppendData(child)
 	}
 
 	if space && recognizer.OnWhiteSpace != nil {

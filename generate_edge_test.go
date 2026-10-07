@@ -110,7 +110,11 @@ func TestSourceMapGeneratorAddMapping(t *testing.T) {
 
 func TestGenerateTokens(t *testing.T) {
 	value := func(children ...Node) Node {
-		return &Value{Children: new(List[Node]).FromArray(children)}
+		list := new(List[Node])
+		for _, child := range children {
+			list.AppendData(child)
+		}
+		return &Value{Children: list}
 	}
 	for _, tt := range []struct {
 		name string
