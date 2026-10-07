@@ -146,6 +146,7 @@ func readComparison(p *Parser, expectColon bool) string {
 	}
 
 	if p.IsDelim(equalsSign, 0) {
+		p.Next()
 		return "="
 	}
 
@@ -156,6 +157,26 @@ func readComparison(p *Parser, expectColon bool) string {
 	p.Error(`Expected `+colon+`"<", ">", "=" or ")"`, -1)
 
 	return "" // unreachable: Error panics
+}
+
+// checkRangeDirection reports a syntax error at the right comparison
+// (just read) of a range with two comparisons unless both are < or <=, or
+// both are > or >=: there is no = in a range with two comparisons.
+// https://drafts.csswg.org/mediaqueries-4/#mq-range-context
+func checkRangeDirection(p *Parser, leftComparison, rightComparison string) {
+	offset := p.TokenStart - len(rightComparison)
+	switch leftComparison[0] {
+	case '<':
+		if rightComparison[0] != '<' {
+			p.Error(`Expected "<", "<=" or ")"`, offset)
+		}
+	case '>':
+		if rightComparison[0] != '>' {
+			p.Error(`Expected ">", ">=" or ")"`, offset)
+		}
+	default:
+		p.Error(`")" is expected`, offset)
+	}
 }
 
 // FeatureRange parses a range feature of a condition of kind ("" means
@@ -177,6 +198,7 @@ func (p *Parser) FeatureRange(kind string) *FeatureRange {
 
 	if p.LookupNonWSType(0) != tokenizer.RightParenthesis {
 		rightComparison = readComparison(p, false)
+		checkRangeDirection(p, leftComparison, rightComparison)
 		right = readTerm(p)
 	}
 

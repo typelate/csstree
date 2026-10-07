@@ -92,7 +92,7 @@ func (p *Parser) MediaQuery() *MediaQuery {
 			// and <media-condition-without-or>
 			p.SkipSC()
 			p.EatIdent("and")
-			condition = p.Condition("media")
+			condition = p.condition("media", false)
 
 		case tokenizer.LeftCurlyBracket, tokenizer.Semicolon, tokenizer.Comma, tokenizer.EOF:
 

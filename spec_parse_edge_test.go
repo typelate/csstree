@@ -148,15 +148,19 @@ func TestParseOnParseErrorPanics(t *testing.T) {
 	}}); err != nil {
 		t.Fatal(err)
 	}
-	want := `Number, dimension, ratio or identifier is expected; Number, dimension, ratio or identifier is expected; Unexpected input; ")" is expected`
+	// upstream ends with `")" is expected`: it reads the a of (a:]) as a
+	// condition, which the port rejects (see TestSpecConditionGrammar)
+	want := `Number, dimension, ratio or identifier is expected; Number, dimension, ratio or identifier is expected; Unexpected input; Parenthesis or function is expected`
 	if got := strings.Join(messages, "; "); got != want {
 		t.Errorf("parse errors = %q, want %q", got, want)
 	}
 }
 
 // An unknown condition kind fails where upstream's parentheses[kind] is not
-// a function; upstream reports a TypeError, the port a syntax error, and
-// both fall back to the same AST.
+// a function; upstream reports a TypeError, the port a syntax error. Upstream
+// then reads (a) as a nested condition of the identifier a; the port
+// rejects a lone identifier as a condition (see TestSpecConditionGrammar)
+// and falls back to a GeneralEnclosed.
 func TestParseConditionUnknownKind(t *testing.T) {
 	var parseErrors []error
 	ast, err := Parse("(a)", ParseOptions{Context: "condition", Kind: "unknown", OnParseError: func(err error, _ Node) error {
@@ -166,11 +170,14 @@ func TestParseConditionUnknownKind(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := enterTypes(t, ast), "Condition Condition Identifier"; got != want {
+	if got, want := enterTypes(t, ast), "Condition GeneralEnclosed Identifier"; got != want {
 		t.Errorf("node types = %q, want %q", got, want)
 	}
 	var syntaxError *SyntaxError
-	if len(parseErrors) != 1 || !errors.As(parseErrors[0], &syntaxError) {
-		t.Fatalf("parse errors = %v, want one *SyntaxError", parseErrors)
+	if len(parseErrors) != 2 || !errors.As(parseErrors[0], &syntaxError) {
+		t.Fatalf("parse errors = %v, want two, the first a *SyntaxError", parseErrors)
+	}
+	if got, want := parseErrors[0].Error(), "Unknown condition kind `unknown`"; got != want {
+		t.Errorf("parse error = %q, want %q", got, want)
 	}
 }

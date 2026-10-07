@@ -94,11 +94,27 @@ func conditionParentheses(kind string) func(p *Parser, kind string) Node {
 
 // Condition parses a condition of kind ("media", "container" or
 // "supports"; "" means "media").
+//
+// The condition follows the grammar of Media Queries 4, CSS Conditional 3
+// and CSS Containment 3: not and a single term, or terms joined by and,
+// or terms joined by or (upstream accepts any sequence of identifiers and
+// terms).
+// https://drafts.csswg.org/mediaqueries-4/#media
 func (p *Parser) Condition(kind string) *Condition {
+	return p.condition(kind, true)
+}
+
+// condition parses a condition of kind; allowOr false parses a
+// <media-condition-without-or>.
+func (p *Parser) condition(kind string, allowOr bool) *Condition {
 	if kind == "" {
 		kind = "media"
 	}
 	children := p.CreateList()
+	// the keyword that joins the terms: "not", "and", "or" or "" before
+	// the first keyword
+	keyword := ""
+	expectTerm := true
 
 scan:
 	for !p.EOF {
@@ -108,9 +124,16 @@ scan:
 			continue
 
 		case tokenizer.Ident:
+			keyword = conditionKeyword(p, keyword, children.IsEmpty(), expectTerm, allowOr)
+			expectTerm = true
 			children.Push(p.Identifier())
 
 		case tokenizer.LeftParenthesis:
+			if !expectTerm {
+				conditionTermError(p, keyword, allowOr)
+			}
+			expectTerm = false
+
 			term := p.ParseWithFallback(
 				func() Node {
 					parentheses := conditionParentheses(kind)
@@ -140,6 +163,11 @@ scan:
 			children.Push(term)
 
 		case tokenizer.Function:
+			if !expectTerm {
+				conditionTermError(p, keyword, allowOr)
+			}
+			expectTerm = false
+
 			term := p.ParseWithFallback(
 				func() Node { return p.FeatureFunction(kind) },
 				func() Node { return nil },
@@ -160,10 +188,55 @@ scan:
 		p.Error("Condition is expected", -1)
 	}
 
+	if expectTerm {
+		p.Error("Parenthesis or function is expected", -1)
+	}
+
 	return &Condition{
 		Loc:      p.GetLocationFromList(children),
 		Kind:     kind,
 		Children: children,
+	}
+}
+
+// conditionKeyword checks the identifier at the cursor against the
+// condition grammar and returns the keyword that joins the terms from now
+// on. keyword is the keyword so far, first reports that no term or
+// keyword precedes the identifier and expectTerm that a term is due.
+func conditionKeyword(p *Parser, keyword string, first, expectTerm, allowOr bool) string {
+	if expectTerm {
+		// not <term> is a whole condition
+		if first && p.LookupValue(0, "not") {
+			return "not"
+		}
+		p.Error("Parenthesis or function is expected", -1)
+	}
+
+	switch {
+	case keyword == "not":
+		p.Error("", -1)
+	case p.LookupValue(0, "and") && keyword != "or":
+		return "and"
+	case p.LookupValue(0, "or") && keyword != "and" && allowOr:
+		return "or"
+	}
+
+	conditionTermError(p, keyword, allowOr)
+	return "" // unreachable: conditionTermError panics
+}
+
+// conditionTermError reports a syntax error where the keyword that joins
+// the terms of a condition, or the end of the condition, is due.
+func conditionTermError(p *Parser, keyword string, allowOr bool) {
+	switch {
+	case keyword == "not":
+		p.Error("", -1)
+	case keyword == "" && allowOr:
+		p.Error(`Identifier "and" or "or" is expected`, -1)
+	case keyword == "":
+		p.Error(`Identifier "and" is expected`, -1)
+	default:
+		p.Error(`Identifier "`+keyword+`" is expected`, -1)
 	}
 }
 

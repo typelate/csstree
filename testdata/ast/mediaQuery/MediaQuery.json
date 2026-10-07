@@ -143,34 +143,6 @@
             }
         }
     },
-    "media feature with comments": {
-        "source": "all /*0*/ (/*1*/foo/*2*/:/*3*/1/*4*/)",
-        "generate": "all (foo:1)",
-        "ast": {
-            "type": "MediaQuery",
-            "modifier": null,
-            "mediaType": null,
-            "condition": {
-                "type": "Condition",
-                "kind": "media",
-                "children": [
-                    {
-                        "type": "Identifier",
-                        "name": "all"
-                    },
-                    {
-                        "type": "Feature",
-                        "kind": "media",
-                        "name": "foo",
-                        "value": {
-                            "type": "Number",
-                            "value": "1"
-                        }
-                    }
-                ]
-            }
-        }
-    },
     "media feature with ratio and spaces": {
         "source": "(  foo  :  3  /  4  )",
         "generate": "(foo:3/4)",
@@ -338,6 +310,11 @@
             "source": "(fo",
             "offset": "   ^",
             "error": "Colon is expected"
+        },
+        {
+            "source": "all /*0*/ (/*1*/foo/*2*/:/*3*/1/*4*/)",
+            "offset": "^",
+            "error": "Parenthesis or function is expected"
         }
     ]
 }

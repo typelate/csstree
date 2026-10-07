@@ -441,3 +441,208 @@ func TestSpecSemicolonInValueBlock(t *testing.T) {
 		},
 	})
 }
+
+// Media Queries 4 range syntax:
+// https://drafts.csswg.org/mediaqueries-4/#mq-range-context
+//
+//	<mf-range> = <mf-name> <mf-comparison> <mf-value>
+//	           | <mf-value> <mf-comparison> <mf-name>
+//	           | <mf-value> <mf-lt> <mf-name> <mf-lt> <mf-value>
+//	           | <mf-value> <mf-gt> <mf-name> <mf-gt> <mf-value>
+//
+// A range that does not match is a <general-enclosed>.
+func TestSpecFeatureRange(t *testing.T) {
+	runSpecParseTests(t, []specParseTest{
+		{
+			source:   "(width = 600px)",
+			context:  "mediaQuery",
+			json:     `{"condition":{"children":[{"kind":"media","left":{"name":"width","type":"Identifier"},"leftComparison":"=","middle":{"type":"Dimension","unit":"px","value":"600"},"right":null,"rightComparison":null,"type":"FeatureRange"}],"kind":"media","type":"Condition"},"mediaType":null,"modifier":null,"type":"MediaQuery"}`,
+			generate: "(width=600px)",
+		},
+		{
+			source:   "(600px = width)",
+			context:  "mediaQuery",
+			json:     `{"condition":{"children":[{"kind":"media","left":{"type":"Dimension","unit":"px","value":"600"},"leftComparison":"=","middle":{"name":"width","type":"Identifier"},"right":null,"rightComparison":null,"type":"FeatureRange"}],"kind":"media","type":"Condition"},"mediaType":null,"modifier":null,"type":"MediaQuery"}`,
+			generate: "(600px=width)",
+		},
+		{
+			source:   "@container (inline-size=30em){}",
+			types:    "StyleSheet Atrule AtrulePrelude Condition FeatureRange Identifier Dimension Block",
+			generate: "@container (inline-size=30em){}",
+		},
+		{
+			source:   "(400px <= width < 700px)",
+			context:  "mediaQuery",
+			types:    "MediaQuery Condition FeatureRange Dimension Identifier Dimension",
+			generate: "(400px<=width<700px)",
+		},
+		{
+			source:   "(700px > width >= 400px)",
+			context:  "mediaQuery",
+			types:    "MediaQuery Condition FeatureRange Dimension Identifier Dimension",
+			generate: "(700px>width>=400px)",
+		},
+		{
+			source:   "(400px < width > 700px)",
+			context:  "mediaQuery",
+			types:    "MediaQuery Condition GeneralEnclosed Raw",
+			generate: "(400px < width > 700px)",
+			errors:   `Expected "<", "<=" or ")"; Unexpected input; Condition is expected`,
+		},
+		{
+			source:   "(700px >= width <= 400px)",
+			context:  "mediaQuery",
+			types:    "MediaQuery Condition GeneralEnclosed Raw",
+			generate: "(700px >= width <= 400px)",
+			errors:   `Expected ">", ">=" or ")"; Unexpected input; Condition is expected`,
+		},
+		{
+			source:   "(400px = width = 700px)",
+			context:  "mediaQuery",
+			types:    "MediaQuery Condition GeneralEnclosed Raw",
+			generate: "(400px = width = 700px)",
+			errors:   `")" is expected; Unexpected input; Condition is expected`,
+		},
+		{
+			source:   "(400px < width = 700px)",
+			context:  "mediaQuery",
+			types:    "MediaQuery Condition GeneralEnclosed Raw",
+			generate: "(400px < width = 700px)",
+			errors:   `Expected "<", "<=" or ")"; Unexpected input; Condition is expected`,
+		},
+	})
+}
+
+// A condition does not mix and and or at one level, and not applies to a
+// single term:
+//
+//	<media-condition> = <media-not> | <media-in-parens> [ <media-and>* | <media-or>* ]
+//	<media-condition-without-or> = <media-not> | <media-in-parens> <media-and>*
+//
+// https://drafts.csswg.org/mediaqueries-4/#media, and the same grammar for
+// https://drafts.csswg.org/css-conditional-3/#at-supports and
+// https://drafts.csswg.org/css-contain-3/#container-rule.
+func TestSpecConditionGrammar(t *testing.T) {
+	runSpecParseTests(t, []specParseTest{
+		{
+			source:   "@media (a) and (b) or (c){}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@media (a) and (b) or (c){}",
+			errors:   `Identifier "and" is expected`,
+		},
+		{
+			source:   "@media (a) or (b) and (c){}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@media (a) or (b) and (c){}",
+			errors:   `Identifier "or" is expected`,
+		},
+		{
+			source:   "@media (a) and ((b) or (c)){}",
+			types:    "StyleSheet Atrule AtrulePrelude MediaQueryList MediaQuery Condition Feature Identifier Condition Feature Identifier Feature Block",
+			generate: "@media (a) and ((b) or (c)){}",
+			errors:   "Number, dimension, ratio or identifier is expected",
+		},
+		{
+			source:   "@media (a) AND (b) And (c){}",
+			types:    "StyleSheet Atrule AtrulePrelude MediaQueryList MediaQuery Condition Feature Identifier Feature Identifier Feature Block",
+			generate: "@media (a) AND (b) And (c){}",
+		},
+		{
+			source:   "@media (a) or (b) OR (c){}",
+			types:    "StyleSheet Atrule AtrulePrelude MediaQueryList MediaQuery Condition Feature Identifier Feature Identifier Feature Block",
+			generate: "@media (a) or (b) OR (c){}",
+		},
+		{
+			source:   "@media ((a) and (b) or (c)){}",
+			types:    "StyleSheet Atrule AtrulePrelude MediaQueryList MediaQuery Condition GeneralEnclosed Parentheses Identifier Identifier Parentheses Identifier Identifier Parentheses Identifier Block",
+			generate: "@media ((a) and (b) or (c)){}",
+			errors:   `Number, dimension, ratio or identifier is expected; Identifier "and" is expected`,
+		},
+		{
+			source:   "@media not (a){}",
+			types:    "StyleSheet Atrule AtrulePrelude MediaQueryList MediaQuery Condition Identifier Feature Block",
+			generate: "@media not (a){}",
+		},
+		{
+			source:   "@media not (a) and (b){}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@media not (a) and (b){}",
+			errors:   "Unexpected input",
+		},
+		{
+			source:   "@media (a) and not (b){}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@media (a) and not (b){}",
+			errors:   "Parenthesis or function is expected",
+		},
+		{
+			source:   "@media (a) (b){}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@media (a) (b){}",
+			errors:   `Identifier "and" or "or" is expected`,
+		},
+		{
+			source:   "@media (a) and{}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@media (a) and{}",
+			errors:   "Parenthesis or function is expected",
+		},
+		{
+			source:   "@media screen and (a) and not (b){}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@media screen and (a) and not (b){}",
+			errors:   "Parenthesis or function is expected",
+		},
+		{
+			source:   "@media screen and not (a){}",
+			types:    "StyleSheet Atrule AtrulePrelude MediaQueryList MediaQuery Condition Identifier Feature Block",
+			generate: "@media screen and not (a){}",
+		},
+		{
+			source:   "@media screen and (a) and (b){}",
+			types:    "StyleSheet Atrule AtrulePrelude MediaQueryList MediaQuery Condition Feature Identifier Feature Block",
+			generate: "@media screen and (a) and (b){}",
+		},
+		{
+			// <media-condition-without-or>
+			source:   "@media screen and (a) or (b){}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@media screen and (a) or (b){}",
+			errors:   `Identifier "and" is expected`,
+		},
+		{
+			source:   "@media (a), (b) or (c), not (d){}",
+			types:    "StyleSheet Atrule AtrulePrelude MediaQueryList MediaQuery Condition Feature MediaQuery Condition Feature Identifier Feature MediaQuery Condition Identifier Feature Block",
+			generate: "@media (a),(b) or (c),not (d){}",
+		},
+		{
+			source:   "@supports (a:b) and (c:d) or (e:f){}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@supports (a:b) and (c:d) or (e:f){}",
+			errors:   `Identifier "and" is expected`,
+		},
+		{
+			source:   "@supports not (a:b) or (c:d){}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@supports not (a:b) or (c:d){}",
+			errors:   "Unexpected input",
+		},
+		{
+			source:   "@supports (a:b) or (not (c:d)) or selector(a){}",
+			types:    "StyleSheet Atrule AtrulePrelude Condition SupportsDeclaration Declaration Value Identifier Identifier Condition Identifier SupportsDeclaration Declaration Value Identifier Identifier FeatureFunction Selector TypeSelector Block",
+			generate: "@supports (a:b) or (not (c:d)) or selector(a){}",
+			errors:   "Colon is expected",
+		},
+		{
+			source:   "@container (width>1px) and (height>1px) or (x){}",
+			types:    "StyleSheet Atrule Raw Block",
+			generate: "@container (width>1px) and (height>1px) or (x){}",
+			errors:   `Identifier "and" is expected`,
+		},
+		{
+			source:   "@container card (width>1px) or style(--a:b){}",
+			types:    "StyleSheet Atrule AtrulePrelude Identifier Condition FeatureRange Identifier Dimension Identifier FeatureFunction Declaration Raw Block",
+			generate: "@container card (width>1px) or style(--a:b){}",
+		},
+	})
+}

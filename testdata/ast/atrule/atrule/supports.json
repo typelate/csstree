@@ -615,8 +615,8 @@
         },
         {
             "source": "@supports flex: 1 {}",
-            "offset": "              ^",
-            "error": "Semicolon or block is expected"
+            "offset": "          ^",
+            "error": "Parenthesis or function is expected"
         }
     ]
 }

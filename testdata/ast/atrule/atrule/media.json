@@ -129,7 +129,6 @@
                                     "children": [
                                         {
                                             "type": "FeatureRange",
-                                            
                                             "kind": "media",
                                             "left": {
                                                 "type": "Dimension",
@@ -240,38 +239,8 @@
             "type": "Atrule",
             "name": "media",
             "prelude": {
-                "type": "AtrulePrelude",
-                "children": [
-                    {
-                        "type": "MediaQueryList",
-                        "children": [
-                            {
-                                "type": "MediaQuery",
-                                "modifier": null,
-                                "mediaType": null,
-                                "condition": {
-                                    "type": "Condition",
-                                    "kind": "media",
-                                    "children": [
-                                        {
-                                            "type": "Identifier",
-                                            "name": "screen"
-                                        },
-                                        {
-                                            "type": "Feature",
-                                            "kind": "media",
-                                            "name": "feature",
-                                            "value": {
-                                                "type": "Number",
-                                                "value": "1"
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        ]
-                    }
-                ]
+                "type": "Raw",
+                "value": "screen (feature:1)"
             },
             "block": {
                 "type": "Block",
