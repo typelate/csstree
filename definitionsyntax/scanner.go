@@ -150,11 +150,9 @@ func (s *scanner) scanNumber() string {
 	return s.substringToPos(end)
 }
 
+// scanString is called at an apostrophe, so s.pos < len(s.str).
 func (s *scanner) scanString() string {
-	end := -1
-	if s.pos+1 <= len(s.str) {
-		end = strings.IndexByte(s.str[s.pos+1:], '\'')
-	}
+	end := strings.IndexByte(s.str[s.pos+1:], '\'')
 
 	if end == -1 {
 		s.pos = len(s.str)

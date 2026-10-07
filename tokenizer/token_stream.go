@@ -203,7 +203,7 @@ func (ts *TokenStream) LookupType(offset int) TokenType {
 // that is not whitespace or a comment, or EOF.
 func (ts *TokenStream) LookupTypeNonSC(idx int) TokenType {
 	for offset := ts.TokenIndex; offset < ts.TokenCount; offset++ {
-		tokenType := TokenType(ts.offsetAndType[offset] >> typeShift)
+		tokenType := TokenType(ts.packed(offset) >> typeShift)
 
 		if tokenType != WhiteSpace && tokenType != Comment {
 			if idx == 0 {
@@ -232,7 +232,7 @@ func (ts *TokenStream) LookupOffset(offset int) int {
 // token that is not whitespace or a comment is, or 0 (EOF).
 func (ts *TokenStream) LookupOffsetNonSC(idx int) int {
 	for offset := ts.TokenIndex; offset < ts.TokenCount; offset++ {
-		tokenType := TokenType(ts.offsetAndType[offset] >> typeShift)
+		tokenType := TokenType(ts.packed(offset) >> typeShift)
 
 		if tokenType != WhiteSpace && tokenType != Comment {
 			if idx == 0 {
@@ -322,7 +322,10 @@ func (ts *TokenStream) GetBlockTokenPairIndex(tokenIndex int) int {
 
 	if blockTokens[tokenType] == 1 {
 		// block open token
-		pairIndex := ts.Balance[tokenIndex]
+		pairIndex, ok := ts.balanceAt(tokenIndex)
+		if !ok {
+			return -1 // upstream: no cell, so the pair's type is 0 and matches no closer
+		}
 		closeType := ts.GetTokenType(pairIndex)
 
 		if balancePair[tokenType] == closeType {
@@ -331,7 +334,10 @@ func (ts *TokenStream) GetBlockTokenPairIndex(tokenIndex int) int {
 		return -1
 	} else if blockTokens[tokenType] == 2 {
 		// block close token
-		pairIndex := ts.Balance[tokenIndex]
+		pairIndex, ok := ts.balanceAt(tokenIndex)
+		if !ok {
+			return -1 // upstream: no cell, so the pair's type is 0 and opens nothing
+		}
 		openType := ts.GetTokenType(pairIndex)
 
 		if balancePair[openType] == tokenType {
@@ -346,7 +352,18 @@ func (ts *TokenStream) GetBlockTokenPairIndex(tokenIndex int) int {
 // IsBalanceEdge reports whether the current token's balance points before
 // tokenIndex.
 func (ts *TokenStream) IsBalanceEdge(tokenIndex int) bool {
-	return ts.Balance[ts.TokenIndex] < tokenIndex
+	balance, ok := ts.balanceAt(ts.TokenIndex)
+	// upstream compares undefined (no cell, as after Reset), which is false
+	return ok && balance < tokenIndex
+}
+
+// balanceAt reads Balance[index]; ok is false out of range, where a
+// JavaScript typed array read gives undefined.
+func (ts *TokenStream) balanceAt(index int) (balance int, ok bool) {
+	if index < 0 || index >= len(ts.Balance) {
+		return 0, false
+	}
+	return ts.Balance[index], true
 }
 
 // IsDelim reports whether the token offset tokens after the current one (the

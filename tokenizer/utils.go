@@ -268,8 +268,10 @@ func ConsumeBadURLRemnants(source string, offset int) int {
 // Note: This algorithm assumes that escaped is valid without leading U+005C REVERSE SOLIDUS (\)
 func DecodeEscaped(escaped string) string {
 	// Single char escaped that's not a hex digit
-	if len(escaped) == 1 && !IsHexDigit(int(escaped[0])) {
-		return escaped[:1]
+	// (upstream counts one UTF-16 code unit; a non-ASCII char is more than
+	// one byte here, so count code points)
+	if utf8.RuneCountInString(escaped) == 1 && !IsHexDigit(int(escaped[0])) {
+		return escaped
 	}
 
 	// Interpret the hex digits as a hexadecimal number.
