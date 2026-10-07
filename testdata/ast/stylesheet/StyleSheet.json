@@ -55,23 +55,24 @@
     },
     "BOM UTF-16LE": {
         "source": "\uFFFE",
-        "generate": "",
-        "ast": {
-            "type": "StyleSheet",
-            "children": []
-        }
-    },
-    "BOM UTF-16LE #2": {
-        "source": "\uFFFE@a;",
-        "generate": "@a;",
         "ast": {
             "type": "StyleSheet",
             "children": [
                 {
-                    "type": "Atrule",
-                    "name": "a",
-                    "prelude": null,
-                    "block": null
+                    "type": "Raw",
+                    "value": "\uFFFE"
+                }
+            ]
+        }
+    },
+    "BOM UTF-16LE #2": {
+        "source": "\uFFFE@a;",
+        "ast": {
+            "type": "StyleSheet",
+            "children": [
+                {
+                    "type": "Raw",
+                    "value": "\uFFFE@a;"
                 }
             ]
         }

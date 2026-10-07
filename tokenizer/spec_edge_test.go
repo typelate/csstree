@@ -77,7 +77,6 @@ func TestTokenizeSpecEdges(t *testing.T) {
 		{"§4.3.1 punctuation", "a:b;c,d", []tokenChunk{{"ident-token", "a"}, {"colon-token", ":"}, {"ident-token", "b"}, {"semicolon-token", ";"}, {"ident-token", "c"}, {"comma-token", ","}, {"ident-token", "d"}}},
 		{"§3.3 a leading BOM is skipped", "\ufeffa", []tokenChunk{{"ident-token", "a"}}},
 		{"§3.3 only a leading BOM is skipped", "a\ufeffb", []tokenChunk{{"ident-token", "a\ufeffb"}}},
-		{"U+FFFE at the start is skipped too (not a BOM per spec)", "\ufffea", []tokenChunk{{"ident-token", "a"}}},
 		{"§3.3 NUL is not replaced by U+FFFD (upstream does no preprocessing)", "a\u0000b", []tokenChunk{{"ident-token", "a"}, {"delim-token", "\u0000"}, {"ident-token", "b"}}},
 		{"§3.3 a backslash before NUL is not an escape (upstream does no preprocessing)", "\\\u0000", []tokenChunk{{"delim-token", "\\"}, {"delim-token", "\u0000"}}},
 		{"§3.3 NUL makes a url bad (upstream does no preprocessing)", "url(a\u0000b)", []tokenChunk{{"bad-url-token", "url(a\u0000b)"}}},
@@ -241,7 +240,7 @@ func TestIsIdentifierStart(t *testing.T) {
 func TestIsBOM(t *testing.T) {
 	for _, tt := range []struct{ code, want int }{
 		{0xfeff, 3}, // upstream 1: one UTF-16 code unit; three bytes of UTF-8
-		{0xfffe, 3},
+		{0xfffe, 0}, // upstream 1; see TestIsBOMSpecFixes
 		{0xfffd, 0},
 		{0x61, 0},
 		{0, 0},

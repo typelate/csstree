@@ -218,14 +218,12 @@ func IsNumberStart(first, second, third int) int {
 // code is a code point (decode it with utf8.DecodeRuneInString); the result is
 // the number of bytes to skip, which is 3 for a BOM (upstream returns 1, the
 // number of UTF-16 code units), else 0.
+//
+// Only U+FEFF is a BOM. A Go string is already decoded, and a UTF-16LE BOM
+// decodes to U+FEFF too; upstream also skips U+FFFE, a noncharacter that CSS
+// Syntax §3.2 treats as ordinary input.
 func IsBOM(code int) int {
-	// UTF-16BE
 	if code == 0xFEFF {
-		return 3
-	}
-
-	// UTF-16LE
-	if code == 0xFFFE {
 		return 3
 	}
 

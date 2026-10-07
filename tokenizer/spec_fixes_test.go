@@ -69,11 +69,47 @@ func TestTokenizeSpecFixes(t *testing.T) {
 			"url(x\"\\",
 			[]tokenChunk{{"bad-url-token", "url(x\"\\"}},
 		},
+		// §3.2: only U+FEFF is a byte order mark in a decoded string.
+		{
+			`§3.2 U+FFFE at the start is not a BOM (upstream: skipped)`,
+			"\ufffea",
+			[]tokenChunk{{"ident-token", "\ufffea"}},
+		},
+		{
+			`§3.2 U+FFFE alone (upstream: no tokens)`,
+			"\ufffe",
+			[]tokenChunk{{"ident-token", "\ufffe"}},
+		},
+		{
+			`§3.2 U+FEFF at the start is a BOM`,
+			"\ufeff\ufffe",
+			[]tokenChunk{{"ident-token", "\ufffe"}},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tokenizeChunks(tt.source); !slices.Equal(got, tt.want) {
 				t.Errorf("Tokenize(%q) = %v, want %v", tt.source, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestIsBOMSpecFixes(t *testing.T) {
+	for _, tt := range []struct{ code, want int }{
+		{0xfeff, 3},
+		{0xfffe, 0}, // upstream 1: it takes U+FFFE for a little-endian BOM
+	} {
+		if got := IsBOM(tt.code); got != tt.want {
+			t.Errorf("IsBOM(%#x) = %d, want %d", tt.code, got, tt.want)
+		}
+	}
+}
+
+// OffsetToLocation counts U+FFFE at the start as a character, not a BOM.
+func TestOffsetToLocationFFFE(t *testing.T) {
+	const source = "\ufffea"
+	got := NewOffsetToLocation(source, 0, 1, 1).GetLocation(len(source), "")
+	if want := (Position{Offset: 4, Line: 1, Column: 5}); got.Position != want {
+		t.Errorf("GetLocation(%d) = %+v, want %+v", len(source), got.Position, want)
 	}
 }
