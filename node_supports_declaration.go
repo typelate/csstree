@@ -42,7 +42,7 @@ func cloneSupportsDeclaration(node Node, clone func(Node) Node) Node {
 	c := *node.(*SupportsDeclaration)
 	c.Loc = cloneLocation(c.Loc)
 	if c.Declaration != nil {
-		c.Declaration, _ = clone(c.Declaration).(*Declaration)
+		c.Declaration = cloneAs(c.Declaration, clone)
 	}
 	return &c
 }

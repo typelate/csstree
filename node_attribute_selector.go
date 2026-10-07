@@ -133,7 +133,7 @@ func cloneAttributeSelector(node Node, clone func(Node) Node) Node {
 	c := *node.(*AttributeSelector)
 	c.Loc = cloneLocation(c.Loc)
 	if c.Name != nil {
-		c.Name, _ = clone(c.Name).(*Identifier)
+		c.Name = cloneAs(c.Name, clone)
 	}
 	c.Value = clone(c.Value)
 	return &c

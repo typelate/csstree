@@ -67,8 +67,8 @@ type GenerateFunc func(g *Generator, node Node)
 // structure by reading node[field.name]).
 type WalkFieldsFunc func(node Node, reverse bool, walkNode func(Node) bool, walkList func(*List[Node]) bool) bool
 
-// CloneFunc returns a deep copy of node, copying its child nodes with
-// clone (upstream clone copies any object generically).
+// CloneFunc returns a deep copy of node, of the same Go type, copying its
+// child nodes with clone (upstream clone copies any object generically).
 type CloneFunc func(node Node, clone func(Node) Node) Node
 
 // FromPlainObjectFunc builds a node from its plain object form (upstream

@@ -68,7 +68,7 @@ func cloneRule(node Node, clone func(Node) Node) Node {
 	c.Loc = cloneLocation(c.Loc)
 	c.Prelude = clone(c.Prelude)
 	if c.Block != nil {
-		c.Block, _ = clone(c.Block).(*Block)
+		c.Block = cloneAs(c.Block, clone)
 	}
 	return &c
 }

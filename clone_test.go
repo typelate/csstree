@@ -66,3 +66,21 @@ func TestClone(t *testing.T) {
 		})
 	})
 }
+
+// Go only: a Clone function returning another node type for a typed node
+// field is a bug of the extension, reported rather than turned into a nil
+// field.
+func TestCloneWrongType(t *testing.T) {
+	syntax := mustFork(t, &Config{Node: map[string]NodeConfig{
+		"Block": {Clone: func(Node, func(Node) Node) Node { return &Raw{} }},
+	}})
+	ast := mustParse(t, "a{}", ParseOptions{}).(*StyleSheet)
+
+	defer func() {
+		const want = "csstree: the Clone function of Block returned a *csstree.Raw, not a *csstree.Block"
+		if r := recover(); r != want {
+			t.Errorf("Clone() panicked with %v, want %q", r, want)
+		}
+	}()
+	syntax.Clone(ast)
+}

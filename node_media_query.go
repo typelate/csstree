@@ -51,7 +51,7 @@ func cloneMediaQuery(node Node, clone func(Node) Node) Node {
 	c := *node.(*MediaQuery)
 	c.Loc = cloneLocation(c.Loc)
 	if c.Condition != nil {
-		c.Condition, _ = clone(c.Condition).(*Condition)
+		c.Condition = cloneAs(c.Condition, clone)
 	}
 	return &c
 }

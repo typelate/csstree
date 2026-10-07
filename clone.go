@@ -2,7 +2,10 @@
 
 package csstree
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 // defaultCloneTypes maps the node types of this package to their Clone
 // functions.
@@ -48,6 +51,18 @@ func cloneWith(types map[string]CloneFunc) func(node Node) Node {
 	}
 
 	return clone
+}
+
+// cloneAs clones node, a non-nil node field of type T. It panics when the
+// Clone function of node's type returns another type, a bug in the
+// CloneFunc of an extension that a nil field would hide.
+func cloneAs[T Node](node T, clone func(Node) Node) T {
+	cloned := clone(node)
+	result, ok := cloned.(T)
+	if !ok {
+		panic(fmt.Sprintf("csstree: the Clone function of %s returned a %T, not a %T", node.Type(), cloned, node))
+	}
+	return result
 }
 
 // cloneLocation copies a node location (nil stays nil).

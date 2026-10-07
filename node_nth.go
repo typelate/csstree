@@ -52,7 +52,7 @@ func cloneNth(node Node, clone func(Node) Node) Node {
 	c.Loc = cloneLocation(c.Loc)
 	c.Nth = clone(c.Nth)
 	if c.Selector != nil {
-		c.Selector, _ = clone(c.Selector).(*SelectorList)
+		c.Selector = cloneAs(c.Selector, clone)
 	}
 	return &c
 }
