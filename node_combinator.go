@@ -80,7 +80,7 @@ func (p *Parser) Combinator() *Combinator {
 	}
 
 	return &Combinator{
-		Loc:  p.GetLocation(start, p.TokenStart),
+		Loc:  p.Location(start, p.TokenStart),
 		Name: name,
 	}
 }

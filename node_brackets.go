@@ -65,7 +65,7 @@ func (p *Parser) Brackets(readSequence func(recognizer *Recognizer) *List[Node],
 	}
 
 	return &Brackets{
-		Loc:      p.GetLocation(start, p.TokenStart),
+		Loc:      p.Location(start, p.TokenStart),
 		Children: children,
 	}
 }

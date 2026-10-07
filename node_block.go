@@ -123,7 +123,7 @@ func (p *Parser) block(isStyleBlock, nestedRules bool) *Block {
 		consumer = blockConsumeDeclaration
 	}
 	start := p.TokenStart
-	children := p.CreateList()
+	children := new(List[Node])
 
 	p.Eat(tokenizer.LeftCurlyBracket)
 
@@ -153,7 +153,7 @@ scan:
 	}
 
 	return &Block{
-		Loc:      p.GetLocation(start, p.TokenStart),
+		Loc:      p.Location(start, p.TokenStart),
 		Children: children,
 	}
 }

@@ -29,7 +29,7 @@ type SequenceContext struct {
 // ReadSequence reads nodes with recognizer until it returns nil, skipping
 // comments and whitespace.
 func (p *Parser) ReadSequence(recognizer *Recognizer) *List[Node] {
-	children := p.CreateList()
+	children := new(List[Node])
 	space := false
 	context := &SequenceContext{
 		Recognizer: recognizer,

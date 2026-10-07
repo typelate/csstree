@@ -52,7 +52,7 @@ func (p *Parser) IDSelector() *IDSelector {
 	p.Eat(tokenizer.Hash)
 
 	return &IDSelector{
-		Loc:  p.GetLocation(start, p.TokenStart),
+		Loc:  p.Location(start, p.TokenStart),
 		Name: p.SubstrToCursor(start + 1),
 	}
 }

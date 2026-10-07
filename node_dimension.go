@@ -54,7 +54,7 @@ func (p *Parser) Dimension() *Dimension {
 	value := p.ConsumeNumber(tokenizer.Dimension)
 
 	return &Dimension{
-		Loc:   p.GetLocation(start, p.TokenStart),
+		Loc:   p.Location(start, p.TokenStart),
 		Value: value,
 		Unit:  p.Substring(start+len(value), p.TokenStart),
 	}

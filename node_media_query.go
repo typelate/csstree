@@ -113,7 +113,7 @@ func (p *Parser) MediaQuery() *MediaQuery {
 	}
 
 	return &MediaQuery{
-		Loc:       p.GetLocation(start, p.TokenStart),
+		Loc:       p.Location(start, p.TokenStart),
 		Modifier:  modifier,
 		MediaType: mediaType,
 		Condition: condition,

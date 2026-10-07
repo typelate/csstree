@@ -307,7 +307,7 @@ func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error
 	if options.OnComment != nil {
 		p.ForEachToken(func(tokenType tokenizer.TokenType, start, end, _ int) {
 			if tokenType == tokenizer.Comment {
-				loc := p.GetLocation(start, end)
+				loc := p.Location(start, end)
 				var value string
 				if tokenizer.CmpStr(source, end-2, end, "*/") {
 					value = source[start+2 : end-2]
@@ -332,10 +332,6 @@ func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error
 // The ConsumeUntil* methods are tokenizer.StopFunc values for Raw and
 // SkipUntilBalanced: they get the first char code of a token and say
 // whether to stop before it, after it or not at all.
-
-// ConsumeUntilBalanceEnd never stops early: it consumes to the end of the
-// enclosing block.
-func (p *Parser) ConsumeUntilBalanceEnd(int) tokenizer.StopMode { return tokenizer.NoStop }
 
 // ConsumeUntilLeftCurlyBracket stops before a {.
 func (p *Parser) ConsumeUntilLeftCurlyBracket(code int) tokenizer.StopMode {
@@ -394,32 +390,6 @@ func (p *Parser) scanUntilBalanced(start int, stop ...tokenizer.TokenType) int {
 		}
 	}
 	return min(cursor, p.TokenCount)
-}
-
-// CreateList returns a new empty list.
-func (p *Parser) CreateList() *List[Node] {
-	return new(List[Node])
-}
-
-// CreateSingleNodeList returns a new list holding node.
-func (p *Parser) CreateSingleNodeList(node Node) *List[Node] {
-	return new(List[Node]).AppendData(node)
-}
-
-// GetFirstListNode returns the first node of list, or nil.
-func (p *Parser) GetFirstListNode(list *List[Node]) Node {
-	if list == nil {
-		return nil
-	}
-	return list.First()
-}
-
-// GetLastListNode returns the last node of list, or nil.
-func (p *Parser) GetLastListNode(list *List[Node]) Node {
-	if list == nil {
-		return nil
-	}
-	return list.Last()
 }
 
 // ParseWithFallback returns consumer(). When consumer reports a syntax
@@ -612,9 +582,9 @@ func (p *Parser) EatDelim(code int) {
 	p.Next()
 }
 
-// GetLocation returns the location of [start, end), or nil when positions
+// Location returns the location of [start, end), or nil when positions
 // are off.
-func (p *Parser) GetLocation(start, end int) *Location {
+func (p *Parser) Location(start, end int) *Location {
 	if p.needPositions {
 		loc := p.locationMap.Range(start, end)
 		return &loc
@@ -623,12 +593,14 @@ func (p *Parser) GetLocation(start, end int) *Location {
 	return nil
 }
 
-// GetLocationFromList returns the location spanning the nodes of list (or
+// LocationFromList returns the location spanning the nodes of list (or
 // the current position when it is empty), or nil when positions are off.
-func (p *Parser) GetLocationFromList(list *List[Node]) *Location {
+func (p *Parser) LocationFromList(list *List[Node]) *Location {
 	if p.needPositions {
-		head := p.GetFirstListNode(list)
-		tail := p.GetLastListNode(list)
+		var head, tail Node
+		if list != nil {
+			head, tail = list.First(), list.Last()
+		}
 		start := p.TokenStart
 		if head != nil {
 			start = head.Location().Start.Offset - p.locationMap.StartOffset

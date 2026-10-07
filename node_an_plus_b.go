@@ -308,7 +308,7 @@ func (p *Parser) AnPlusB() *AnPlusB {
 	}
 
 	return &AnPlusB{
-		Loc: p.GetLocation(start, p.TokenStart),
+		Loc: p.Location(start, p.TokenStart),
 		A:   a,
 		B:   b,
 	}

@@ -206,7 +206,7 @@ func (p *Parser) FeatureRange(kind string) *FeatureRange {
 	p.Eat(tokenizer.RightParenthesis)
 
 	return &FeatureRange{
-		Loc:             p.GetLocation(start, p.TokenStart),
+		Loc:             p.Location(start, p.TokenStart),
 		Kind:            kind,
 		Left:            left,
 		LeftComparison:  leftComparison,

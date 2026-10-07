@@ -19,7 +19,7 @@ func isNonContainerNameKeyword(name string) bool {
 func containerAtrule() AtruleParser {
 	return AtruleParser{
 		Prelude: func(p *Parser) *List[Node] {
-			children := p.CreateList()
+			children := new(List[Node])
 
 			if p.TokenType == tokenizer.Ident {
 				name := p.Substring(p.TokenStart, p.TokenEnd)

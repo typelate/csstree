@@ -46,7 +46,7 @@ func fromPlainObjectPercentage(r *PlainObjectReader, object map[string]any) Node
 
 // Percentage parses a percentage token.
 func (p *Parser) Percentage() *Percentage {
-	loc := p.GetLocation(p.TokenStart, p.TokenEnd)
+	loc := p.Location(p.TokenStart, p.TokenEnd)
 	return &Percentage{
 		Loc:   loc,
 		Value: p.ConsumeNumber(tokenizer.Percentage),

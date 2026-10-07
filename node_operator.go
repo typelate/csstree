@@ -49,7 +49,7 @@ func (p *Parser) Operator() *Operator {
 	p.Next()
 
 	return &Operator{
-		Loc:   p.GetLocation(start, p.TokenStart),
+		Loc:   p.Location(start, p.TokenStart),
 		Value: p.SubstrToCursor(start),
 	}
 }

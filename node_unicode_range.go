@@ -196,7 +196,7 @@ func (p *Parser) UnicodeRange() *UnicodeRange {
 	scanUnicodeRange(p)
 
 	return &UnicodeRange{
-		Loc:   p.GetLocation(start, p.TokenStart),
+		Loc:   p.Location(start, p.TokenStart),
 		Value: p.SubstrToCursor(start),
 	}
 }

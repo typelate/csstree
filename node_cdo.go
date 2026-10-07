@@ -45,7 +45,7 @@ func (p *Parser) CDO() *CDO {
 	p.Eat(tokenizer.CDO) // <!--
 
 	return &CDO{
-		Loc: p.GetLocation(start, p.TokenStart),
+		Loc: p.Location(start, p.TokenStart),
 	}
 }
 

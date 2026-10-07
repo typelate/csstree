@@ -37,7 +37,7 @@ func getAttributeName(p *Parser) *Identifier {
 	}
 
 	return &Identifier{
-		Loc:  p.GetLocation(start, p.TokenStart),
+		Loc:  p.Location(start, p.TokenStart),
 		Name: p.SubstrToCursor(start),
 	}
 }
@@ -170,7 +170,7 @@ func (p *Parser) AttributeSelector() *AttributeSelector {
 		p.SkipSC()
 
 		if p.TokenType == tokenizer.String {
-			value = p.String()
+			value = p.StringNode()
 		} else {
 			value = p.Identifier()
 		}
@@ -191,7 +191,7 @@ func (p *Parser) AttributeSelector() *AttributeSelector {
 	p.Eat(tokenizer.RightSquareBracket)
 
 	return &AttributeSelector{
-		Loc:     p.GetLocation(start, p.TokenStart),
+		Loc:     p.Location(start, p.TokenStart),
 		Name:    name,
 		Matcher: matcher,
 		Value:   value,

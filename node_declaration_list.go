@@ -62,7 +62,7 @@ func fromPlainObjectDeclarationList(r *PlainObjectReader, object map[string]any)
 
 // DeclarationList parses a list of declarations.
 func (p *Parser) DeclarationList() *DeclarationList {
-	children := p.CreateList()
+	children := new(List[Node])
 
 	for !p.EOF {
 		switch p.TokenType {
@@ -82,7 +82,7 @@ func (p *Parser) DeclarationList() *DeclarationList {
 	}
 
 	return &DeclarationList{
-		Loc:      p.GetLocationFromList(children),
+		Loc:      p.LocationFromList(children),
 		Children: children,
 	}
 }

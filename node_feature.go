@@ -120,7 +120,7 @@ func (p *Parser) Feature(kind string) *Feature {
 	}
 
 	return &Feature{
-		Loc:   p.GetLocation(start, p.TokenStart),
+		Loc:   p.Location(start, p.TokenStart),
 		Kind:  kind,
 		Name:  name,
 		Value: value,

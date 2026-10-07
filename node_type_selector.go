@@ -80,7 +80,7 @@ func (p *Parser) TypeSelector() *TypeSelector {
 	}
 
 	return &TypeSelector{
-		Loc:  p.GetLocation(start, p.TokenStart),
+		Loc:  p.Location(start, p.TokenStart),
 		Name: p.SubstrToCursor(start),
 	}
 }

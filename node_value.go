@@ -55,7 +55,7 @@ func (p *Parser) Value() *Value {
 	children := p.ReadSequence(p.Config.Scope["Value"])
 
 	return &Value{
-		Loc:      p.GetLocation(start, p.TokenStart),
+		Loc:      p.Location(start, p.TokenStart),
 		Children: children,
 	}
 }

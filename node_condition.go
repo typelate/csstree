@@ -110,7 +110,7 @@ func (p *Parser) condition(kind string, allowOr bool) *Condition {
 	if kind == "" {
 		kind = "media"
 	}
-	children := p.CreateList()
+	children := new(List[Node])
 	// the keyword that joins the terms: "not", "and", "or" or "" before
 	// the first keyword
 	keyword := ""
@@ -193,7 +193,7 @@ scan:
 	}
 
 	return &Condition{
-		Loc:      p.GetLocationFromList(children),
+		Loc:      p.LocationFromList(children),
 		Kind:     kind,
 		Children: children,
 	}

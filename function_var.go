@@ -6,7 +6,7 @@ import "github.com/typelate/csstree/tokenizer"
 
 // var( <ident> , <value>? )
 func varFunction(p *Parser, _ *Recognizer) *List[Node] {
-	children := p.CreateList()
+	children := new(List[Node])
 
 	p.SkipSC()
 

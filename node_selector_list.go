@@ -57,7 +57,7 @@ func fromPlainObjectSelectorList(r *PlainObjectReader, object map[string]any) No
 
 // SelectorList parses a list of selectors.
 func (p *Parser) SelectorList() *SelectorList {
-	children := p.CreateList()
+	children := new(List[Node])
 
 	for !p.EOF {
 		children.AppendData(p.Selector())
@@ -71,7 +71,7 @@ func (p *Parser) SelectorList() *SelectorList {
 	}
 
 	return &SelectorList{
-		Loc:      p.GetLocationFromList(children),
+		Loc:      p.LocationFromList(children),
 		Children: children,
 	}
 }

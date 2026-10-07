@@ -137,7 +137,7 @@ func (p *Parser) Atrule(isDeclaration bool) *Atrule {
 	}
 
 	return &Atrule{
-		Loc:     p.GetLocation(start, p.TokenStart),
+		Loc:     p.Location(start, p.TokenStart),
 		Name:    name,
 		Prelude: prelude,
 		Block:   block,

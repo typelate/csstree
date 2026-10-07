@@ -48,7 +48,7 @@ func fromPlainObjectClassSelector(r *PlainObjectReader, object map[string]any) N
 func (p *Parser) ClassSelector() *ClassSelector {
 	p.EatDelim(fullStop)
 
-	loc := p.GetLocation(p.TokenStart-1, p.TokenEnd)
+	loc := p.Location(p.TokenStart-1, p.TokenEnd)
 	return &ClassSelector{
 		Loc:  loc,
 		Name: p.Consume(tokenizer.Ident),

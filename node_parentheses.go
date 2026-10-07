@@ -65,7 +65,7 @@ func (p *Parser) Parentheses(readSequence func(recognizer *Recognizer) *List[Nod
 	}
 
 	return &Parentheses{
-		Loc:      p.GetLocation(start, p.TokenStart),
+		Loc:      p.Location(start, p.TokenStart),
 		Children: children,
 	}
 }

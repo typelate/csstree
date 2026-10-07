@@ -77,7 +77,7 @@ func TestParseExtension(t *testing.T) {
 						p.Next()
 
 						return &variableTestNode{
-							Loc:  p.GetLocation(start, p.TokenEnd),
+							Loc:  p.Location(start, p.TokenEnd),
 							Name: p.Consume(tokenizer.Ident),
 						}
 					}
@@ -124,7 +124,7 @@ func TestParseExtension(t *testing.T) {
 						p.Next()
 
 						return &testTestNode{
-							Loc: p.GetLocation(start, p.TokenEnd),
+							Loc: p.Location(start, p.TokenEnd),
 						}
 					}
 

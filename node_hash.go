@@ -51,7 +51,7 @@ func (p *Parser) Hash() *Hash {
 	p.Eat(tokenizer.Hash)
 
 	return &Hash{
-		Loc:   p.GetLocation(start, p.TokenStart),
+		Loc:   p.Location(start, p.TokenStart),
 		Value: p.SubstrToCursor(start + 1),
 	}
 }

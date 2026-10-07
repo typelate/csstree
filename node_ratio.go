@@ -103,7 +103,7 @@ func (p *Parser) Ratio() *Ratio {
 	}
 
 	return &Ratio{
-		Loc:   p.GetLocation(start, p.TokenStart),
+		Loc:   p.Location(start, p.TokenStart),
 		Left:  left,
 		Right: right,
 	}

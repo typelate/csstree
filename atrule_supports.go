@@ -5,7 +5,7 @@ package csstree
 func supportsAtrule() AtruleParser {
 	return AtruleParser{
 		Prelude: func(p *Parser) *List[Node] {
-			return p.CreateSingleNodeList(
+			return new(List[Node]).AppendData(
 				p.Condition("supports"),
 			)
 		},

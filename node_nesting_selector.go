@@ -45,7 +45,7 @@ func (p *Parser) NestingSelector() *NestingSelector {
 	p.EatDelim(ampersand)
 
 	return &NestingSelector{
-		Loc: p.GetLocation(start, p.TokenStart),
+		Loc: p.Location(start, p.TokenStart),
 	}
 }
 

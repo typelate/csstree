@@ -62,12 +62,12 @@ func (p *Parser) Selector() *Selector {
 	children := p.ReadSequence(p.Config.Scope["Selector"])
 
 	// nothing were consumed
-	if p.GetFirstListNode(children) == nil {
+	if children.IsEmpty() {
 		p.Fail("Selector is expected")
 	}
 
 	return &Selector{
-		Loc:      p.GetLocationFromList(children),
+		Loc:      p.LocationFromList(children),
 		Children: children,
 	}
 }

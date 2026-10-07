@@ -66,7 +66,7 @@ func fromPlainObjectStyleSheet(r *PlainObjectReader, object map[string]any) Node
 // StyleSheet parses a style sheet.
 func (p *Parser) StyleSheet() *StyleSheet {
 	start := p.TokenStart
-	children := p.CreateList()
+	children := new(List[Node])
 	var child Node
 
 	for !p.EOF {
@@ -105,7 +105,7 @@ func (p *Parser) StyleSheet() *StyleSheet {
 	}
 
 	return &StyleSheet{
-		Loc:      p.GetLocation(start, p.TokenStart),
+		Loc:      p.Location(start, p.TokenStart),
 		Children: children,
 	}
 }

@@ -46,7 +46,7 @@ func fromPlainObjectNumber(r *PlainObjectReader, object map[string]any) Node {
 
 // Number parses a number token.
 func (p *Parser) Number() *Number {
-	loc := p.GetLocation(p.TokenStart, p.TokenEnd)
+	loc := p.Location(p.TokenStart, p.TokenEnd)
 	return &Number{
 		Loc:   loc,
 		Value: p.Consume(tokenizer.Number),

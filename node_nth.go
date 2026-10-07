@@ -90,7 +90,7 @@ func (p *Parser) Nth() *Nth {
 	}
 
 	return &Nth{
-		Loc:      p.GetLocation(start, end),
+		Loc:      p.Location(start, end),
 		Nth:      nth,
 		Selector: selector,
 	}

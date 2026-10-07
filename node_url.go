@@ -72,7 +72,7 @@ func (p *Parser) URL() *URL {
 	}
 
 	return &URL{
-		Loc:   p.GetLocation(start, p.TokenStart),
+		Loc:   p.Location(start, p.TokenStart),
 		Value: value,
 	}
 }

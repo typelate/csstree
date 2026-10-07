@@ -78,7 +78,7 @@ func (p *Parser) Function(readSequence func(recognizer *Recognizer) *List[Node],
 	}
 
 	return &Function{
-		Loc:      p.GetLocation(start, p.TokenStart),
+		Loc:      p.Location(start, p.TokenStart),
 		Name:     name,
 		Children: children,
 	}

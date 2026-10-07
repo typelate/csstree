@@ -46,7 +46,7 @@ func fromPlainObjectIdentifier(r *PlainObjectReader, object map[string]any) Node
 
 // Identifier parses an ident token.
 func (p *Parser) Identifier() *Identifier {
-	loc := p.GetLocation(p.TokenStart, p.TokenEnd)
+	loc := p.Location(p.TokenStart, p.TokenEnd)
 	return &Identifier{
 		Loc:  loc,
 		Name: p.Consume(tokenizer.Ident),

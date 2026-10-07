@@ -82,7 +82,7 @@ func (p *Parser) AtrulePrelude(name string) *AtrulePrelude {
 	}
 
 	return &AtrulePrelude{
-		Loc:      p.GetLocationFromList(children),
+		Loc:      p.LocationFromList(children),
 		Children: children,
 	}
 }

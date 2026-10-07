@@ -16,7 +16,7 @@ func consumeValueRaw(p *Parser, end int, excludeWhiteSpace bool) *Raw {
 	}
 
 	return &Raw{
-		Loc:   p.GetLocation(startOffset, endOffset),
+		Loc:   p.Location(startOffset, endOffset),
 		Value: p.Substring(startOffset, endOffset),
 	}
 }
@@ -213,7 +213,7 @@ func (p *Parser) Declaration() *Declaration {
 	}
 
 	return &Declaration{
-		Loc:       p.GetLocation(start, p.TokenStart),
+		Loc:       p.Location(start, p.TokenStart),
 		Important: important,
 		Property:  property,
 		Value:     value,

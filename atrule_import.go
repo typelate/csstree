@@ -36,7 +36,7 @@ func importParseFunctions() *Recognizer {
 			"layer": func(p *Parser, _ *Recognizer) *List[Node] {
 				p.SkipSC()
 
-				children := p.CreateList()
+				children := new(List[Node])
 				node := importParseWithFallback(p, func() Node { return p.Layer() }, nil)
 
 				if !isEmptyRaw(node) {
@@ -48,7 +48,7 @@ func importParseFunctions() *Recognizer {
 			"supports": func(p *Parser, _ *Recognizer) *List[Node] {
 				p.SkipSC()
 
-				children := p.CreateList()
+				children := new(List[Node])
 				node := importParseWithFallback(
 					p,
 					func() Node { return p.Declaration() },
@@ -70,11 +70,11 @@ func importParseFunctions() *Recognizer {
 func importAtrule() AtruleParser {
 	return AtruleParser{
 		Prelude: func(p *Parser) *List[Node] {
-			children := p.CreateList()
+			children := new(List[Node])
 
 			switch p.TokenType {
 			case tokenizer.String:
-				children.AppendData(p.String())
+				children.AppendData(p.StringNode())
 
 			case tokenizer.URL, tokenizer.Function:
 				children.AppendData(p.URL())

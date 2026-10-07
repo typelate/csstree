@@ -3,25 +3,25 @@
 package csstree
 
 func selectorListPseudo(p *Parser) *List[Node] {
-	return p.CreateSingleNodeList(
+	return new(List[Node]).AppendData(
 		p.SelectorList(),
 	)
 }
 
 func selectorPseudo(p *Parser) *List[Node] {
-	return p.CreateSingleNodeList(
+	return new(List[Node]).AppendData(
 		p.Selector(),
 	)
 }
 
 func identListPseudo(p *Parser) *List[Node] {
-	return p.CreateSingleNodeList(
+	return new(List[Node]).AppendData(
 		p.Identifier(),
 	)
 }
 
 func nthPseudo(p *Parser) *List[Node] {
-	return p.CreateSingleNodeList(
+	return new(List[Node]).AppendData(
 		p.Nth(),
 	)
 }

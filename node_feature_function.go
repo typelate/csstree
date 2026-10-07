@@ -107,7 +107,7 @@ func (p *Parser) FeatureFunction(kind string) *FeatureFunction {
 	}
 
 	return &FeatureFunction{
-		Loc:     p.GetLocation(start, p.TokenStart),
+		Loc:     p.Location(start, p.TokenStart),
 		Kind:    kind,
 		Feature: functionName,
 		Value:   value,

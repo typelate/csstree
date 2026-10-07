@@ -95,7 +95,7 @@ func (p *Parser) Rule() *Rule {
 	block := p.Block(true)
 
 	return &Rule{
-		Loc:     p.GetLocation(startOffset, p.TokenStart),
+		Loc:     p.Location(startOffset, p.TokenStart),
 		Prelude: prelude,
 		Block:   block,
 	}

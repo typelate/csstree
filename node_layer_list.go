@@ -55,7 +55,7 @@ func fromPlainObjectLayerList(r *PlainObjectReader, object map[string]any) Node 
 
 // LayerList parses a list of layer names.
 func (p *Parser) LayerList() *LayerList {
-	children := p.CreateList()
+	children := new(List[Node])
 
 	p.SkipSC()
 
@@ -72,7 +72,7 @@ func (p *Parser) LayerList() *LayerList {
 	}
 
 	return &LayerList{
-		Loc:      p.GetLocationFromList(children),
+		Loc:      p.LocationFromList(children),
 		Children: children,
 	}
 }

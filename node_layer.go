@@ -55,7 +55,7 @@ func (p *Parser) Layer() *Layer {
 	}
 
 	return &Layer{
-		Loc:  p.GetLocation(tokenStart, p.TokenStart),
+		Loc:  p.Location(tokenStart, p.TokenStart),
 		Name: name,
 	}
 }

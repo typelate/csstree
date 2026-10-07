@@ -26,7 +26,7 @@ func defaultRecognizer(p *Parser, context *SequenceContext) Node {
 		return p.Brackets(p.ReadSequence, context.Recognizer)
 
 	case tokenizer.String:
-		return p.String()
+		return p.StringNode()
 
 	case tokenizer.Dimension:
 		return p.Dimension()
@@ -53,7 +53,7 @@ func defaultRecognizer(p *Parser, context *SequenceContext) Node {
 			start := p.TokenStart
 			p.Next()
 			return &Raw{
-				Loc:   p.GetLocation(start, p.TokenStart),
+				Loc:   p.Location(start, p.TokenStart),
 				Value: ";",
 			}
 		}

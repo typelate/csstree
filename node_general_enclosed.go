@@ -88,7 +88,7 @@ func (p *Parser) GeneralEnclosed(kind string) *GeneralEnclosed {
 			return nil
 		},
 		func() Node {
-			children = p.CreateSingleNodeList(
+			children = new(List[Node]).AppendData(
 				p.Raw(nil, false),
 			)
 			return children.First()
@@ -100,7 +100,7 @@ func (p *Parser) GeneralEnclosed(kind string) *GeneralEnclosed {
 	}
 
 	return &GeneralEnclosed{
-		Loc:      p.GetLocation(start, p.TokenStart),
+		Loc:      p.Location(start, p.TokenStart),
 		Kind:     kind,
 		Function: functionName,
 		Children: children,

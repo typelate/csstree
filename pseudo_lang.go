@@ -5,7 +5,7 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 func parseLanguageRangeList(p *Parser) *List[Node] {
-	children := p.CreateList()
+	children := new(List[Node])
 
 	p.SkipSC()
 
@@ -16,7 +16,7 @@ loop:
 			children.AppendData(p.Identifier())
 
 		case tokenizer.String:
-			children.AppendData(p.String())
+			children.AppendData(p.StringNode())
 
 		case tokenizer.Comma:
 			children.AppendData(p.Operator())

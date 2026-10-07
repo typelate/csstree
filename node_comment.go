@@ -59,7 +59,7 @@ func (p *Parser) Comment() *Comment {
 	}
 
 	return &Comment{
-		Loc:   p.GetLocation(start, p.TokenStart),
+		Loc:   p.Location(start, p.TokenStart),
 		Value: p.Substring(start+2, end),
 	}
 }

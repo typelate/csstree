@@ -44,9 +44,10 @@ func fromPlainObjectString(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-// String parses a string token.
-func (p *Parser) String() *String {
-	loc := p.GetLocation(p.TokenStart, p.TokenEnd)
+// StringNode parses a string token into a String node (named so as not to
+// read as fmt.Stringer).
+func (p *Parser) StringNode() *String {
+	loc := p.Location(p.TokenStart, p.TokenEnd)
 	return &String{
 		Loc:   loc,
 		Value: DecodeString(p.Consume(tokenizer.String)),

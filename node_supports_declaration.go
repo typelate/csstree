@@ -68,7 +68,7 @@ func (p *Parser) SupportsDeclaration() *SupportsDeclaration {
 	}
 
 	return &SupportsDeclaration{
-		Loc:         p.GetLocation(start, p.TokenStart),
+		Loc:         p.Location(start, p.TokenStart),
 		Declaration: declaration,
 	}
 }

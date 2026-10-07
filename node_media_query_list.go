@@ -55,7 +55,7 @@ func fromPlainObjectMediaQueryList(r *PlainObjectReader, object map[string]any) 
 
 // MediaQueryList parses a list of media queries.
 func (p *Parser) MediaQueryList() *MediaQueryList {
-	children := p.CreateList()
+	children := new(List[Node])
 
 	p.SkipSC()
 
@@ -70,7 +70,7 @@ func (p *Parser) MediaQueryList() *MediaQueryList {
 	}
 
 	return &MediaQueryList{
-		Loc:      p.GetLocationFromList(children),
+		Loc:      p.LocationFromList(children),
 		Children: children,
 	}
 }

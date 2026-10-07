@@ -45,7 +45,7 @@ func (p *Parser) CDC() *CDC {
 	p.Eat(tokenizer.CDC) // -->
 
 	return &CDC{
-		Loc: p.GetLocation(start, p.TokenStart),
+		Loc: p.Location(start, p.TokenStart),
 	}
 }
 

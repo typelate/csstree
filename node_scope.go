@@ -96,7 +96,7 @@ func (p *Parser) Scope() *Scope {
 	}
 
 	return &Scope{
-		Loc:   p.GetLocation(startOffset, p.TokenStart),
+		Loc:   p.Location(startOffset, p.TokenStart),
 		Root:  root,
 		Limit: limit,
 	}

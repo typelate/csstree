@@ -74,13 +74,13 @@ func (p *Parser) PseudoElementSelector() *PseudoElementSelector {
 		nameLowerCase := toLowerCase(name)
 
 		if p.LookupNonWSType(0) == tokenizer.RightParenthesis {
-			children = p.CreateList()
+			children = new(List[Node])
 		} else if pseudo, ok := p.Config.Pseudo[nameLowerCase]; ok {
 			p.SkipSC()
 			children = pseudo(p)
 			p.SkipSC()
 		} else {
-			children = p.CreateList()
+			children = new(List[Node])
 			children.AppendData(
 				p.Raw(nil, false),
 			)
@@ -92,7 +92,7 @@ func (p *Parser) PseudoElementSelector() *PseudoElementSelector {
 	}
 
 	return &PseudoElementSelector{
-		Loc:      p.GetLocation(start, p.TokenStart),
+		Loc:      p.Location(start, p.TokenStart),
 		Name:     name,
 		Children: children,
 	}
