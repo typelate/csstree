@@ -19,54 +19,58 @@ const (
 	nullTokenType    = tokenizer.EOF // upstream NULL
 )
 
-// ParseContext names what a parse parses: the node type of the root of
-// the AST (upstream options.context). A syntax may define more contexts in
-// Config.Contexts.
+// ParseContext names what a parse parses, and so the node type of the root
+// of the AST. A syntax may define more contexts in Config.Contexts. The
+// package documentation lists the node type of each context.
 type ParseContext string
 
-// The parse contexts of the default syntax.
+// The parse contexts of the default syntax, with the root node each one
+// returns.
 const (
-	ContextDefault         ParseContext = "default" // a StyleSheet, as ContextStylesheet
-	ContextStylesheet      ParseContext = "stylesheet"
-	ContextAtrule          ParseContext = "atrule"
-	ContextAtrulePrelude   ParseContext = "atrulePrelude" // of ParseOptions.Atrule
-	ContextMediaQueryList  ParseContext = "mediaQueryList"
-	ContextMediaQuery      ParseContext = "mediaQuery"
-	ContextCondition       ParseContext = "condition" // of ParseOptions.Kind
-	ContextRule            ParseContext = "rule"
-	ContextSelectorList    ParseContext = "selectorList"
-	ContextSelector        ParseContext = "selector"
-	ContextBlock           ParseContext = "block"
-	ContextDeclarationList ParseContext = "declarationList"
-	ContextDeclaration     ParseContext = "declaration"
-	ContextValue           ParseContext = "value"
+	ContextDefault         ParseContext = "default"         // *StyleSheet, as ContextStylesheet
+	ContextStylesheet      ParseContext = "stylesheet"      // *StyleSheet
+	ContextAtrule          ParseContext = "atrule"          // *Atrule
+	ContextAtrulePrelude   ParseContext = "atrulePrelude"   // *AtrulePrelude of the at-rule ParseOptions.Atrule
+	ContextMediaQueryList  ParseContext = "mediaQueryList"  // *MediaQueryList
+	ContextMediaQuery      ParseContext = "mediaQuery"      // *MediaQuery
+	ContextCondition       ParseContext = "condition"       // *Condition of the kind ParseOptions.Kind
+	ContextRule            ParseContext = "rule"            // *Rule
+	ContextSelectorList    ParseContext = "selectorList"    // *SelectorList
+	ContextSelector        ParseContext = "selector"        // *Selector
+	ContextBlock           ParseContext = "block"           // *Block of declarations and nested rules
+	ContextDeclarationList ParseContext = "declarationList" // *DeclarationList
+	ContextDeclaration     ParseContext = "declaration"     // *Declaration
+	ContextValue           ParseContext = "value"           // *Value
 )
 
-// ParseOptions configures a parse. The zero value means upstream's defaults.
+// ParseOptions configures a parse. The zero value parses a style sheet
+// without recording positions, parsing preludes and values, as upstream's
+// defaults do.
 type ParseOptions struct {
 	// Context names the parse context; "" means ContextDefault.
 	Context ParseContext
-	// Atrule is the at-rule name for ContextAtrulePrelude; "" is upstream
-	// null.
+	// Atrule is the at-rule name for ContextAtrulePrelude; "" parses the
+	// prelude with the generic AtrulePrelude scope.
 	Atrule string
 	// Kind is the condition kind for ContextCondition ("media",
-	// "supports" or "container"); "" means upstream's default "media".
+	// "supports" or "container"); "" means "media".
 	Kind string
 
 	// Positions makes the parser record node locations.
 	Positions bool
-	// Filename is used as loc.source; "" means "<unknown>".
+	// Filename is the Filename of every Location; "" means "<unknown>".
 	Filename string
-	// Offset, Line and Column are the position of the first char of the
-	// source; 0 means upstream's defaults (0, 1, 1).
+	// Offset, Line and Column are the position of the first byte of the
+	// source, for a source cut from a larger file. Locations and syntax
+	// errors count from them. A zero Line or Column means 1.
 	Offset int
 	Line   int
 	Column int
 
 	// NoParseAtrulePrelude, NoParseRulePrelude and NoParseValue keep
-	// at-rule preludes, rule preludes and declaration values as Raw nodes
-	// (upstream parseAtrulePrelude, parseRulePrelude and parseValue set to
-	// false; they default to true).
+	// at-rule preludes, rule preludes and declaration values as Raw nodes.
+	// They are upstream's parseAtrulePrelude, parseRulePrelude and
+	// parseValue inverted, so that the zero value parses everything.
 	NoParseAtrulePrelude bool
 	NoParseRulePrelude   bool
 	NoParseValue         bool
@@ -76,26 +80,26 @@ type ParseOptions struct {
 
 	// OnParseError is called when the parser recovers from an error
 	// (usually a *SyntaxError) by producing fallbackNode (usually a Raw
-	// node). Returning a non-nil error stops the parse with that error, as
-	// throwing from upstream's onParseError does.
+	// node). Returning a non-nil error stops the parse, and Parse returns
+	// that error.
 	OnParseError func(err error, fallbackNode Node) error
 	// OnComment is called for every comment with its text (without /* and
 	// */) and its location, which is nil unless Positions is set.
 	OnComment func(value string, loc *Location)
 	// OnToken is called for every token, in order, before parsing, with
-	// the token's type and its byte range in the source (upstream
-	// onToken, whose this, the token stream, is
-	// tokenizer.NewTokenStream(source)).
+	// the token's type and its byte range in the source. To look at
+	// other tokens, tokenize the source with tokenizer.NewTokenStream.
 	OnToken func(tokenType tokenizer.TokenType, start, end int)
 }
 
 // UnknownContextError is returned by a parse with a context the syntax does
 // not define.
 type UnknownContextError struct {
+	// Context is ParseOptions.Context, or ContextDefault for "".
 	Context ParseContext
 }
 
-// Error returns upstream's message, "Unknown context `name`".
+// Error returns "Unknown context `name`", upstream's message.
 func (e *UnknownContextError) Error() string {
 	return "Unknown context `" + string(e.Context) + "`"
 }
@@ -106,15 +110,15 @@ type parseAbort struct {
 	err error
 }
 
-// Parser is the state of one parse: a token stream plus the syntax
-// configuration (upstream builds it with
-// Object.assign(new TokenStream(), processConfig(config), { ... })).
+// Parser is the state of one parse: a token stream with its cursor, the
+// parser configuration of the syntax and the parse options.
 //
 // Node parse functions are methods named after the node type
 // (p.Selector(), p.Block(isStyleBlock), ...). Syntax extensions (parse
 // contexts, scopes, at-rule and pseudo parsers, features) receive the
-// Parser and call these methods and the helpers below. A Parser is used
-// for a single parse and must not be shared between goroutines.
+// Parser and call these methods, the helpers below and the methods of the
+// embedded TokenStream. A Parser is used for a single parse and must not
+// be shared between goroutines.
 type Parser struct {
 	*tokenizer.TokenStream
 
@@ -123,6 +127,11 @@ type Parser struct {
 	// concurrent parses of the syntax and only read.
 	config *Config
 
+	// ParseAtrulePrelude, ParseRulePrelude and ParseValue report whether
+	// at-rule preludes, rule preludes and declaration values are parsed
+	// into nodes instead of kept as Raw nodes (the inverse of the NoParse
+	// fields of ParseOptions). ParseCustomProperty is
+	// ParseOptions.ParseCustomProperty. Node parse methods read them.
 	ParseAtrulePrelude  bool
 	ParseRulePrelude    bool
 	ParseValue          bool
@@ -406,8 +415,9 @@ func (p *Parser) CharCodeAt(offset int) int {
 	return 0
 }
 
-// Substring returns the source between offsetStart and offsetEnd
-// (String.prototype.substring semantics).
+// Substring returns the source between offsetStart and offsetEnd. Both
+// offsets are clamped to the source, and swapped when offsetStart is
+// greater, as JavaScript's String.prototype.substring does.
 func (p *Parser) Substring(offsetStart, offsetEnd int) string {
 	return substring(p.Source, offsetStart, offsetEnd)
 }
@@ -614,14 +624,15 @@ var selectorParse = sync.OnceValue(func() parseFunc {
 	return createParser(parserSelectorConfig())
 })
 
-// Parse parses source with the default syntax (upstream parse).
+// Parse parses source with the default syntax (see Syntax.Parse).
 func Parse(source string, options ParseOptions) (Node, error) {
 	return defaultParseSyntax().Parse(source, options)
 }
 
-// ParseSelector parses source with the selector-only syntax (upstream
-// css-tree/selector-parser): its contexts are "default" and "selectorList"
-// (a SelectorList) and "selector" (a Selector).
+// ParseSelector parses source with a syntax that only parses selectors
+// (upstream css-tree/selector-parser). Its contexts are ContextDefault and
+// ContextSelectorList, which return a *SelectorList, and ContextSelector,
+// which returns a *Selector.
 func ParseSelector(source string, options ParseOptions) (Node, error) {
 	return selectorParse()(source, options)
 }

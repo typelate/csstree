@@ -8,16 +8,16 @@ import (
 	"github.com/typelate/csstree/tokenizer"
 )
 
-// GenerateOptions configures Generate. The zero value means upstream's
-// defaults.
+// GenerateOptions configures Generate. The zero value generates in
+// ModeSafe.
 type GenerateOptions struct {
 	// Mode selects how whitespace between tokens is decided; "" means
 	// ModeSafe. Other values are ignored.
 	Mode GenerateMode
 }
 
-// GenerateMode selects where the generator puts whitespace between tokens
-// (upstream options.mode).
+// GenerateMode selects where the generator puts whitespace between
+// tokens.
 type GenerateMode string
 
 const (
@@ -30,21 +30,21 @@ const (
 )
 
 // UnknownNodeTypeError is returned by Generate for a node whose type has no
-// generate function; Type is "undefined" for a nil node, as upstream reads
-// the type of null. The lexer's Match methods return it for a value they
-// cannot generate and for a definition syntax node they cannot match (Type
-// is "" for a nil syntax).
+// generate function. The lexer's Match methods return it for a value they
+// cannot generate and for a definition syntax node they cannot match.
 type UnknownNodeTypeError struct {
+	// Type is the node type: "undefined" for a nil node (as upstream's
+	// message reads), and "" for a nil definition syntax node.
 	Type string
 }
 
-// Error returns upstream's message, "Unknown node type: " and the type.
+// Error returns "Unknown node type: " and the type, upstream's message.
 func (e *UnknownNodeTypeError) Error() string {
 	return "Unknown node type: " + e.Type
 }
 
-// Generator is the API a node generate function uses (upstream publicApi,
-// the `this` of generate functions).
+// Generator is what a GenerateFunc writes a node's CSS to. The generator
+// adds whitespace between tokens where GenerateOptions.Mode needs it.
 type Generator struct {
 	h *generateHandlers
 }
@@ -55,8 +55,7 @@ func (g *Generator) Node(node Node) {
 }
 
 // Children generates the nodes of children, calling delimiter (when not
-// nil) with the previous node between two nodes (upstream
-// children(node, delimiter) takes the node and reads node.children).
+// nil) with the previous node between two nodes.
 func (g *Generator) Children(children *List[Node], delimiter func(prev Node)) {
 	var prev Node
 
@@ -232,15 +231,15 @@ func createGenerator(config *Config) generateFunc {
 	}
 }
 
-// Generate turns an AST into CSS text with the default syntax (upstream
-// generate; see Syntax.Generate).
+// Generate turns an AST into CSS text with the default syntax (see
+// Syntax.Generate).
 func Generate(node Node, options GenerateOptions) (string, error) {
 	return defaultParseSyntax().Generate(node, options)
 }
 
 // GenerateWithSourceMap is Generate also returning a source map of the
-// generated CSS, with the default syntax (upstream generate with
-// sourceMap: true; see Syntax.GenerateWithSourceMap).
+// generated CSS, with the default syntax (see
+// Syntax.GenerateWithSourceMap).
 func GenerateWithSourceMap(node Node, options GenerateOptions) (string, *SourceMapGenerator, error) {
 	return defaultParseSyntax().GenerateWithSourceMap(node, options)
 }

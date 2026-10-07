@@ -168,8 +168,7 @@ func (r *PlainObjectReader) List(object map[string]any, key string) *List[Node] 
 	}
 }
 
-// String reads object[key] as a string; a missing key or nil (upstream
-// null) is "".
+// String reads object[key] as a string; a missing key or nil is "".
 func (r *PlainObjectReader) String(object map[string]any, key string) string {
 	switch value := object[key].(type) {
 	case nil:

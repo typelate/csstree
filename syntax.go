@@ -4,9 +4,9 @@ package csstree
 
 import "sync"
 
-// Syntax is a CSS syntax: the parser, generator, walker, convertor and
-// lexer of one configuration (upstream the object createSyntax returns).
-// A Syntax is safe for concurrent use. An AST may be read by several
+// Syntax is a CSS syntax: the parser, generator, walker, plain object
+// convertor and lexer of one Config. A Syntax does not change once
+// created and is safe for concurrent use. An AST may be read by several
 // goroutines at once (Generate, Find, FindLast, FindAll, Clone,
 // ToPlainObject, lexer matching), but Walk and any change to the AST need
 // exclusive access to it.
@@ -20,10 +20,16 @@ type Syntax struct {
 	clone     func(node Node) Node
 }
 
-// SyntaxExtension is what Fork mixes into a copy of a syntax's config:
-// a *Config, whose set fields are mixed in as upstream mix does, or an
-// ExtendFunc, which changes the copy and returns the config to use
-// (upstream fork(extension) takes an object or a function).
+// SyntaxExtension is what Fork applies to a copy of a syntax's config: a
+// *Config or an ExtendFunc.
+//
+// The non-nil fields of a *Config are merged into the copy. Entries of its
+// maps are added by key, replacing entries of the same key, with these
+// exceptions: a Scope entry replaces only the Recognizer fields it sets
+// and adds its Functions; a Node entry replaces only the NodeConfig fields
+// it sets; Features and Atrules entries are merged by name; and a Types,
+// Properties or Atrules syntax starting with "|" adds alternatives to the
+// existing syntax. CSSWideKeywords are appended.
 type SyntaxExtension interface {
 	extend(base *Config) *Config
 }
@@ -79,9 +85,9 @@ func createSyntax(config *Config) (*Syntax, error) {
 	return syntax, nil
 }
 
-// Lexer returns the lexer of the syntax (upstream syntax.lexer): the lexer
-// of the lexer keys of its config (Generic, CSSWideKeywords, Units, Types,
-// Atrules, Properties, Node).
+// Lexer returns the lexer of the syntax, built from the lexer fields of
+// its config (Generic, CSSWideKeywords, Units, Types, Atrules, Properties
+// and Node).
 func (s *Syntax) Lexer() *Lexer {
 	return s.lexer
 }
@@ -89,7 +95,7 @@ func (s *Syntax) Lexer() *Lexer {
 // NewLexer returns a new lexer for the lexer keys of config (Generic,
 // CSSWideKeywords, Units, Types, Atrules and Properties) that shares this
 // syntax, which generates the ASTs it matches, and the syntax's node
-// structures (upstream createLexer). Config maps are read in key order,
+// structures. Config maps are read in key order,
 // which decides the order of Types, Properties, Atrules and of Validate's
 // results. It fails when the CSS-wide keywords do not parse as a
 // definition syntax.
@@ -97,8 +103,9 @@ func (s *Syntax) NewLexer(config *Config) (*Lexer, error) {
 	return newLexer(config, s, s.lexer.structure)
 }
 
-// NewSyntax returns the syntax of a copy of config (upstream
-// createSyntax). It fails when a node type has no Structure or a bad one,
+// NewSyntax returns the syntax of a copy of config. Most programs use Fork
+// instead, to extend the default syntax. It fails when a node type has no
+// Structure or a bad one,
 // or when the CSS-wide keywords do not parse as a definition syntax.
 func NewSyntax(config *Config) (*Syntax, error) {
 	return createSyntax(mix(nil, config))
@@ -122,8 +129,7 @@ func (s *Syntax) Generate(node Node, options GenerateOptions) (string, error) {
 }
 
 // GenerateWithSourceMap is Generate also returning a source map of the
-// generated CSS (upstream generate with sourceMap: true, which returns
-// { css, map }). Only Atrule, Selector and Declaration nodes with a
+// generated CSS. Only Atrule, Selector and Declaration nodes with a
 // location (see ParseOptions.Positions) are mapped. It also fails when such
 // a location is not a valid source position (a Line below 1, a Column below
 // 1 or an empty Filename).
@@ -184,9 +190,9 @@ func (s *Syntax) FromPlainObject(ast map[string]any) (Node, error) {
 	return s.convertor.FromPlainObject(ast)
 }
 
-// ToPlainObject returns the plain object form of ast: the value of
-// JSON.parse(JSON.stringify(ast)), a map per node with "type", "loc" and
-// the node fields, and a slice per list. Nodes are encoded with
+// ToPlainObject returns the plain object form of ast: the JSON of ast
+// decoded into an any, with a map per node holding "type", "loc" and the
+// node fields, and a slice per list. Nodes are encoded with
 // encoding/json, so a node type added through Fork needs a MarshalJSON
 // method writing "type".
 func (s *Syntax) ToPlainObject(ast Node) (map[string]any, error) {
@@ -194,7 +200,7 @@ func (s *Syntax) ToPlainObject(ast Node) (map[string]any, error) {
 }
 
 // Clone returns a deep copy of node, copying nodes of every type of the
-// syntax that has a Clone function (Go only; see Clone).
+// syntax that has a Clone function (see Clone).
 func (s *Syntax) Clone(node Node) Node {
 	return s.clone(node)
 }
@@ -268,7 +274,8 @@ func DefaultSyntax() *Syntax {
 	return defaultSyntax()
 }
 
-// DefaultLexer returns the lexer of the default syntax (upstream lexer).
+// DefaultLexer returns the lexer of the default syntax, built from the CSS
+// definitions of mdn-data on first use.
 func DefaultLexer() *Lexer {
 	return defaultSyntax().lexer
 }

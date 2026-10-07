@@ -10,25 +10,25 @@ import (
 	"strings"
 )
 
-// WalkAction is what a walk handler returns to steer the walk (upstream:
-// undefined, this.break / walk.break or this.skip / walk.skip).
+// WalkAction is what a walk handler returns to steer the walk.
 type WalkAction int
 
 const (
 	// WalkContinue goes on with the walk.
 	WalkContinue WalkAction = iota
-	// WalkBreak stops the walk (upstream break).
+	// WalkBreak stops the walk.
 	WalkBreak
 	// WalkSkip, returned by Enter, skips the children of the node and its
-	// Leave (upstream skip).
+	// Leave. Returned by Leave, it is WalkContinue.
 	WalkSkip
 )
 
-// WalkContext is the `this` of upstream walk handlers: the walk root and
-// the nearest enclosing node of each walk context (NodeConfig.WalkContext),
-// nil outside one. Selector is the enclosing SelectorList (upstream's
-// SelectorList has walkContext "selector"); Function is the enclosing
-// Function, PseudoClassSelector or PseudoElementSelector.
+// WalkContext tells a walk handler where the current node is: the walk
+// root and the nearest enclosing node of each walk context
+// (NodeConfig.WalkContext), nil outside one. Selector is the enclosing
+// SelectorList, whose walk context is "selector"; Function is the
+// enclosing Function, PseudoClassSelector or PseudoElementSelector. It is
+// what upstream passes to handlers as this.
 type WalkContext struct {
 	Root          Node
 	Stylesheet    Node
@@ -93,9 +93,9 @@ func (c *WalkContext) set(name string, node Node) {
 type WalkHandler func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction
 
 // MissingStructureError is returned by NewSyntax and Fork for a node type
-// without a Structure (upstream "Missed `structure` field in `name` node
-// type definition").
+// without a Structure.
 type MissingStructureError struct {
+	// NodeType is the name of the node type.
 	NodeType string
 }
 
@@ -105,13 +105,11 @@ func (e *MissingStructureError) Error() string {
 }
 
 // ErrNoWalkHandler is returned by Walk when WalkOptions has neither Enter
-// nor Leave (upstream "Neither `enter` nor `leave` walker handler is set
-// or both aren't a function").
+// nor Leave.
 var ErrNoWalkHandler = errors.New("csstree: walk: neither Enter nor Leave is set")
 
 // UnknownVisitError is returned by Walk when WalkOptions.Visit names a node
-// type the syntax does not have (upstream "Bad value ... for `visit`
-// option").
+// type the syntax does not have.
 type UnknownVisitError struct {
 	// Visit is the value of WalkOptions.Visit.
 	Visit string
@@ -128,8 +126,8 @@ func (e *UnknownVisitError) Error() string {
 // for. Its arguments are those of a WalkHandler.
 type FindFunc func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool
 
-// WalkOptions configures Syntax.Walk (upstream walk(ast, fn | options); a
-// lone function is Enter).
+// WalkOptions configures Syntax.Walk. At least one of Enter and Leave
+// must be set.
 type WalkOptions struct {
 	// Enter is called before the children of a node are visited.
 	Enter WalkHandler
@@ -139,8 +137,8 @@ type WalkOptions struct {
 	Reverse bool
 	// Visit, when set, calls Enter and Leave only for nodes of that type;
 	// for "Atrule", "Rule" and "Declaration" only the node types that can
-	// contain them are traversed. Their WalkBreak and WalkSkip still apply
-	// (upstream drops the return value of a handler when visit is set).
+	// contain them are traversed. The handlers' WalkBreak and WalkSkip
+	// still apply (upstream ignores them when visit is set).
 	Visit string
 }
 

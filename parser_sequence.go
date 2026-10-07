@@ -4,19 +4,19 @@ package csstree
 
 import "github.com/typelate/csstree/tokenizer"
 
-// Recognizer is a parse scope (upstream config.scope[name], the
-// `recognizer` of readSequence): it turns the tokens of a sequence into
-// nodes.
+// Recognizer is a parse scope, such as the Value scope: it turns the
+// tokens of a sequence into nodes for ReadSequence. Config.Scope holds the
+// recognizers of a syntax.
 type Recognizer struct {
-	// Node parses the node at the current token, or returns nil
-	// (upstream undefined) to end the sequence.
+	// Node parses the node at the current token, or returns nil to end
+	// the sequence.
 	Node func(p *Parser, context *SequenceContext) Node
 	// OnWhiteSpace, when set, is called when whitespace precedes next
 	// (nil at the end of the sequence).
 	OnWhiteSpace func(p *Parser, next Node, children *List[Node], context *SequenceContext)
-	// Functions maps lowercase function names to parsers of the function
-	// arguments; Function uses them instead of reading a sequence
-	// (upstream: any other key of the scope object, e.g. var, expression).
+	// Functions maps lowercase function names, such as "var", to parsers
+	// of the function arguments; Parser.Function uses them instead of
+	// reading a sequence.
 	Functions map[string]FunctionParser
 }
 
@@ -27,6 +27,7 @@ type FunctionParser func(p *Parser, recognizer *Recognizer) *List[Node]
 // SequenceContext is the context object ReadSequence passes to a
 // Recognizer.
 type SequenceContext struct {
+	// Recognizer is the recognizer of the sequence being read.
 	Recognizer *Recognizer
 }
 

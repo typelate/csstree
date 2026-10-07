@@ -14,24 +14,26 @@ const (
 	tabReplacement   = "    "
 )
 
-// SyntaxError is a CSS parse error (upstream parse.SyntaxError, built with
-// createCustomError('SyntaxError', message)).
-//
-// Offset includes the offset passed in ParseOptions; Line and Column are
-// 1-based, Column counts bytes.
+// SyntaxError is a CSS parse error.
 type SyntaxError struct {
+	// Message describes the error, such as "Identifier is expected".
 	Message string
-	Source  string
-	Offset  int
-	Line    int
-	Column  int
+	// Source is the source that was parsed.
+	Source string
+	// Offset is the byte offset of the error, plus ParseOptions.Offset.
+	Offset int
+	// Line and Column are the position of the error, starting at
+	// ParseOptions.Line and ParseOptions.Column (1 by default). Column
+	// counts bytes.
+	Line   int
+	Column int
 
 	baseLine   int
 	baseColumn int
 }
 
 // Error returns the position and Message, as "line:column: message" (like
-// go/scanner). Message alone is upstream's error.message.
+// go/scanner). Message alone is upstream's error message.
 func (e *SyntaxError) Error() string {
 	return strconv.Itoa(e.Line) + ":" + strconv.Itoa(e.Column) + ": " + e.Message
 }
