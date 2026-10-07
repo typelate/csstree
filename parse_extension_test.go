@@ -3,8 +3,8 @@
 package csstree
 
 import (
+	"errors"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/typelate/csstree/tokenizer"
@@ -45,8 +45,10 @@ func assertParseError(t *testing.T, syntax *Syntax, source string, options Parse
 	if syntax != nil {
 		parse = syntax.Parse
 	}
-	if ast, err := parse(source, options); err == nil || !strings.Contains(err.Error(), want) {
-		t.Errorf("Parse(%q) = %v, %v, want error %q", source, ast, err, want)
+	ast, err := parse(source, options)
+	var syntaxErr *SyntaxError
+	if !errors.As(err, &syntaxErr) || syntaxErr.Message != want {
+		t.Errorf("Parse(%q) = %v, %v, want a *SyntaxError %q", source, ast, err, want)
 	}
 }
 

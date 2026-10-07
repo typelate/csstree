@@ -4,8 +4,9 @@ package csstree
 
 import (
 	"errors"
-	"fmt"
+	"maps"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -91,6 +92,38 @@ func (c *WalkContext) set(name string, node Node) {
 // (or the root).
 type WalkHandler func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction
 
+// MissingStructureError is returned by NewSyntax and Fork for a node type
+// without a Structure (upstream "Missed `structure` field in `name` node
+// type definition").
+type MissingStructureError struct {
+	NodeType string
+}
+
+// Error names the node type.
+func (e *MissingStructureError) Error() string {
+	return "csstree: node type " + strconv.Quote(e.NodeType) + " has no Structure"
+}
+
+// ErrNoWalkHandler is returned by Walk when WalkOptions has neither Enter
+// nor Leave (upstream "Neither `enter` nor `leave` walker handler is set
+// or both aren't a function").
+var ErrNoWalkHandler = errors.New("csstree: walk: neither Enter nor Leave is set")
+
+// UnknownVisitError is returned by Walk when WalkOptions.Visit names a node
+// type the syntax does not have (upstream "Bad value ... for `visit`
+// option").
+type UnknownVisitError struct {
+	// Visit is the value of WalkOptions.Visit.
+	Visit string
+	// Types are the node types of the syntax, sorted.
+	Types []string
+}
+
+// Error names Visit and the node types it may be.
+func (e *UnknownVisitError) Error() string {
+	return "csstree: walk: unknown node type " + strconv.Quote(e.Visit) + " for Visit (should be one of " + strings.Join(e.Types, ", ") + ")"
+}
+
 // FindFunc reports whether node is the one Find, FindLast or FindAll look
 // for. Its arguments are those of a WalkHandler.
 type FindFunc func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool
@@ -168,8 +201,7 @@ func getTypesFromConfig(config *Config) (map[string]*walkerType, error) {
 
 	for name, nodeType := range config.Node {
 		if nodeType.Structure == nil {
-			//lint:ignore ST1005 upstream message
-			return nil, fmt.Errorf("Missed `structure` field in `%s` node type definition", name)
+			return nil, &MissingStructureError{NodeType: name}
 		}
 
 		types[name] = getWalkersFromStructure(nodeType)
@@ -300,13 +332,7 @@ func (w *walker) walk(root Node, options WalkOptions, mutable bool) error {
 				iterators = fastTraversal
 			}
 		} else if _, ok := w.types[options.Visit]; !ok {
-			names := make([]string, 0, len(w.types))
-			for name := range w.types {
-				names = append(names, name)
-			}
-			slices.Sort(names)
-			//lint:ignore ST1005 upstream message
-			return fmt.Errorf("Bad value `%s` for `visit` option (should be: %s)", options.Visit, strings.Join(names, ", "))
+			return &UnknownVisitError{Visit: options.Visit, Types: slices.Sorted(maps.Keys(w.types))}
 		}
 
 		enter = invokeForType(enter, options.Visit)
@@ -316,8 +342,7 @@ func (w *walker) walk(root Node, options WalkOptions, mutable bool) error {
 	}
 
 	if enterIsNoop && leaveIsNoop {
-		//lint:ignore ST1005 upstream message
-		return errors.New("Neither `enter` nor `leave` walker handler is set or both aren't a function")
+		return ErrNoWalkHandler
 	}
 
 	walkAST(root, enter, leave, iterators, options.Reverse, mutable)

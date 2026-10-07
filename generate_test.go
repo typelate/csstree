@@ -3,8 +3,8 @@
 package csstree
 
 import (
+	"errors"
 	"fmt"
-	"strings"
 	"testing"
 )
 
@@ -113,8 +113,9 @@ func TestGenerate(t *testing.T) {
 
 	t.Run("should throws on unknown node type", func(t *testing.T) {
 		_, err := Generate(unknownTestNode{}, GenerateOptions{})
-		if err == nil || !strings.Contains(err.Error(), "Unknown node type") {
-			t.Errorf("Generate({type: 'xxx'}) error = %v, want Unknown node type", err)
+		var unknown *UnknownNodeTypeError
+		if !errors.As(err, &unknown) || unknown.Type != (unknownTestNode{}).Type() {
+			t.Errorf("Generate({type: 'xxx'}) error = %v, want an *UnknownNodeTypeError", err)
 		}
 	})
 

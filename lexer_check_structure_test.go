@@ -3,6 +3,7 @@
 package csstree
 
 import (
+	"errors"
 	"reflect"
 	"regexp"
 	"testing"
@@ -29,9 +30,10 @@ func TestLexerCheckStructure(t *testing.T) {
 				return prev
 			}))
 
-			pattern := regexp.MustCompile("Missed `structure` field in `Test` node type definition")
-			if err == nil || !pattern.MatchString(err.Error()) {
-				t.Errorf("Fork() error = %v, want %v", err, pattern)
+			// upstream: "Missed `structure` field in `Test` node type definition"
+			var missing *MissingStructureError
+			if !errors.As(err, &missing) || missing.NodeType != "Test" {
+				t.Errorf("Fork() error = %v, want a *MissingStructureError for Test", err)
 			}
 		})
 

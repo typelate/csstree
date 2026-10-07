@@ -239,8 +239,9 @@ func TestParse(t *testing.T) {
 
 		t.Run("wrong context", func(t *testing.T) {
 			_, err := Parse("a{}", ParseOptions{Context: "unknown"})
-			if err == nil || !strings.Contains(err.Error(), "Unknown context `unknown`") {
-				t.Errorf("Parse(%q, unknown) error = %v, want Unknown context `unknown`", "a{}", err)
+			var unknown *UnknownContextError
+			if !errors.As(err, &unknown) || unknown.Context != "unknown" {
+				t.Errorf("Parse(%q, unknown) error = %v, want an *UnknownContextError", "a{}", err)
 			}
 		})
 	})

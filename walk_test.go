@@ -3,6 +3,7 @@
 package csstree
 
 import (
+	"errors"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -566,18 +567,16 @@ func TestWalk(t *testing.T) {
 			var ast Node = &StyleSheet{Children: new(List[Node])}
 
 			t.Run("should throws when no enter/leave handlers is set", func(t *testing.T) {
-				const want = "Neither `enter` nor `leave` walker handler is set or both aren't a function"
-
-				if err := Walk(ast, WalkOptions{}); err == nil || !strings.Contains(err.Error(), want) {
-					t.Errorf("Walk(ast, {}) error = %v, want %q", err, want)
+				if err := Walk(ast, WalkOptions{}); !errors.Is(err, ErrNoWalkHandler) {
+					t.Errorf("Walk(ast, {}) error = %v, want ErrNoWalkHandler", err)
 				}
 			})
 
 			t.Run("should throws when visit has wrong value", func(t *testing.T) {
-				const want = "Bad value `Foo` for `visit` option"
-
-				if err := Walk(ast, WalkOptions{Visit: "Foo"}); err == nil || !strings.Contains(err.Error(), want) {
-					t.Errorf("Walk(ast, {visit: 'Foo'}) error = %v, want %q", err, want)
+				err := Walk(ast, WalkOptions{Visit: "Foo"})
+				var unknown *UnknownVisitError
+				if !errors.As(err, &unknown) || unknown.Visit != "Foo" || !slices.Contains(unknown.Types, "StyleSheet") {
+					t.Errorf("Walk(ast, {visit: 'Foo'}) error = %v, want an *UnknownVisitError for Foo", err)
 				}
 			})
 		})

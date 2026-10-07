@@ -4,10 +4,10 @@
 package csstree
 
 import (
+	"errors"
 	"maps"
 	"reflect"
 	"slices"
-	"strings"
 	"testing"
 )
 
@@ -131,8 +131,9 @@ func TestMix(t *testing.T) {
 
 	t.Run("fork without structure fails", func(t *testing.T) {
 		_, err := Fork(&Config{Node: map[string]NodeConfig{"Foo": {}}})
-		if want := "Missed `structure` field in `Foo` node type definition"; err == nil || !strings.Contains(err.Error(), want) {
-			t.Errorf("Fork({node: {Foo: {}}}) error = %v, want %q", err, want)
+		var missing *MissingStructureError
+		if !errors.As(err, &missing) || missing.NodeType != "Foo" {
+			t.Errorf("Fork({node: {Foo: {}}}) error = %v, want a *MissingStructureError for Foo", err)
 		}
 	})
 
