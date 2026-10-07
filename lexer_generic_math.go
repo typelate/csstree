@@ -34,6 +34,11 @@ const (
 	calcPercent
 	calcBaseCount
 
+	// calcNonPercentCount is the number of base types other than percent:
+	// calcPercent comes last, so range calcNonPercentCount visits the
+	// others.
+	calcNonPercentCount = calcPercent
+
 	// calcNoHint is a null percent hint. As a calculation context it
 	// means percentages are not allowed.
 	calcNoHint calcBase = -1
@@ -62,7 +67,7 @@ func baseCalcType(base calcBase) calcType {
 // with that type as percent hint, else «[ "percent" → 1 ]» with a percent
 // hint of "percent".
 func percentageCalcType(ctx calcBase) calcType {
-	if ctx == calcNoHint || ctx == calcPercent {
+	if ctx == calcNoHint {
 		ctx = calcPercent
 	}
 	t := baseCalcType(ctx)
@@ -112,7 +117,7 @@ func addCalcTypes(a, b calcType) (calcType, bool) {
 		return calcType{}, false
 	}
 
-	for hint := range calcPercent {
+	for hint := range calcNonPercentCount {
 		ha, hb := a.applyPercentHint(hint), b.applyPercentHint(hint)
 		if ha.exp == hb.exp {
 			return ha, true
@@ -123,7 +128,7 @@ func addCalcTypes(a, b calcType) (calcType, bool) {
 }
 
 func (t calcType) hasNonPercentEntry() bool {
-	for base := range calcPercent {
+	for base := range calcNonPercentCount {
 		if t.exp[base] != 0 {
 			return true
 		}
@@ -206,7 +211,7 @@ func (t calcType) matchesDimension() bool {
 	if t.hint != calcNoHint {
 		return false
 	}
-	for base := range calcPercent {
+	for base := range calcNonPercentCount {
 		if t.onlyEntry(base) {
 			return true
 		}
@@ -441,10 +446,6 @@ func (p *calcParser) skipWhiteSpace() bool {
 	}
 }
 
-func (p *calcParser) isDelim(t *matchToken, delim string) bool {
-	return t != nil && t.typ == tokenizer.Delim && t.value == delim
-}
-
 // enter counts a level of nesting; it fails past maxCalcDepth.
 func (p *calcParser) enter() bool {
 	p.depth++
@@ -482,7 +483,7 @@ func (p *calcParser) sum() (calcType, bool) {
 		start := p.pos
 		spaceBefore := p.skipWhiteSpace()
 		op := p.skipComments()
-		if !p.isDelim(op, "+") && !p.isDelim(op, "-") {
+		if !isDelimToken(op, '+') && !isDelimToken(op, '-') {
 			p.pos = start
 			return t, true
 		}
@@ -515,8 +516,8 @@ func (p *calcParser) product() (calcType, bool) {
 		start := p.pos
 		p.skipWhiteSpace()
 		op := p.skipComments()
-		divide := p.isDelim(op, "/")
-		if !divide && !p.isDelim(op, "*") {
+		divide := isDelimToken(op, '/')
+		if !divide && !isDelimToken(op, '*') {
 			p.pos = start
 			return t, true
 		}
@@ -697,11 +698,7 @@ func (p *calcParser) mathFunction() (calcType, bool) {
 
 	switch name {
 	case "calc(", "-moz-calc(", "-webkit-calc(", "abs(":
-		args, ok := p.arguments(noKeywords)
-		if !ok || len(args) != 1 {
-			return calcType{}, false
-		}
-		return args[0].typ, true
+		return p.singleArgument()
 
 	case "min(", "max(", "hypot(":
 		args, ok := p.arguments(noKeywords)
@@ -724,11 +721,7 @@ func (p *calcParser) mathFunction() (calcType, bool) {
 		return p.round()
 
 	case "mod(", "rem(":
-		args, ok := p.arguments(noKeywords)
-		if !ok || len(args) != 2 {
-			return calcType{}, false
-		}
-		return sumOf(args)
+		return p.sumOfArguments(2)
 
 	case "sin(", "cos(", "tan(":
 		// a <number> or an <angle>, returning a <number>
@@ -747,11 +740,7 @@ func (p *calcParser) mathFunction() (calcType, bool) {
 		return baseCalcType(calcAngle).madeConsistentWith(arg)
 
 	case "atan2(":
-		args, ok := p.arguments(noKeywords)
-		if !ok || len(args) != 2 {
-			return calcType{}, false
-		}
-		sum, ok := sumOf(args)
+		sum, ok := p.sumOfArguments(2)
 		if !ok {
 			return calcType{}, false
 		}
@@ -792,12 +781,20 @@ func (p *calcParser) mathFunction() (calcType, bool) {
 	return calcType{}, false
 }
 
-func (p *calcParser) singleArgument() (calcType, bool) {
+// sumOfArguments parses exactly n arguments, none of them a keyword, and
+// returns the sum of their types.
+func (p *calcParser) sumOfArguments(n int) (calcType, bool) {
 	args, ok := p.arguments(noKeywords)
-	if !ok || len(args) != 1 {
+	if !ok || len(args) != n {
 		return calcType{}, false
 	}
-	return args[0].typ, true
+	return sumOf(args)
+}
+
+// singleArgument parses the one argument, not a keyword, of a math
+// function and returns its type.
+func (p *calcParser) singleArgument() (calcType, bool) {
+	return p.sumOfArguments(1)
 }
 
 // round parses round( <rounding-strategy>?, <calc-sum>, <calc-sum>? )
