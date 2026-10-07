@@ -6,7 +6,8 @@ and lexer (validating values against the CSS grammar from
 [mdn-data](https://github.com/mdn/data)).
 
 The port follows upstream file by file (each Go file names the upstream file
-it came from), and runs upstream's test suite against upstream's fixtures.
+it came from, or says it is Go only), and runs upstream's test suite against
+upstream's fixtures.
 
 ```go
 ast, err := csstree.Parse(`.a { color: red }`, csstree.ParseOptions{})
@@ -14,21 +15,55 @@ if err != nil {
 	return err
 }
 
-css, err := csstree.Generate(ast, csstree.GenerateOptions{})
+err = csstree.Walk(ast, csstree.WalkOptions{
+	Visit: "Declaration",
+	Enter: func(_ *csstree.WalkContext, node csstree.Node, _ *csstree.ListItem[csstree.Node], _ *csstree.List[csstree.Node]) csstree.WalkAction {
+		fmt.Println(node.(*csstree.Declaration).Property)
+		return csstree.WalkContinue
+	},
+})
+if err != nil {
+	return err
+}
 
-if _, err := csstree.DefaultLexer().MatchPropertyString("color", "red"); err != nil {
-	// the value does not match the property's syntax
+css, err := csstree.Generate(ast, csstree.GenerateOptions{})
+if err != nil {
+	return err
+}
+
+_, err = csstree.DefaultLexer().MatchPropertyString("color", "10px")
+var mismatch *csstree.SyntaxMatchError
+if errors.As(err, &mismatch) {
+	// the value does not match the syntax of color
 }
 ```
 
-See `Example` in [example_test.go](example_test.go) for walking an AST.
+`ParseOptions.Context` parses other parts of a style sheet, such as a
+declaration value (`csstree.ContextValue`) or a selector
+(`csstree.ContextSelector`). The package documentation lists every context
+and the node type it returns. The `Example` functions in the
+[example_test.go](example_test.go) files show parsing, generating with a
+source map, walking, finding nodes, forking the syntax, lexer matching and
+the tokenizer and definition syntax packages.
 
 ## Packages
 
-- `github.com/typelate/csstree`: AST, parser, generator, walker, lexer, and fork
-- `github.com/typelate/csstree/tokenizer`: the CSS tokenizer and token stream
-- `github.com/typelate/csstree/definitionsyntax`: parser and generator for
-  CSS value definition syntax (`<length> | auto`)
+- `github.com/typelate/csstree`: the AST, parser, walker, generator (with
+  source maps), lexer, and `Fork` for extending the syntax.
+- `github.com/typelate/csstree/tokenizer`: the CSS tokenizer, the token
+  stream the parser reads, and offset to line and column conversion.
+- `github.com/typelate/csstree/definitionsyntax`: parser, generator and
+  walker for CSS value definition syntax (`<length> | auto`), which the lexer
+  matches values against.
+
+Internal packages, for contributors:
+
+- `internal/nodegen` and `internal/cmd/nodegen`: the generator of
+  `nodes_gen.go` (see Development).
+- `internal/jsnum`: number parsing and formatting as JavaScript does them,
+  which the lexer and definition syntax need to match upstream.
+- `internal/fixturetest`: loaders for the JSON fixtures that tests of more
+  than one package read.
 
 ## Differences from csstree
 
@@ -43,13 +78,40 @@ See `Example` in [example_test.go](example_test.go) for walking an AST.
   or generate function, an extension or a callback is a bug: `Parse` and
   `Generate` return it as an `*InternalError` holding the panic value and
   stack, where upstream's `parseWithFallback` catches every exception.
-- Forks can extend parse contexts, scopes, at-rules, pseudo-classes, features
-  and node generators, but not replace a built-in node's parse function.
+- Forks can extend parse contexts, scopes, at-rules, pseudo-classes,
+  features, node types and node generators, but not replace a built-in
+  node's parse function.
 - Upstream bugs that throw or overflow in JavaScript are fixed: sources over
   16 MiB, a bad `url(` ending in an escape, `an+b` matching a lone `+`.
 - A walk with `Visit` set honours `WalkBreak` and `WalkSkip` from its
   handlers, as upstream's documentation says; upstream ignores `walk.break`
   and `walk.skip` when `visit` is set.
+
+### Go API
+
+- The AST is typed. Node types are structs, a pointer to one implements
+  `Node`, and type switches select them. Optional strings are `""` where
+  upstream has null.
+- Errors are values. `Parse`, `Generate` and the lexer's `Match*` methods
+  return an `error` next to their result, and `Walk` returns an `error`.
+  The error types (`*SyntaxError`, `*SyntaxMatchError`,
+  `*SyntaxReferenceError`, `*InternalError`, ...) and sentinel errors work
+  with `errors.Is` and `errors.As`.
+- A `Lexer` does not change once created. For other definitions, build a
+  lexer with `Syntax.NewLexer` or fork the syntax with `Fork`.
+- `Syntax`, `Lexer`, `DefaultSyntax()`, `DefaultLexer()` and the package
+  functions are safe for concurrent use. `Generate`, `GenerateWithSourceMap`,
+  `Find*`, `Clone`, `ToPlainObject` and lexer matching only read an AST, so
+  they may run on one AST at the same time; `Walk` and changes to an AST need
+  exclusive access to it. `List`, `Parser` and `SourceMapGenerator` values
+  are not safe for concurrent use, except that `List.All` and
+  `List.Backward` may read a list nobody changes.
+- Parse contexts, generate modes and lexer syntax kinds are typed constants
+  (`ContextValue`, `ModeSpec`, `KindProperty`, ...). Option structs have
+  useful zero values, so the options that upstream turns on by default
+  are `NoParse*` fields.
+- `GenerateWithSourceMap` returns the CSS and a `*SourceMapGenerator`;
+  upstream's `generate` returns `{ css, map }` when `sourceMap` is set.
 
 ### Where the port follows the specs instead of upstream
 
@@ -91,6 +153,29 @@ Definition syntax:
 
 - `{0}` means exactly zero (`definitionsyntax.Unbounded` marks no upper
   bound), `{B,A}` with B < A is an error, and range bounds accept U+2212 `−`.
+
+## Development
+
+- `go generate ./...` regenerates `nodes_gen.go` from the `css` struct tags
+  of the node types in `node_*.go` (with `internal/cmd/nodegen`). A test
+  fails when `nodes_gen.go` is stale.
+- `go test ./...` runs upstream's test suite against upstream's fixtures,
+  the Go-only tests and the examples. `go test -race ./...` also checks the
+  concurrency tests.
+- Fuzz targets:
+
+  ```
+  go test -run='^$' -fuzz=FuzzParse .
+  go test -run='^$' -fuzz=FuzzMatchProperty .
+  go test -run='^$' -fuzz=FuzzMathFunction .
+  go test -run='^$' -fuzz=FuzzTokenize ./tokenizer
+  ```
+
+- Benchmarks of tokenizing, parsing, generating (with and without a source
+  map) and property matching: `go test -run='^$' -bench=. .`
+- The fixtures in `testdata/` come from upstream csstree, except
+  `testdata/fuzz`, which holds fuzz corpus entries. `data/mdn` is mdn-data
+  and `data/patch.json` is upstream's patch to it (`data-patch.js`) as JSON.
 
 ## License
 
