@@ -5,43 +5,11 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // Hash is '#' ident in a value, e.g. a hex color.
+//
+//csstree:node
 type Hash struct {
 	Loc   *Location
-	Value string
-}
-
-func (n *Hash) Type() string        { return "Hash" }
-func (n *Hash) Location() *Location { return n.Loc }
-
-func (n *Hash) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"value", n.Value},
-	)
-}
-
-func hashNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Hash",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateHash,
-		Clone:           cloneHash,
-		FromPlainObject: fromPlainObjectHash,
-	}
-}
-
-func cloneHash(node Node, _ func(Node) Node) Node {
-	c := *node.(*Hash)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectHash(r *PlainObjectReader, object map[string]any) Node {
-	return &Hash{
-		Loc:   r.Location(object),
-		Value: r.String(object, "value"),
-	}
+	Value string `css:"value,string"`
 }
 
 // Hash parses a hash token.

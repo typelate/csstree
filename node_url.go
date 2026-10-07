@@ -6,43 +6,11 @@ import "github.com/typelate/csstree/tokenizer"
 
 // URL is a url, <url-token> | <function-token> <string> ) (upstream Url);
 // Value is decoded.
+//
+//csstree:node name=Url
 type URL struct {
 	Loc   *Location
-	Value string
-}
-
-func (n *URL) Type() string        { return "Url" }
-func (n *URL) Location() *Location { return n.Loc }
-
-func (n *URL) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"value", n.Value},
-	)
-}
-
-func urlNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Url",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateURL,
-		Clone:           cloneURL,
-		FromPlainObject: fromPlainObjectURL,
-	}
-}
-
-func cloneURL(node Node, _ func(Node) Node) Node {
-	c := *node.(*URL)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectURL(r *PlainObjectReader, object map[string]any) Node {
-	return &URL{
-		Loc:   r.Location(object),
-		Value: r.String(object, "value"),
-	}
+	Value string `css:"value,string"`
 }
 
 // URL parses <url-token> | <function-token> <string> ) (upstream Url).

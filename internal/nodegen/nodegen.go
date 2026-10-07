@@ -448,8 +448,19 @@ func (t fieldType) String() string {
 	}
 }
 
+// lowerFirst lower-cases the leading initialism or letter of s: CDC, cdc;
+// IDSelector, idSelector; AnPlusB, anPlusB.
 func lowerFirst(s string) string {
-	return strings.ToLower(s[:1]) + s[1:]
+	upper := strings.IndexFunc(s, func(r rune) bool { return r < 'A' || r > 'Z' })
+	switch {
+	case upper < 0:
+		return strings.ToLower(s)
+	case upper > 1:
+		upper--
+	default:
+		upper = 1
+	}
+	return strings.ToLower(s[:upper]) + s[upper:]
 }
 
 func writeNodeType(buf *bytes.Buffer, t nodeType) {

@@ -106,49 +106,14 @@ func consumeB(p *Parser) string {
 }
 
 // AnPlusB is the An+B microsyntax https://www.w3.org/TR/css-syntax-3/#anb
+//
+//csstree:node
 type AnPlusB struct {
 	Loc *Location
 	// A is the coefficient of n; "" is upstream null (no n).
-	A string
+	A string `css:"a,string|null"`
 	// B is the constant; "" is upstream null (no constant).
-	B string
-}
-
-func (n *AnPlusB) Type() string        { return "AnPlusB" }
-func (n *AnPlusB) Location() *Location { return n.Loc }
-
-func (n *AnPlusB) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"a", nullableString(n.A)},
-		jsonField{"b", nullableString(n.B)},
-	)
-}
-
-func anPlusBNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "AnPlusB",
-		Structure: []StructureField{
-			{Name: "a", Types: []FieldType{stringField(), nullField()}},
-			{Name: "b", Types: []FieldType{stringField(), nullField()}},
-		},
-		Generate:        generateAnPlusB,
-		Clone:           cloneAnPlusB,
-		FromPlainObject: fromPlainObjectAnPlusB,
-	}
-}
-
-func cloneAnPlusB(node Node, _ func(Node) Node) Node {
-	c := *node.(*AnPlusB)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectAnPlusB(r *PlainObjectReader, object map[string]any) Node {
-	return &AnPlusB{
-		Loc: r.Location(object),
-		A:   r.String(object, "a"),
-		B:   r.String(object, "b"),
-	}
+	B string `css:"b,string|null"`
 }
 
 // AnPlusB parses an An+B value.

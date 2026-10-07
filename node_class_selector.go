@@ -5,43 +5,11 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // ClassSelector is '.' ident.
+//
+//csstree:node
 type ClassSelector struct {
 	Loc  *Location
-	Name string
-}
-
-func (n *ClassSelector) Type() string        { return "ClassSelector" }
-func (n *ClassSelector) Location() *Location { return n.Loc }
-
-func (n *ClassSelector) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"name", n.Name},
-	)
-}
-
-func classSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "ClassSelector",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateClassSelector,
-		Clone:           cloneClassSelector,
-		FromPlainObject: fromPlainObjectClassSelector,
-	}
-}
-
-func cloneClassSelector(node Node, _ func(Node) Node) Node {
-	c := *node.(*ClassSelector)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectClassSelector(r *PlainObjectReader, object map[string]any) Node {
-	return &ClassSelector{
-		Loc:  r.Location(object),
-		Name: r.String(object, "name"),
-	}
+	Name string `css:"name,string"`
 }
 
 // ClassSelector parses a class selector.

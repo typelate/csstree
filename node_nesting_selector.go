@@ -5,37 +5,10 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // NestingSelector is the & selector.
+//
+//csstree:node
 type NestingSelector struct {
 	Loc *Location
-}
-
-func (n *NestingSelector) Type() string        { return "NestingSelector" }
-func (n *NestingSelector) Location() *Location { return n.Loc }
-
-func (n *NestingSelector) MarshalJSON() ([]byte, error) {
-	return marshalNode(n)
-}
-
-func nestingSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name:            "NestingSelector",
-		Structure:       []StructureField{},
-		Generate:        generateNestingSelector,
-		Clone:           cloneNestingSelector,
-		FromPlainObject: fromPlainObjectNestingSelector,
-	}
-}
-
-func cloneNestingSelector(node Node, _ func(Node) Node) Node {
-	c := *node.(*NestingSelector)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectNestingSelector(r *PlainObjectReader, object map[string]any) Node {
-	return &NestingSelector{
-		Loc: r.Location(object),
-	}
 }
 
 // NestingSelector parses &.

@@ -2,6 +2,43 @@
 
 package csstree
 
+func (n *AnPlusB) Type() string        { return "AnPlusB" }
+func (n *AnPlusB) Location() *Location { return n.Loc }
+
+func (n *AnPlusB) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"a", nullableString(n.A)},
+		jsonField{"b", nullableString(n.B)},
+	)
+}
+
+func anPlusBNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "AnPlusB",
+		Structure: []StructureField{
+			{Name: "a", Types: []FieldType{stringField(), nullField()}},
+			{Name: "b", Types: []FieldType{stringField(), nullField()}},
+		},
+		Generate:        generateAnPlusB,
+		Clone:           cloneAnPlusB,
+		FromPlainObject: fromPlainObjectAnPlusB,
+	}
+}
+
+func cloneAnPlusB(node Node, _ func(Node) Node) Node {
+	c := *node.(*AnPlusB)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectAnPlusB(r *PlainObjectReader, object map[string]any) Node {
+	return &AnPlusB{
+		Loc: r.Location(object),
+		A:   r.String(object, "a"),
+		B:   r.String(object, "b"),
+	}
+}
+
 func (n *Block) Type() string        { return "Block" }
 func (n *Block) Location() *Location { return n.Loc }
 
@@ -41,6 +78,504 @@ func fromPlainObjectBlock(r *PlainObjectReader, object map[string]any) Node {
 	return &Block{
 		Loc:      r.Location(object),
 		Children: r.List(object, "children"),
+	}
+}
+
+func (n *CDC) Type() string        { return "CDC" }
+func (n *CDC) Location() *Location { return n.Loc }
+
+func (n *CDC) MarshalJSON() ([]byte, error) {
+	return marshalNode(n)
+}
+
+func cdcNodeType() NodeConfig {
+	return NodeConfig{
+		Name:            "CDC",
+		Structure:       []StructureField{},
+		Generate:        generateCDC,
+		Clone:           cloneCDC,
+		FromPlainObject: fromPlainObjectCDC,
+	}
+}
+
+func cloneCDC(node Node, _ func(Node) Node) Node {
+	c := *node.(*CDC)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectCDC(r *PlainObjectReader, object map[string]any) Node {
+	return &CDC{
+		Loc: r.Location(object),
+	}
+}
+
+func (n *CDO) Type() string        { return "CDO" }
+func (n *CDO) Location() *Location { return n.Loc }
+
+func (n *CDO) MarshalJSON() ([]byte, error) {
+	return marshalNode(n)
+}
+
+func cdoNodeType() NodeConfig {
+	return NodeConfig{
+		Name:            "CDO",
+		Structure:       []StructureField{},
+		Generate:        generateCDO,
+		Clone:           cloneCDO,
+		FromPlainObject: fromPlainObjectCDO,
+	}
+}
+
+func cloneCDO(node Node, _ func(Node) Node) Node {
+	c := *node.(*CDO)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectCDO(r *PlainObjectReader, object map[string]any) Node {
+	return &CDO{
+		Loc: r.Location(object),
+	}
+}
+
+func (n *ClassSelector) Type() string        { return "ClassSelector" }
+func (n *ClassSelector) Location() *Location { return n.Loc }
+
+func (n *ClassSelector) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+	)
+}
+
+func classSelectorNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "ClassSelector",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateClassSelector,
+		Clone:           cloneClassSelector,
+		FromPlainObject: fromPlainObjectClassSelector,
+	}
+}
+
+func cloneClassSelector(node Node, _ func(Node) Node) Node {
+	c := *node.(*ClassSelector)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectClassSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &ClassSelector{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
+	}
+}
+
+func (n *Combinator) Type() string        { return "Combinator" }
+func (n *Combinator) Location() *Location { return n.Loc }
+
+func (n *Combinator) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+	)
+}
+
+func combinatorNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Combinator",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateCombinator,
+		Clone:           cloneCombinator,
+		FromPlainObject: fromPlainObjectCombinator,
+	}
+}
+
+func cloneCombinator(node Node, _ func(Node) Node) Node {
+	c := *node.(*Combinator)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectCombinator(r *PlainObjectReader, object map[string]any) Node {
+	return &Combinator{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
+	}
+}
+
+func (n *Comment) Type() string        { return "Comment" }
+func (n *Comment) Location() *Location { return n.Loc }
+
+func (n *Comment) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+	)
+}
+
+func commentNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Comment",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateComment,
+		Clone:           cloneComment,
+		FromPlainObject: fromPlainObjectComment,
+	}
+}
+
+func cloneComment(node Node, _ func(Node) Node) Node {
+	c := *node.(*Comment)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectComment(r *PlainObjectReader, object map[string]any) Node {
+	return &Comment{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
+	}
+}
+
+func (n *Dimension) Type() string        { return "Dimension" }
+func (n *Dimension) Location() *Location { return n.Loc }
+
+func (n *Dimension) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+		jsonField{"unit", n.Unit},
+	)
+}
+
+func dimensionNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Dimension",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+			{Name: "unit", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateDimension,
+		Clone:           cloneDimension,
+		FromPlainObject: fromPlainObjectDimension,
+	}
+}
+
+func cloneDimension(node Node, _ func(Node) Node) Node {
+	c := *node.(*Dimension)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectDimension(r *PlainObjectReader, object map[string]any) Node {
+	return &Dimension{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
+		Unit:  r.String(object, "unit"),
+	}
+}
+
+func (n *Hash) Type() string        { return "Hash" }
+func (n *Hash) Location() *Location { return n.Loc }
+
+func (n *Hash) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+	)
+}
+
+func hashNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Hash",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateHash,
+		Clone:           cloneHash,
+		FromPlainObject: fromPlainObjectHash,
+	}
+}
+
+func cloneHash(node Node, _ func(Node) Node) Node {
+	c := *node.(*Hash)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectHash(r *PlainObjectReader, object map[string]any) Node {
+	return &Hash{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
+	}
+}
+
+func (n *IDSelector) Type() string        { return "IdSelector" }
+func (n *IDSelector) Location() *Location { return n.Loc }
+
+func (n *IDSelector) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+	)
+}
+
+func idSelectorNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "IdSelector",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateIDSelector,
+		Clone:           cloneIDSelector,
+		FromPlainObject: fromPlainObjectIDSelector,
+	}
+}
+
+func cloneIDSelector(node Node, _ func(Node) Node) Node {
+	c := *node.(*IDSelector)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectIDSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &IDSelector{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
+	}
+}
+
+func (n *Identifier) Type() string        { return "Identifier" }
+func (n *Identifier) Location() *Location { return n.Loc }
+
+func (n *Identifier) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+	)
+}
+
+func identifierNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Identifier",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateIdentifier,
+		Clone:           cloneIdentifier,
+		FromPlainObject: fromPlainObjectIdentifier,
+	}
+}
+
+func cloneIdentifier(node Node, _ func(Node) Node) Node {
+	c := *node.(*Identifier)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectIdentifier(r *PlainObjectReader, object map[string]any) Node {
+	return &Identifier{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
+	}
+}
+
+func (n *Layer) Type() string        { return "Layer" }
+func (n *Layer) Location() *Location { return n.Loc }
+
+func (n *Layer) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+	)
+}
+
+func layerNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Layer",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateLayer,
+		Clone:           cloneLayer,
+		FromPlainObject: fromPlainObjectLayer,
+	}
+}
+
+func cloneLayer(node Node, _ func(Node) Node) Node {
+	c := *node.(*Layer)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectLayer(r *PlainObjectReader, object map[string]any) Node {
+	return &Layer{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
+	}
+}
+
+func (n *NestingSelector) Type() string        { return "NestingSelector" }
+func (n *NestingSelector) Location() *Location { return n.Loc }
+
+func (n *NestingSelector) MarshalJSON() ([]byte, error) {
+	return marshalNode(n)
+}
+
+func nestingSelectorNodeType() NodeConfig {
+	return NodeConfig{
+		Name:            "NestingSelector",
+		Structure:       []StructureField{},
+		Generate:        generateNestingSelector,
+		Clone:           cloneNestingSelector,
+		FromPlainObject: fromPlainObjectNestingSelector,
+	}
+}
+
+func cloneNestingSelector(node Node, _ func(Node) Node) Node {
+	c := *node.(*NestingSelector)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectNestingSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &NestingSelector{
+		Loc: r.Location(object),
+	}
+}
+
+func (n *Number) Type() string        { return "Number" }
+func (n *Number) Location() *Location { return n.Loc }
+
+func (n *Number) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+	)
+}
+
+func numberNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Number",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateNumber,
+		Clone:           cloneNumber,
+		FromPlainObject: fromPlainObjectNumber,
+	}
+}
+
+func cloneNumber(node Node, _ func(Node) Node) Node {
+	c := *node.(*Number)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectNumber(r *PlainObjectReader, object map[string]any) Node {
+	return &Number{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
+	}
+}
+
+func (n *Operator) Type() string        { return "Operator" }
+func (n *Operator) Location() *Location { return n.Loc }
+
+func (n *Operator) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+	)
+}
+
+func operatorNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Operator",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateOperator,
+		Clone:           cloneOperator,
+		FromPlainObject: fromPlainObjectOperator,
+	}
+}
+
+func cloneOperator(node Node, _ func(Node) Node) Node {
+	c := *node.(*Operator)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectOperator(r *PlainObjectReader, object map[string]any) Node {
+	return &Operator{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
+	}
+}
+
+func (n *Percentage) Type() string        { return "Percentage" }
+func (n *Percentage) Location() *Location { return n.Loc }
+
+func (n *Percentage) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+	)
+}
+
+func percentageNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Percentage",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+		},
+		Generate:        generatePercentage,
+		Clone:           clonePercentage,
+		FromPlainObject: fromPlainObjectPercentage,
+	}
+}
+
+func clonePercentage(node Node, _ func(Node) Node) Node {
+	c := *node.(*Percentage)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectPercentage(r *PlainObjectReader, object map[string]any) Node {
+	return &Percentage{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
+	}
+}
+
+func (n *Raw) Type() string        { return "Raw" }
+func (n *Raw) Location() *Location { return n.Loc }
+
+func (n *Raw) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+	)
+}
+
+func rawNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Raw",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateRaw,
+		Clone:           cloneRaw,
+		FromPlainObject: fromPlainObjectRaw,
+	}
+}
+
+func cloneRaw(node Node, _ func(Node) Node) Node {
+	c := *node.(*Raw)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectRaw(r *PlainObjectReader, object map[string]any) Node {
+	return &Raw{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }
 
@@ -94,5 +629,175 @@ func fromPlainObjectRule(r *PlainObjectReader, object map[string]any) Node {
 		Loc:     r.Location(object),
 		Prelude: r.Node(object, "prelude"),
 		Block:   PlainObjectNode[*Block](r, object, "block"),
+	}
+}
+
+func (n *String) Type() string        { return "String" }
+func (n *String) Location() *Location { return n.Loc }
+
+func (n *String) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+	)
+}
+
+func stringNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "String",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateString,
+		Clone:           cloneString,
+		FromPlainObject: fromPlainObjectString,
+	}
+}
+
+func cloneString(node Node, _ func(Node) Node) Node {
+	c := *node.(*String)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectString(r *PlainObjectReader, object map[string]any) Node {
+	return &String{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
+	}
+}
+
+func (n *TypeSelector) Type() string        { return "TypeSelector" }
+func (n *TypeSelector) Location() *Location { return n.Loc }
+
+func (n *TypeSelector) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+	)
+}
+
+func typeSelectorNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "TypeSelector",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateTypeSelector,
+		Clone:           cloneTypeSelector,
+		FromPlainObject: fromPlainObjectTypeSelector,
+	}
+}
+
+func cloneTypeSelector(node Node, _ func(Node) Node) Node {
+	c := *node.(*TypeSelector)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectTypeSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &TypeSelector{
+		Loc:  r.Location(object),
+		Name: r.String(object, "name"),
+	}
+}
+
+func (n *UnicodeRange) Type() string        { return "UnicodeRange" }
+func (n *UnicodeRange) Location() *Location { return n.Loc }
+
+func (n *UnicodeRange) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+	)
+}
+
+func unicodeRangeNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "UnicodeRange",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateUnicodeRange,
+		Clone:           cloneUnicodeRange,
+		FromPlainObject: fromPlainObjectUnicodeRange,
+	}
+}
+
+func cloneUnicodeRange(node Node, _ func(Node) Node) Node {
+	c := *node.(*UnicodeRange)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectUnicodeRange(r *PlainObjectReader, object map[string]any) Node {
+	return &UnicodeRange{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
+	}
+}
+
+func (n *URL) Type() string        { return "Url" }
+func (n *URL) Location() *Location { return n.Loc }
+
+func (n *URL) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+	)
+}
+
+func urlNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Url",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateURL,
+		Clone:           cloneURL,
+		FromPlainObject: fromPlainObjectURL,
+	}
+}
+
+func cloneURL(node Node, _ func(Node) Node) Node {
+	c := *node.(*URL)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectURL(r *PlainObjectReader, object map[string]any) Node {
+	return &URL{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
+	}
+}
+
+func (n *WhiteSpace) Type() string        { return "WhiteSpace" }
+func (n *WhiteSpace) Location() *Location { return n.Loc }
+
+func (n *WhiteSpace) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"value", n.Value},
+	)
+}
+
+func whiteSpaceNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "WhiteSpace",
+		Structure: []StructureField{
+			{Name: "value", Types: []FieldType{stringField()}},
+		},
+		Generate:        generateWhiteSpace,
+		Clone:           cloneWhiteSpace,
+		FromPlainObject: fromPlainObjectWhiteSpace,
+	}
+}
+
+func cloneWhiteSpace(node Node, _ func(Node) Node) Node {
+	c := *node.(*WhiteSpace)
+	c.Loc = cloneLocation(c.Loc)
+	return &c
+}
+
+func fromPlainObjectWhiteSpace(r *PlainObjectReader, object map[string]any) Node {
+	return &WhiteSpace{
+		Loc:   r.Location(object),
+		Value: r.String(object, "value"),
 	}
 }

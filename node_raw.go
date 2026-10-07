@@ -18,43 +18,11 @@ func getOffsetExcludeWS(p *Parser) int {
 }
 
 // Raw is source text kept as is.
+//
+//csstree:node
 type Raw struct {
 	Loc   *Location
-	Value string
-}
-
-func (n *Raw) Type() string        { return "Raw" }
-func (n *Raw) Location() *Location { return n.Loc }
-
-func (n *Raw) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"value", n.Value},
-	)
-}
-
-func rawNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Raw",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateRaw,
-		Clone:           cloneRaw,
-		FromPlainObject: fromPlainObjectRaw,
-	}
-}
-
-func cloneRaw(node Node, _ func(Node) Node) Node {
-	c := *node.(*Raw)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectRaw(r *PlainObjectReader, object map[string]any) Node {
-	return &Raw{
-		Loc:   r.Location(object),
-		Value: r.String(object, "value"),
-	}
+	Value string `css:"value,string"`
 }
 
 // Raw consumes tokens up to the end of the enclosing block, or until

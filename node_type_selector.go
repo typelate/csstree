@@ -14,43 +14,11 @@ func eatIdentifierOrAsterisk(p *Parser) {
 }
 
 // TypeSelector is a type (element) selector, with an optional namespace.
+//
+//csstree:node
 type TypeSelector struct {
 	Loc  *Location
-	Name string
-}
-
-func (n *TypeSelector) Type() string        { return "TypeSelector" }
-func (n *TypeSelector) Location() *Location { return n.Loc }
-
-func (n *TypeSelector) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"name", n.Name},
-	)
-}
-
-func typeSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "TypeSelector",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateTypeSelector,
-		Clone:           cloneTypeSelector,
-		FromPlainObject: fromPlainObjectTypeSelector,
-	}
-}
-
-func cloneTypeSelector(node Node, _ func(Node) Node) Node {
-	c := *node.(*TypeSelector)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectTypeSelector(r *PlainObjectReader, object map[string]any) Node {
-	return &TypeSelector{
-		Loc:  r.Location(object),
-		Name: r.String(object, "name"),
-	}
+	Name string `css:"name,string"`
 }
 
 // TypeSelector parses

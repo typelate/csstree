@@ -148,43 +148,11 @@ func scanUnicodeRange(p *Parser) {
 }
 
 // UnicodeRange is a unicode range, e.g. U+0025-00FF.
+//
+//csstree:node
 type UnicodeRange struct {
 	Loc   *Location
-	Value string
-}
-
-func (n *UnicodeRange) Type() string        { return "UnicodeRange" }
-func (n *UnicodeRange) Location() *Location { return n.Loc }
-
-func (n *UnicodeRange) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"value", n.Value},
-	)
-}
-
-func unicodeRangeNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "UnicodeRange",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateUnicodeRange,
-		Clone:           cloneUnicodeRange,
-		FromPlainObject: fromPlainObjectUnicodeRange,
-	}
-}
-
-func cloneUnicodeRange(node Node, _ func(Node) Node) Node {
-	c := *node.(*UnicodeRange)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectUnicodeRange(r *PlainObjectReader, object map[string]any) Node {
-	return &UnicodeRange{
-		Loc:   r.Location(object),
-		Value: r.String(object, "value"),
-	}
+	Value string `css:"value,string"`
 }
 
 // UnicodeRange parses a unicode range.

@@ -5,37 +5,10 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // CDC is a --> token at the top level of a style sheet.
+//
+//csstree:node
 type CDC struct {
 	Loc *Location
-}
-
-func (n *CDC) Type() string        { return "CDC" }
-func (n *CDC) Location() *Location { return n.Loc }
-
-func (n *CDC) MarshalJSON() ([]byte, error) {
-	return marshalNode(n)
-}
-
-func cdcNodeType() NodeConfig {
-	return NodeConfig{
-		Name:            "CDC",
-		Structure:       []StructureField{},
-		Generate:        generateCDC,
-		Clone:           cloneCDC,
-		FromPlainObject: fromPlainObjectCDC,
-	}
-}
-
-func cloneCDC(node Node, _ func(Node) Node) Node {
-	c := *node.(*CDC)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectCDC(r *PlainObjectReader, object map[string]any) Node {
-	return &CDC{
-		Loc: r.Location(object),
-	}
 }
 
 // CDC parses a --> token.

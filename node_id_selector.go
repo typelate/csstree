@@ -5,43 +5,11 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // IDSelector is an id selector, '#' ident (upstream IdSelector).
+//
+//csstree:node name=IdSelector
 type IDSelector struct {
 	Loc  *Location
-	Name string
-}
-
-func (n *IDSelector) Type() string        { return "IdSelector" }
-func (n *IDSelector) Location() *Location { return n.Loc }
-
-func (n *IDSelector) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"name", n.Name},
-	)
-}
-
-func idSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "IdSelector",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateIDSelector,
-		Clone:           cloneIDSelector,
-		FromPlainObject: fromPlainObjectIDSelector,
-	}
-}
-
-func cloneIDSelector(node Node, _ func(Node) Node) Node {
-	c := *node.(*IDSelector)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectIDSelector(r *PlainObjectReader, object map[string]any) Node {
-	return &IDSelector{
-		Loc:  r.Location(object),
-		Name: r.String(object, "name"),
-	}
+	Name string `css:"name,string"`
 }
 
 // IDSelector parses an id selector (upstream IdSelector).

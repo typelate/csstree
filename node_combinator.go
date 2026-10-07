@@ -6,43 +6,11 @@ import "github.com/typelate/csstree/tokenizer"
 
 // Combinator is a selector combinator: + | > | ~ | || | /deep/ or " " for
 // descendant.
+//
+//csstree:node
 type Combinator struct {
 	Loc  *Location
-	Name string
-}
-
-func (n *Combinator) Type() string        { return "Combinator" }
-func (n *Combinator) Location() *Location { return n.Loc }
-
-func (n *Combinator) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"name", n.Name},
-	)
-}
-
-func combinatorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Combinator",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateCombinator,
-		Clone:           cloneCombinator,
-		FromPlainObject: fromPlainObjectCombinator,
-	}
-}
-
-func cloneCombinator(node Node, _ func(Node) Node) Node {
-	c := *node.(*Combinator)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectCombinator(r *PlainObjectReader, object map[string]any) Node {
-	return &Combinator{
-		Loc:  r.Location(object),
-		Name: r.String(object, "name"),
-	}
+	Name string `css:"name,string"`
 }
 
 // Combinator parses + | > | ~ | || | /deep/

@@ -6,43 +6,11 @@ import "github.com/typelate/csstree/tokenizer"
 
 // Comment is a /* */ comment kept in the AST (exclamation comments at the
 // top level of a style sheet).
+//
+//csstree:node
 type Comment struct {
 	Loc   *Location
-	Value string
-}
-
-func (n *Comment) Type() string        { return "Comment" }
-func (n *Comment) Location() *Location { return n.Loc }
-
-func (n *Comment) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"value", n.Value},
-	)
-}
-
-func commentNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Comment",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateComment,
-		Clone:           cloneComment,
-		FromPlainObject: fromPlainObjectComment,
-	}
-}
-
-func cloneComment(node Node, _ func(Node) Node) Node {
-	c := *node.(*Comment)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectComment(r *PlainObjectReader, object map[string]any) Node {
-	return &Comment{
-		Loc:   r.Location(object),
-		Value: r.String(object, "value"),
-	}
+	Value string `css:"value,string"`
 }
 
 // Comment parses a comment token.

@@ -5,43 +5,11 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // WhiteSpace is whitespace kept in a value.
+//
+//csstree:node
 type WhiteSpace struct {
 	Loc   *Location
-	Value string
-}
-
-func (n *WhiteSpace) Type() string        { return "WhiteSpace" }
-func (n *WhiteSpace) Location() *Location { return n.Loc }
-
-func (n *WhiteSpace) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"value", n.Value},
-	)
-}
-
-func whiteSpaceNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "WhiteSpace",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateWhiteSpace,
-		Clone:           cloneWhiteSpace,
-		FromPlainObject: fromPlainObjectWhiteSpace,
-	}
-}
-
-func cloneWhiteSpace(node Node, _ func(Node) Node) Node {
-	c := *node.(*WhiteSpace)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectWhiteSpace(r *PlainObjectReader, object map[string]any) Node {
-	return &WhiteSpace{
-		Loc:   r.Location(object),
-		Value: r.String(object, "value"),
-	}
+	Value string `css:"value,string"`
 }
 
 // WhiteSpace parses a whitespace token. Upstream returns one frozen shared

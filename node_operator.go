@@ -3,43 +3,11 @@
 package csstree
 
 // Operator is '/' | '*' | ',' | ':' | '+' | '-'
+//
+//csstree:node
 type Operator struct {
 	Loc   *Location
-	Value string
-}
-
-func (n *Operator) Type() string        { return "Operator" }
-func (n *Operator) Location() *Location { return n.Loc }
-
-func (n *Operator) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"value", n.Value},
-	)
-}
-
-func operatorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Operator",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateOperator,
-		Clone:           cloneOperator,
-		FromPlainObject: fromPlainObjectOperator,
-	}
-}
-
-func cloneOperator(node Node, _ func(Node) Node) Node {
-	c := *node.(*Operator)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectOperator(r *PlainObjectReader, object map[string]any) Node {
-	return &Operator{
-		Loc:   r.Location(object),
-		Value: r.String(object, "value"),
-	}
+	Value string `css:"value,string"`
 }
 
 // Operator parses the current token as an operator.

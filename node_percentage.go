@@ -5,43 +5,11 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // Percentage is a percentage; Value excludes the % sign.
+//
+//csstree:node
 type Percentage struct {
 	Loc   *Location
-	Value string
-}
-
-func (n *Percentage) Type() string        { return "Percentage" }
-func (n *Percentage) Location() *Location { return n.Loc }
-
-func (n *Percentage) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"value", n.Value},
-	)
-}
-
-func percentageNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Percentage",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generatePercentage,
-		Clone:           clonePercentage,
-		FromPlainObject: fromPlainObjectPercentage,
-	}
-}
-
-func clonePercentage(node Node, _ func(Node) Node) Node {
-	c := *node.(*Percentage)
-	c.Loc = cloneLocation(c.Loc)
-	return &c
-}
-
-func fromPlainObjectPercentage(r *PlainObjectReader, object map[string]any) Node {
-	return &Percentage{
-		Loc:   r.Location(object),
-		Value: r.String(object, "value"),
-	}
+	Value string `css:"value,string"`
 }
 
 // Percentage parses a percentage token.
