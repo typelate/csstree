@@ -12,10 +12,11 @@ import (
 	"github.com/typelate/csstree/internal/jsnum"
 )
 
-// StructureWarning is a problem CheckStructure found in a node: Node is the
-// node's plain object form (see ToPlainObject).
+// StructureWarning is a problem CheckStructure found in a node.
 type StructureWarning struct {
-	Node    any
+	// Node is the node's plain object form (see ToPlainObject).
+	Node any
+	// Message describes the problem.
 	Message string
 }
 

@@ -14,25 +14,24 @@ import (
 	"github.com/typelate/csstree/definitionsyntax"
 )
 
-// Errors the lexer's Match methods return where upstream uses a plain
-// Error.
+// Errors the lexer's Match methods return for values they do not match at
+// all.
 var (
-	// ErrVarNotSupported is returned for a value containing var()
-	// (upstream "Matching for a tree with var() is not supported").
+	// ErrVarNotSupported is returned for a value containing var(), which
+	// the lexer cannot match.
 	ErrVarNotSupported = errors.New("csstree: matching a value with var() is not supported")
 	// ErrCustomProperty is returned for a custom property (--*), whose
-	// value is not matched (upstream "Lexer matching doesn't applicable
-	// for custom properties").
+	// value has no syntax to match.
 	ErrCustomProperty = errors.New("csstree: custom property values are not matched")
 	// ErrNotDeclaration is returned by MatchDeclaration for a node that is
-	// not a Declaration (upstream "Not a Declaration node").
+	// not a *Declaration.
 	ErrNotDeclaration = errors.New("csstree: not a Declaration node")
 )
 
 // AtruleSyntaxError reports an at-rule prelude or descriptor that the
-// at-rule does not allow (upstream a built-in SyntaxError).
+// at-rule does not allow.
 type AtruleSyntaxError struct {
-	// Message is upstream's message, such as "At-rule `@media` should
+	// Message describes the problem, such as "At-rule `@media` should
 	// contain a prelude".
 	Message string
 }
@@ -50,8 +49,7 @@ type MatchSyntax interface {
 	Type() string
 }
 
-// SyntaxKind is the kind of a syntax of the lexer (upstream a descriptor's
-// type).
+// SyntaxKind is the kind of a syntax of the lexer.
 type SyntaxKind string
 
 // The kinds of syntax of the lexer.
@@ -63,10 +61,12 @@ const (
 	KindAtruleDescriptor SyntaxKind = "AtruleDescriptor"
 )
 
-// SyntaxRef names a syntax of the lexer (upstream a descriptor's ref
-// {type, name}).
+// SyntaxRef names a syntax of the lexer.
 type SyntaxRef struct {
+	// Kind is the kind of syntax.
 	Kind SyntaxKind
+	// Name is the name of the type, property or descriptor, or of the
+	// at-rule for KindAtrule and KindAtrulePrelude.
 	Name string
 }
 
@@ -101,22 +101,27 @@ func SyntaxName(syntax MatchSyntax) string {
 // MatchNode is a node of a match tree. A syntax node has a non-nil Match
 // (possibly empty) holding what matched inside Syntax; a token node has a
 // nil Match, the Token text and the AST Node it came from (nil for a
-// string value or whitespace the generator added). Syntax is nil where
-// upstream has null (e.g. tokens matched by generic types).
+// string value or whitespace the generator added). Syntax is nil for
+// tokens a generic type matched.
 type MatchNode struct {
+	// Syntax is the syntax this node matched.
 	Syntax MatchSyntax
-	Match  []*MatchNode
-	Token  string
-	Node   Node
+	// Match holds the nodes matched inside Syntax; nil for a token node.
+	Match []*MatchNode
+	// Token is the text of a token node.
+	Token string
+	// Node is the AST node a token node came from.
+	Node Node
 }
 
-// MatchResult is the result of a match (upstream buildMatchResult without
-// its error). The Match methods return a MatchResult even with an error,
+// MatchResult is the result of a match. The Match methods return a MatchResult even with an error,
 // as io.Reader returns n with one, so that Iterations can be read; Matched
 // is then nil. Matched is also nil, without an error, for an at-rule
 // without a prelude matched against no prelude.
 type MatchResult struct {
-	Matched    *MatchNode
+	// Matched is the root of the match tree.
+	Matched *MatchNode
+	// Iterations is the number of steps the matcher took.
 	Iterations int
 }
 
@@ -205,7 +210,7 @@ func (a *AtruleSyntax) Descriptors() iter.Seq2[string, *Descriptor] {
 }
 
 // LexerDump is the lexer's configuration with syntaxes as definition
-// syntax text (upstream dump()); its fields have upstream's JSON keys.
+// syntax text. Its JSON is that of upstream's dump().
 type LexerDump struct {
 	Generic         bool                        `json:"generic"`
 	CSSWideKeywords []string                    `json:"cssWideKeywords"`
@@ -217,7 +222,9 @@ type LexerDump struct {
 
 // LexerValidation lists the broken syntaxes Validate found.
 type LexerValidation struct {
-	Errors     []string `json:"errors"`
+	// Errors describe each reference to a missing or broken syntax.
+	Errors []string `json:"errors"`
+	// Types and Properties name the broken types and properties.
 	Types      []string `json:"types"`
 	Properties []string `json:"properties"`
 }
@@ -340,9 +347,9 @@ func matchSyntax(lexer *Lexer, syntax *Descriptor, value matchInput, useCSSWideK
 // and is safe for concurrent use; for other syntaxes, create a lexer with
 // Syntax.NewLexer or fork a syntax with Syntax.Fork.
 //
-// Values to match are ASTs (a nil Node is upstream null); the methods with
+// Values to match are ASTs, where a nil Node is no value; the methods with
 // a String suffix take CSS text instead, which is tokenized rather than
-// parsed (upstream takes either in the same argument).
+// parsed. (Upstream takes either in the same argument.)
 //
 // The Match methods fail with a *SyntaxMatchError for a value that does
 // not match (which unwraps to ErrIterationLimit when the matcher gave up),
@@ -439,7 +446,7 @@ func newLexer(config *Config, syntax *Syntax, structure map[string]*nodeStructur
 // type's Structure describes, with values of the allowed kinds. It checks
 // the plain object form of ast (see ToPlainObject), in which a node is a
 // map and a list an array; the warnings refer to those maps. It returns
-// nil when the structure is correct (upstream false).
+// nil when the structure is correct.
 func (l *Lexer) CheckStructure(ast Node) ([]StructureWarning, error) {
 	plain, err := l.syntax.ToPlainObject(ast)
 	if err != nil {
@@ -1028,8 +1035,8 @@ func (l *Lexer) Type(name string) *Descriptor {
 }
 
 // Validate checks that every syntax refers only to types and properties
-// that exist and are valid themselves. It returns nil when all are valid
-// (upstream null), and an error when a syntax does not parse.
+// that exist and are valid themselves. It returns nil when all are valid,
+// and an error when a syntax does not parse.
 func (l *Lexer) Validate() (*LexerValidation, error) {
 	syntaxRef := func(name string, isType bool) string {
 		if isType {

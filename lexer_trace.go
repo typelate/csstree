@@ -23,7 +23,7 @@ func isTraceSyntax(syntax MatchSyntax) bool {
 
 // Trace returns the syntaxes that matched node, outermost first, keeping
 // the Type, Property and Keyword ones. It returns nil when node is not in
-// the match (upstream null), and an empty slice when it is but no such
+// the match, and an empty slice when it is but no such
 // syntax led to it.
 func (r *MatchResult) Trace(node Node) []MatchSyntax {
 	if r.Matched == nil {

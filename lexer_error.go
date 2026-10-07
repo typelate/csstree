@@ -153,9 +153,7 @@ func buildLoc(position tokenizer.Position, extra string) tokenizer.Position {
 
 // SyntaxReferenceError reports a reference to an unknown at-rule,
 // descriptor, property or type, by a Match or Check method of Lexer or by
-// a syntax being matched, or a nil descriptor (upstream
-// createCustomError('SyntaxReferenceError', ...) and the "Bad syntax
-// reference" Error the matcher throws).
+// a syntax being matched, or a nil descriptor.
 type SyntaxReferenceError struct {
 	// Kind is the kind of syntax that is unknown: KindAtrule (whose
 	// Reference starts with "@"), KindAtruleDescriptor, KindProperty or
@@ -163,7 +161,7 @@ type SyntaxReferenceError struct {
 	Kind SyntaxKind
 	// Reference is the name that is unknown ("" when there is none).
 	Reference string
-	// Message is upstream's message, such as "Unknown property `foo`" or
+	// Message describes the error, such as "Unknown property `foo`" or
 	// "Bad syntax reference: <foo>".
 	Message string
 }
@@ -198,28 +196,26 @@ func newBadSyntaxReferenceError(kind SyntaxKind, name string) *SyntaxReferenceEr
 	}
 }
 
-// Error returns Message, the same text as upstream's error.message.
+// Error returns Message, which is upstream's error message.
 func (e *SyntaxReferenceError) Error() string {
 	return e.Message
 }
 
 // ErrIterationLimit is what a *SyntaxMatchError unwraps to when the matcher
 // gave up after too many iterations, which a syntax whose alternatives
-// backtrack exponentially can need (upstream logs a warning and reports
-// the mismatch).
+// backtrack exponentially can need.
 var ErrIterationLimit = errors.New("csstree: maximum match iterations exceeded")
 
-// SyntaxMatchError reports a value that does not match a syntax (upstream
-// createCustomError('SyntaxMatchError', ...)). It unwraps to
-// ErrIterationLimit when the matcher gave up.
+// SyntaxMatchError reports a value that does not match a syntax. It
+// unwraps to ErrIterationLimit when the matcher gave up.
 //
 // Offsets and columns count bytes.
 type SyntaxMatchError struct {
 	// Message is RawMessage followed by the syntax, the value and a caret
 	// line pointing at the mismatch.
 	Message string
-	// RawMessage is the reason of the mismatch: "Mismatch", or upstream's
-	// message for ErrIterationLimit.
+	// RawMessage is the reason of the mismatch: "Mismatch", or "Maximum
+	// iteration number exceeded (...)" when the matcher gave up.
 	RawMessage string
 	// Syntax is the definition syntax that was matched ("<generic>" for a
 	// generic type).
@@ -231,8 +227,7 @@ type SyntaxMatchError struct {
 	MismatchOffset int
 	MismatchLength int
 	// Loc is the mismatch's range in the source of the value; Filename is
-	// "<unknown>" when the value has no location. Upstream also copies
-	// Loc.Start's offset, line and column to the error.
+	// "<unknown>" when the value has no location.
 	Loc Location
 
 	err error
@@ -279,7 +274,7 @@ func newSyntaxMatchError(reason exitReason, syntax definitionsyntax.Node, node N
 	return err
 }
 
-// Error returns Message, the same text as upstream's error.message.
+// Error returns Message, which is upstream's error message.
 func (e *SyntaxMatchError) Error() string {
 	return e.Message
 }

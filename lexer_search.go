@@ -13,8 +13,7 @@ type Fragment struct {
 
 // ErrEmptyFragment is returned by the Find*Fragments methods of Lexer for
 // a fragment of a syntax that matched no tokens, such as the empty value
-// of a property that allows one; upstream throws a TypeError reading its
-// first token.
+// of a property that allows one. (Upstream throws a TypeError there.)
 var ErrEmptyFragment = errors.New("csstree: a syntax that matched no tokens has no fragment")
 
 func getFirstMatchNode(matchNode *MatchNode) (Node, error) {
