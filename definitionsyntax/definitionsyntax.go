@@ -3,7 +3,21 @@
 
 // Package definitionsyntax parses, generates and walks CSS value definition
 // syntax, such as `<length> | auto`, the grammar the CSS specifications use
-// to describe property values.
+// to describe property values (CSS Values 4 §2). It is ported from
+// csstree's lib/definition-syntax; package csstree's lexer matches values
+// against the trees it parses.
+//
+// [Parse] returns the syntax as a [*Group] of terms joined by a
+// [Combinator]: [Juxtaposition], [DoubleAmpersand], [DoubleBar] or
+// [SingleBar]. A [Multiplier] repeats a term from Min to Max times; Max is
+// [Unbounded] for `*`, `+`, `#` and `{A,}`, and `{0}` means exactly zero
+// times. A malformed syntax gives a [*SyntaxError].
+//
+// [Generate] turns a tree back into text, and [Walk] visits its nodes. The
+// set of node types is closed: [Node] is implemented only by the pointer
+// types of this package. Walk returns [ErrNilNode] when it meets a nil
+// node. Nodes encode to JSON as upstream's syntax trees do, except for an
+// exact zero Max (see [Multiplier.MarshalJSON]).
 package definitionsyntax
 
 import (

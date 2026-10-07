@@ -1,9 +1,25 @@
 // Ported from lib/tokenizer/index.js.
 
-// Package tokenizer is a port of csstree's tokenizer (lib/tokenizer): a CSS
-// Syntax Module Level 3 tokenizer that reports token types and byte offsets,
-// a TokenStream cursor over the tokens, and the char code helpers the parser
-// and lexer share.
+// Package tokenizer splits CSS text into tokens as CSS Syntax Module Level 3
+// describes. It is the tokenizer of package csstree, ported from csstree's
+// lib/tokenizer.
+//
+// [Tokenize] calls a function for each token with its [TokenType] and the
+// byte offsets of its text. A [TokenStream] holds the tokens of a source
+// and a cursor over them; the csstree parser embeds one. Its
+// [TokenStream.SkipUntilBalanced] skips to the end of a block, asking a
+// [StopFunc] at each token whether to stop there, as a [StopMode] says.
+//
+// Offsets count bytes of the UTF-8 source, not UTF-16 code units as in
+// JavaScript. [OffsetToLocation] converts offsets to lines and columns:
+// [OffsetToLocation.Position] returns a [Position] and
+// [OffsetToLocation.Range] a [Location]. Columns count bytes too.
+//
+// The tokenizer does not copy or rewrite the source. It reads a NUL byte
+// and invalid UTF-8 as U+FFFD, as CSS Syntax preprocessing does, and
+// treats CR, FF and CRLF as newlines. The char code helpers, such as
+// [CharCodeAt], [IsName] and [ConsumeEscaped], are the ones the parser and
+// lexer of package csstree share.
 package tokenizer
 
 import "strings"
