@@ -164,16 +164,6 @@ func charCodeAt(str string, index int) int {
 	return 0
 }
 
-// lowerCaseJS lowercases str as JavaScript's toLowerCase does where it
-// matters to the lexer, which compares the result with ASCII keywords and
-// units: strings.ToLower maps U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE
-// to an ASCII "i", toLowerCase to "i" followed by U+0307 COMBINING DOT
-// ABOVE (SpecialCasing.txt). (toLowerCase also lowercases a final sigma to
-// ς, which no ASCII name contains either way.)
-func lowerCaseJS(str string) string {
-	return strings.ToLower(strings.ReplaceAll(str, "\u0130", "i\u0307"))
-}
-
 func eqStr(actual, expected string) bool {
 	return tokenizer.CmpStr(actual, 0, len(actual), expected)
 }
@@ -444,7 +434,7 @@ func customIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitio
 		return 0
 	}
 
-	name := lowerCaseJS(token.value)
+	name := toLowerCase(token.value)
 
 	// The CSS-wide keywords are not valid <custom-ident>s
 	if eqStrAny(name, cssWideKeywords()) {
@@ -664,7 +654,7 @@ func dimension(units []string) genericFunc {
 				unit = token.value[numberEnd:reverseSolidusOffset]
 			}
 
-			if !unitSet[lowerCaseJS(unit)] {
+			if !unitSet[toLowerCase(unit)] {
 				return 0
 			}
 		}
@@ -889,7 +879,7 @@ func createAttrUnit(units map[string][]string) genericFunc {
 	for _, group := range unitGroups() {
 		if groupUnits, ok := units[group]; ok && groupUnits != nil {
 			for _, unit := range groupUnits {
-				unitSet[lowerCaseJS(unit)] = true
+				unitSet[toLowerCase(unit)] = true
 			}
 		}
 	}
@@ -903,7 +893,7 @@ func createAttrUnit(units map[string][]string) genericFunc {
 			return 1
 		}
 
-		if token.typ == tokenizer.Ident && unitSet[lowerCaseJS(token.value)] {
+		if token.typ == tokenizer.Ident && unitSet[toLowerCase(token.value)] {
 			return 1
 		}
 

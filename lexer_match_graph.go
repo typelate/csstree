@@ -203,7 +203,7 @@ func buildGroupMatchGraph(combinator string, terms []*matchGraphNode, atLeastOne
 					if isFunctionType(term.name) {
 						key = term.name[:len(term.name)-1]
 					}
-					key = lowerCaseJS(key)
+					key = toLowerCase(key)
 					if _, ok := enumMap[key]; !ok {
 						enumMap[key] = term
 						continue
@@ -551,21 +551,21 @@ func buildMatchGraphInternal(node definitionsyntax.Node) (*matchGraphNode, error
 	case *definitionsyntax.Keyword:
 		return &matchGraphNode{
 			typ:    node.Type(),
-			name:   lowerCaseJS(node.Name),
+			name:   toLowerCase(node.Name),
 			syntax: node,
 		}, nil
 
 	case *definitionsyntax.AtKeyword:
 		return &matchGraphNode{
 			typ:    node.Type(),
-			name:   "@" + lowerCaseJS(node.Name),
+			name:   "@" + toLowerCase(node.Name),
 			syntax: node,
 		}, nil
 
 	case *definitionsyntax.Function:
 		return &matchGraphNode{
 			typ:    node.Type(),
-			name:   lowerCaseJS(node.Name) + "(",
+			name:   toLowerCase(node.Name) + "(",
 			syntax: node,
 		}, nil
 

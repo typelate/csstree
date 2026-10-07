@@ -458,7 +458,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 		case "Enum":
 			if token != nil {
-				name := lowerCaseJS(token.value)
+				name := toLowerCase(token.value)
 
 				// drop \0 and \9 hack from keyword name
 				if strings.Contains(name, `\`) {
