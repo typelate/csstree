@@ -549,7 +549,7 @@ func percentage(token *matchToken, _ func(offset int) *matchToken, opts *definit
 // The value <zero> represents a literal number with the value 0. Expressions that merely
 // evaluate to a <number> with the value 0 (for example, calc(0)) do not match <zero>;
 // only literal <number-token>s do.
-func zero(next genericFunc) genericFunc {
+func zeroOr(next genericFunc) genericFunc {
 	if next == nil {
 		next = func(*matchToken, func(offset int) *matchToken, *definitionsyntax.Range) int {
 			return 0
@@ -665,7 +665,7 @@ func productionTypes() []genericType {
 		{"percentage", mathType(percentage, percentageFunctionNames())},
 
 		// numeric
-		{"zero", zero(nil)},
+		{"zero", zeroOr(nil)},
 		{"number", mathType(number, numberFunctionNames())},
 		{"integer", mathType(integer, numberFunctionNames())},
 
@@ -696,7 +696,7 @@ func unitGroups() []string {
 }
 
 // dimensions types depend on units set
-func createDemensionTypes(units map[string][]string) []genericType {
+func createDimensionTypes(units map[string][]string) []genericType {
 	angle := units["angle"]
 	decibel := units["decibel"]
 	frequency := units["frequency"]
@@ -712,7 +712,7 @@ func createDemensionTypes(units map[string][]string) []genericType {
 		{"decibel", mathType(dimension(nonNilStrings(decibel)), dimensionFunctionNames())},
 		{"frequency", mathType(dimension(nonNilStrings(frequency)), dimensionFunctionNames())},
 		{"flex", mathType(dimension(nonNilStrings(flex)), dimensionFunctionNames())},
-		{"length", mathType(zero(dimension(nonNilStrings(length))), dimensionFunctionNames())},
+		{"length", mathType(zeroOr(dimension(nonNilStrings(length))), dimensionFunctionNames())},
 		{"resolution", mathType(dimension(nonNilStrings(resolution)), dimensionFunctionNames())},
 		{"semitones", mathType(dimension(nonNilStrings(semitones)), dimensionFunctionNames())},
 		{"time", mathType(dimension(nonNilStrings(time)), dimensionFunctionNames())},
@@ -762,7 +762,7 @@ func createGenericTypes(units map[string][]string) []genericType {
 	return slices.Concat(
 		tokenTypes(),
 		productionTypes(),
-		createDemensionTypes(units),
+		createDimensionTypes(units),
 		[]genericType{{"attr-unit", createAttrUnit(units)}},
 	)
 }

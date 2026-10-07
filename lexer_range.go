@@ -115,7 +115,7 @@ func compareToBound(num float64, unit string, bound *definitionsyntax.RangeBound
 		return numRat.Mul(numRat, numFactor.ratio).Cmp(boundRat.Mul(boundRat, boundFactor.ratio)), true
 	}
 
-	numSign, boundSign := sign(num), sign(bound.Value)
+	numSign, boundSign := signOf(num), signOf(bound.Value)
 	if numSign != boundSign {
 		return cmp.Compare(numSign, boundSign), true
 	}
@@ -130,7 +130,8 @@ func decimalRat(x float64) (*big.Rat, bool) {
 	return new(big.Rat).SetString(strconv.FormatFloat(x, 'g', -1, 64))
 }
 
-func sign(x float64) int {
+// signOf returns -1, 0 or +1 as x is negative, zero or positive.
+func signOf(x float64) int {
 	switch {
 	case x < 0:
 		return -1

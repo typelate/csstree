@@ -408,8 +408,9 @@ type calcParser struct {
 	units calcUnitSource
 }
 
-// tok returns the token at pos after skipping comments, nil at the end.
-func (p *calcParser) tok() *matchToken {
+// skipComments advances pos past comments and returns the token there,
+// nil at the end.
+func (p *calcParser) skipComments() *matchToken {
 	for {
 		t := p.next(p.pos)
 		if t == nil || t.typ != tokenizer.Comment {
@@ -451,7 +452,7 @@ func (p *calcParser) leave() {
 // sum; the end of the input closes it too (CSS Syntax 3 §5.4.9).
 func (p *calcParser) closeParenthesis() bool {
 	p.skipWhiteSpace()
-	t := p.tok()
+	t := p.skipComments()
 	if t == nil {
 		return true
 	}
@@ -473,7 +474,7 @@ func (p *calcParser) sum() (calcType, bool) {
 	for {
 		start := p.pos
 		spaceBefore := p.skipWhiteSpace()
-		op := p.tok()
+		op := p.skipComments()
 		if !p.isDelim(op, "+") && !p.isDelim(op, "-") {
 			p.pos = start
 			return t, true
@@ -506,7 +507,7 @@ func (p *calcParser) product() (calcType, bool) {
 	for {
 		start := p.pos
 		p.skipWhiteSpace()
-		op := p.tok()
+		op := p.skipComments()
 		divide := p.isDelim(op, "/")
 		if !divide && !p.isDelim(op, "*") {
 			p.pos = start
@@ -532,7 +533,7 @@ func (p *calcParser) product() (calcType, bool) {
 // <calc-keyword> | ( <calc-sum> ), where the numeric types include math
 // functions.
 func (p *calcParser) value() (calcType, bool) {
-	t := p.tok()
+	t := p.skipComments()
 	if t == nil {
 		return calcType{}, false
 	}
@@ -623,7 +624,7 @@ func (p *calcParser) arguments(isKeyword func(index int, keyword string) bool) (
 		}
 
 		p.skipWhiteSpace()
-		t := p.tok()
+		t := p.skipComments()
 		switch {
 		case t == nil:
 			return args, true
@@ -641,7 +642,7 @@ func (p *calcParser) arguments(isKeyword func(index int, keyword string) bool) (
 // loneKeyword consumes an identifier followed by a comma, a ) or the end
 // of the input, and returns it lowercased.
 func (p *calcParser) loneKeyword() (string, bool) {
-	t := p.tok()
+	t := p.skipComments()
 	if t == nil || t.typ != tokenizer.Ident {
 		return "", false
 	}
@@ -649,7 +650,7 @@ func (p *calcParser) loneKeyword() (string, bool) {
 	start := p.pos
 	p.pos++
 	p.skipWhiteSpace()
-	after := p.tok()
+	after := p.skipComments()
 	if after != nil && after.typ != tokenizer.Comma && after.typ != tokenizer.RightParenthesis {
 		p.pos = start
 		return "", false
@@ -691,7 +692,7 @@ func (p *calcParser) mathFunction() (calcType, bool) {
 	}
 	defer p.leave()
 
-	name := tokenName(p.tok())
+	name := tokenName(p.skipComments())
 	p.pos++
 
 	switch name {
