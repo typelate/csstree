@@ -8,14 +8,15 @@ import (
 )
 
 const (
-	tab            = 9  // TAB
-	lineFeed       = 10 // N
-	formFeed       = 12 // F
-	carriageReturn = 13 // R
-	space          = 32 // SPACE
+	tab            = '\t'
+	lineFeed       = '\n' // upstream N
+	formFeed       = '\f' // upstream F
+	carriageReturn = '\r' // upstream R
+	space          = ' '
 )
 
-// isNameChar reports whether code is in /[a-zA-Z0-9\-]/ (upstream NAME_CHAR).
+// isNameChar reports whether code is in /[a-zA-Z0-9\-]/: upstream's
+// NAME_CHAR table and isNameCharCode.
 func isNameChar(code byte) bool {
 	return 'a' <= code && code <= 'z' ||
 		'A' <= code && code <= 'Z' ||
@@ -43,12 +44,6 @@ func (s *scanner) charCodeAt(pos int) byte {
 
 func (s *scanner) charCode() byte {
 	return s.charCodeAt(s.pos)
-}
-
-// isNameCharCode is upstream isNameCharCode(code = this.charCode()); call
-// it with s.charCode() for the default.
-func (s *scanner) isNameCharCode(code byte) bool {
-	return code < 128 && isNameChar(code)
 }
 
 func (s *scanner) nextCharCode() byte {
@@ -120,7 +115,7 @@ func (s *scanner) scanWord() string {
 
 	for ; end < len(s.str); end++ {
 		code := s.str[end]
-		if code >= 128 || !isNameChar(code) {
+		if !isNameChar(code) {
 			break
 		}
 	}
@@ -138,7 +133,7 @@ func (s *scanner) scanNumber() string {
 	for ; end < len(s.str); end++ {
 		code := s.str[end]
 
-		if code < 48 || code > 57 {
+		if code < '0' || code > '9' {
 			break
 		}
 	}

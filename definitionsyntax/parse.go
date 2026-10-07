@@ -3,31 +3,32 @@
 package definitionsyntax
 
 import (
+	"errors"
 	"maps"
 	"slices"
 	"strconv"
 )
 
 const (
-	exclamationMark    = 33  // !
-	numberSign         = 35  // #
-	ampersand          = 38  // &
-	apostrophe         = 39  // '
-	leftParenthesis    = 40  // (
-	rightParenthesis   = 41  // )
-	asterisk           = 42  // *
-	plusSign           = 43  // +
-	comma              = 44  // ,
-	hyphenMinus        = 45  // -
-	lessThanSign       = 60  // <
-	greaterThanSign    = 62  // >
-	questionMark       = 63  // ?
-	commercialAt       = 64  // @
-	leftSquareBracket  = 91  // [
-	rightSquareBracket = 93  // ]
-	leftCurlyBracket   = 123 // {
-	verticalLine       = 124 // |
-	rightCurlyBracket  = 125 // }
+	exclamationMark    = '!'
+	numberSign         = '#'
+	ampersand          = '&'
+	apostrophe         = '\''
+	leftParenthesis    = '('
+	rightParenthesis   = ')'
+	asterisk           = '*'
+	plusSign           = '+'
+	comma              = ','
+	hyphenMinus        = '-'
+	lessThanSign       = '<'
+	greaterThanSign    = '>'
+	questionMark       = '?'
+	commercialAt       = '@'
+	leftSquareBracket  = '['
+	rightSquareBracket = ']'
+	leftCurlyBracket   = '{'
+	verticalLine       = '|'
+	rightCurlyBracket  = '}'
 	infinity           = "∞" // U+221E, more than one byte in a Go string
 	minusSign          = "−" // U+2212, as CSS Values §2.4.1 writes −∞
 )
@@ -86,64 +87,64 @@ func (s *scanner) scanInt() int {
 // ±Inf for a number too large for a float64.
 func (s *scanner) scanFloat() float64 {
 	value, err := strconv.ParseFloat(s.scanNumber(), 64)
-	if err != nil {
-		// digits are 0-9 only, so the only possible error is ErrRange,
-		// for which value is already ±Inf as Number() returns
-		return value
+	if err != nil && !errors.Is(err, strconv.ErrRange) {
+		// unreachable: scanNumber returns 0-9 digits only; on ErrRange
+		// value is already ±Inf, as Number() returns
+		s.error("Expect a number")
 	}
 	return value
 }
 
-func (s *scanner) readMultiplierRange() (min, max int) {
+func (s *scanner) readMultiplierRange() (minimum, maximum int) {
 	s.eat(leftCurlyBracket)
 	s.skipWs()
 
-	min = s.scanInt()
+	minimum = s.scanInt()
 	s.skipWs()
 
 	if s.charCode() == comma {
 		s.pos++
 		s.skipWs()
 
-		max = Unbounded
+		maximum = Unbounded
 		if s.charCode() != rightCurlyBracket {
 			// {A,B}: "at least A and at most B"; upstream accepts B < A
 			maxStart := s.pos
-			max = s.scanInt()
-			if max < min {
+			maximum = s.scanInt()
+			if maximum < minimum {
 				s.pos = maxStart
 				s.error("Wrong multiplier range")
 			}
 			s.skipWs()
 		}
 	} else {
-		max = min
+		maximum = minimum
 	}
 
 	s.eat(rightCurlyBracket)
 
-	return min, max
+	return minimum, maximum
 }
 
 func (s *scanner) readMultiplier() *Multiplier {
-	var min, max int
+	var minimum, maximum int
 	isComma := false
 
 	switch s.charCode() {
 	case asterisk:
 		s.pos++
 
-		min, max = 0, Unbounded
+		minimum, maximum = 0, Unbounded
 
 	case plusSign:
 		s.pos++
 
-		min, max = 1, Unbounded
+		minimum, maximum = 1, Unbounded
 
 	case questionMark:
 		s.pos++
 
-		min, max = 0, 1
+		minimum, maximum = 0, 1
 
 	case numberSign:
 		s.pos++
@@ -151,20 +152,20 @@ func (s *scanner) readMultiplier() *Multiplier {
 		isComma = true
 
 		if s.charCode() == leftCurlyBracket {
-			min, max = s.readMultiplierRange()
+			minimum, maximum = s.readMultiplierRange()
 		} else if s.charCode() == questionMark {
 			// https://www.w3.org/TR/css-values-4/#component-multipliers
 			// > the # and ? multipliers may be stacked as #?
 			// In this case just treat "#?" as a single multiplier
 			// { min: 0, max: 0, comma: true }
 			s.pos++
-			min, max = 0, Unbounded
+			minimum, maximum = 0, Unbounded
 		} else {
-			min, max = 1, Unbounded
+			minimum, maximum = 1, Unbounded
 		}
 
 	case leftCurlyBracket:
-		min, max = s.readMultiplierRange()
+		minimum, maximum = s.readMultiplierRange()
 
 	default:
 		return nil
@@ -172,9 +173,8 @@ func (s *scanner) readMultiplier() *Multiplier {
 
 	return &Multiplier{
 		Comma: isComma,
-		Min:   min,
-		Max:   max,
-		Term:  nil,
+		Min:   minimum,
+		Max:   maximum,
 	}
 }
 
@@ -249,21 +249,20 @@ func (s *scanner) readProperty() Node {
 // For example, <integer [0, 10]> indicates an integer between 0 and 10, inclusive.
 func (s *scanner) readTypeRange() *Range {
 	// use nil for Infinity to make AST format JSON serializable/deserializable
-	var min *RangeBound // -Infinity
-	var max *RangeBound // Infinity
-	sign := 1.0
+	var minimum *RangeBound // -Infinity
+	var maximum *RangeBound // Infinity
 
 	s.eat(leftSquareBracket)
 
-	sign = s.readSign()
+	sign := s.readSign()
 
 	if sign == -1 && s.hasPrefix(infinity) {
 		s.peek()
 	} else {
-		min = &RangeBound{Value: sign * s.scanFloat()}
+		minimum = &RangeBound{Value: sign * s.scanFloat()}
 
-		if s.isNameCharCode(s.charCode()) {
-			min.Unit = s.scanWord()
+		if isNameChar(s.charCode()) {
+			minimum.Unit = s.scanWord()
 		}
 	}
 
@@ -276,18 +275,18 @@ func (s *scanner) readTypeRange() *Range {
 	} else {
 		sign = s.readSign()
 
-		max = &RangeBound{Value: sign * s.scanFloat()}
+		maximum = &RangeBound{Value: sign * s.scanFloat()}
 
-		if s.isNameCharCode(s.charCode()) {
-			max.Unit = s.scanWord()
+		if isNameChar(s.charCode()) {
+			maximum.Unit = s.scanWord()
 		}
 	}
 
 	s.eat(rightSquareBracket)
 
 	return &Range{
-		Min: min,
-		Max: max,
+		Min: minimum,
+		Max: maximum,
 	}
 }
 
@@ -371,10 +370,8 @@ func (s *scanner) readKeywordOrFunction() Node {
 func regroupTerms(terms []Node, combinators map[Combinator]bool) ([]Node, Combinator) {
 	createGroup := func(terms []Node, combinator Combinator) *Group {
 		return &Group{
-			Terms:         terms,
-			Combinator:    combinator,
-			DisallowEmpty: false,
-			Explicit:      false,
+			Terms:      terms,
+			Combinator: combinator,
 		}
 	}
 
@@ -523,10 +520,8 @@ func (s *scanner) readTerms(atStop func() bool) *Group {
 	}
 
 	return &Group{
-		Terms:         terms,
-		Combinator:    combinator,
-		DisallowEmpty: false,
-		Explicit:      false,
+		Terms:      terms,
+		Combinator: combinator,
 	}
 }
 
@@ -596,7 +591,7 @@ func (s *scanner) readTerm() Node {
 	case commercialAt:
 		code = s.nextCharCode()
 
-		if s.isNameCharCode(code) {
+		if isNameChar(code) {
 			s.pos++
 			return &AtKeyword{
 				Name: s.scanWord(),
@@ -613,12 +608,12 @@ func (s *scanner) readTerm() Node {
 		// check next char isn't a number, because it's likely a disjoined multiplier
 		code = s.nextCharCode()
 
-		if code < 48 || code > 57 {
+		if code < '0' || code > '9' {
 			return s.maybeToken()
 		}
 
 	default:
-		if s.isNameCharCode(code) {
+		if isNameChar(code) {
 			return s.readKeywordOrFunction()
 		}
 

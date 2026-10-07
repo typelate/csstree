@@ -19,32 +19,36 @@ type GenerateOptions struct {
 	Decorate func(str string, node Node) string
 }
 
-func noop(value string, _ Node) string {
-	return value
+// decorate returns Decorate(str, node), or str when Decorate is nil.
+func (o GenerateOptions) decorate(str string, node Node) string {
+	if o.Decorate == nil {
+		return str
+	}
+	return o.Decorate(str, node)
 }
 
 func generateMultiplier(multiplier *Multiplier) string {
-	min, max, comma := multiplier.Min, multiplier.Max, multiplier.Comma
+	minimum, maximum, comma := multiplier.Min, multiplier.Max, multiplier.Comma
 
-	if min == 0 && max == Unbounded {
+	if minimum == 0 && maximum == Unbounded {
 		if comma {
 			return "#?"
 		}
 		return "*"
 	}
 
-	if min == 0 && max == 1 {
+	if minimum == 0 && maximum == 1 {
 		return "?"
 	}
 
-	if min == 1 && max == Unbounded {
+	if minimum == 1 && maximum == Unbounded {
 		if comma {
 			return "#"
 		}
 		return "+"
 	}
 
-	if min == 1 && max == 1 {
+	if minimum == 1 && maximum == 1 {
 		return ""
 	}
 
@@ -53,52 +57,52 @@ func generateMultiplier(multiplier *Multiplier) string {
 		prefix = "#"
 	}
 
-	if min == max {
-		return prefix + "{" + strconv.Itoa(min) + "}"
+	if minimum == maximum {
+		return prefix + "{" + strconv.Itoa(minimum) + "}"
 	}
 
 	maxText := ""
-	if max != Unbounded {
-		maxText = strconv.Itoa(max)
+	if maximum != Unbounded {
+		maxText = strconv.Itoa(maximum)
 	}
-	return prefix + "{" + strconv.Itoa(min) + "," + maxText + "}"
+	return prefix + "{" + strconv.Itoa(minimum) + "," + maxText + "}"
 }
 
 // generateTypeOpts takes a *Range, the only node type upstream accepts.
 func generateTypeOpts(node *Range) string {
-	min := "-∞"
+	minimum := "-∞"
 	if node.Min != nil {
-		min = node.Min.String()
+		minimum = node.Min.String()
 	}
 
-	max := "∞"
+	maximum := "∞"
 	if node.Max != nil {
-		max = node.Max.String()
+		maximum = node.Max.String()
 	}
 
-	return " [" + min + "," + max + "]"
+	return " [" + minimum + "," + maximum + "]"
 }
 
-func generateSequence(node *Group, decorate func(string, Node) string, forceBraces, compact bool) string {
+func (o GenerateOptions) generateSequence(node *Group) string {
 	combinator := " " + string(node.Combinator) + " "
-	if node.Combinator == Juxtaposition || compact {
+	if node.Combinator == Juxtaposition || o.Compact {
 		combinator = string(node.Combinator)
 	}
 
 	terms := make([]string, 0, len(node.Terms))
 	for _, term := range node.Terms {
-		terms = append(terms, internalGenerate(term, decorate, forceBraces, compact))
+		terms = append(terms, o.generate(term))
 	}
 	result := strings.Join(terms, combinator)
 
-	if node.Explicit || forceBraces {
+	if node.Explicit || o.ForceBraces {
 		open := "[ "
-		if compact || strings.HasPrefix(result, ",") {
+		if o.Compact || strings.HasPrefix(result, ",") {
 			open = "["
 		}
 
 		closing := " ]"
-		if compact {
+		if o.Compact {
 			closing = "]"
 		}
 
@@ -108,28 +112,28 @@ func generateSequence(node *Group, decorate func(string, Node) string, forceBrac
 	return result
 }
 
-func internalGenerate(node Node, decorate func(string, Node) string, forceBraces, compact bool) string {
+// generate is upstream internalGenerate.
+func (o GenerateOptions) generate(node Node) string {
 	var result string
 
 	switch node := node.(type) {
 	case *Group:
-		result = generateSequence(node, decorate, forceBraces, compact)
+		result = o.generateSequence(node)
 		if node.DisallowEmpty {
 			result += "!"
 		}
 
 	case *Multiplier:
 		// return since node is a composition
-		return internalGenerate(node.Term, decorate, forceBraces, compact) +
-			decorate(generateMultiplier(node), node)
+		return o.generate(node.Term) + o.decorate(generateMultiplier(node), node)
 
 	case *Boolean:
-		result = "<boolean-expr[" + internalGenerate(node.Term, decorate, forceBraces, compact) + "]>"
+		result = "<boolean-expr[" + o.generate(node.Term) + "]>"
 
 	case *Type:
 		opts := ""
 		if node.Opts != nil {
-			opts = decorate(generateTypeOpts(node.Opts), node.Opts)
+			opts = o.decorate(generateTypeOpts(node.Opts), node.Opts)
 		}
 		result = "<" + node.Name + opts + ">"
 
@@ -160,16 +164,11 @@ func internalGenerate(node Node, decorate func(string, Node) string, forceBraces
 		return ""
 	}
 
-	return decorate(result, node)
+	return o.decorate(result, node)
 }
 
 // Generate returns the definition syntax text for node. A nil node (or a
 // *Range on its own) generates the empty string.
 func Generate(node Node, options GenerateOptions) string {
-	decorate := noop
-	if options.Decorate != nil {
-		decorate = options.Decorate
-	}
-
-	return internalGenerate(node, decorate, options.ForceBraces, options.Compact)
+	return options.generate(node)
 }

@@ -14,8 +14,6 @@ type WalkOptions struct {
 	Leave func(node Node)
 }
 
-func noopHandler(Node) {}
-
 // Walk visits node and its descendants depth first. It returns an error when
 // neither handler is set, or when it meets a nil node.
 func Walk(node Node, options WalkOptions) error {
@@ -26,16 +24,11 @@ func Walk(node Node, options WalkOptions) error {
 		return errors.New("Neither `enter` nor `leave` walker handler is set or both aren't a function")
 	}
 
-	if enter == nil {
-		enter = noopHandler
-	}
-	if leave == nil {
-		leave = noopHandler
-	}
-
 	var walk func(node Node) error
 	walk = func(node Node) error {
-		enter(node)
+		if enter != nil {
+			enter(node)
+		}
 
 		switch node := node.(type) {
 		case *Group:
@@ -65,7 +58,9 @@ func Walk(node Node, options WalkOptions) error {
 			return errors.New("Unknown type: " + nodeType)
 		}
 
-		leave(node)
+		if leave != nil {
+			leave(node)
+		}
 		return nil
 	}
 
