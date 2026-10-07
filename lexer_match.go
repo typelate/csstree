@@ -113,28 +113,6 @@ func reverseList(list *matchStackItem) *matchStackItem {
 	return prev
 }
 
-func areStringsEqualCaseInsensitive(testStr, referenceStr string) bool {
-	if len(testStr) != len(referenceStr) {
-		return false
-	}
-
-	for i := 0; i < len(testStr); i++ {
-		referenceCode := referenceStr[i]
-		testCode := testStr[i]
-
-		// testCode.toLowerCase() for U+0041 LATIN CAPITAL LETTER A (A) .. U+005A LATIN CAPITAL LETTER Z (Z).
-		if testCode >= 0x0041 && testCode <= 0x005A {
-			testCode = testCode | 32
-		}
-
-		if testCode != referenceCode {
-			return false
-		}
-	}
-
-	return true
-}
-
 func isContextEdgeDelim(token *matchToken) bool {
 	if token.typ != tokenizer.Delim {
 		return false
@@ -561,7 +539,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 					keywordName = keywordHack.ReplaceAllString(keywordName, "")
 				}
 
-				if areStringsEqualCaseInsensitive(keywordName, name) || tokenNameIs(token, name) {
+				if asciiEqualFold(keywordName, name) || tokenNameIs(token, name) {
 					addTokenToMatch()
 					state = matchState
 					break
@@ -571,7 +549,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			state = mismatchState
 
 		case "AtKeyword", "Function":
-			if token != nil && (areStringsEqualCaseInsensitive(token.value, state.name) || tokenNameIs(token, state.name)) {
+			if token != nil && (asciiEqualFold(token.value, state.name) || tokenNameIs(token, state.name)) {
 				addTokenToMatch()
 				state = matchState
 				break
@@ -616,7 +594,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 				str.WriteString(tokens[lastTokenIndex].value)
 			}
 
-			if areStringsEqualCaseInsensitive(str.String(), state.value) {
+			if asciiEqualFold(str.String(), state.value) {
 				for tokenIndex < lastTokenIndex {
 					addTokenToMatch()
 				}

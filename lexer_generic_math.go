@@ -324,35 +324,6 @@ func isLengthFunctionName(name string) bool {
 	return name == "anchor(" || name == "anchor-size("
 }
 
-// cssName returns an identifier, function name or unit as it compares
-// with keywords: escapes resolved (CSS Syntax 3 §4.3.7) and ASCII
-// lowercased, as CSS names are ASCII case-insensitive.
-func cssName(s string) string {
-	if strings.IndexByte(s, '\\') != -1 {
-		if name, ok := strings.CutSuffix(s, "("); ok {
-			return asciiLower(DecodeIdent(name)) + "("
-		}
-		s = DecodeIdent(s)
-	}
-	return asciiLower(s)
-}
-
-// asciiLower lowercases A..Z only.
-func asciiLower(s string) string {
-	for i := 0; i < len(s); i++ {
-		if 'A' <= s[i] && s[i] <= 'Z' {
-			b := []byte(s)
-			for j := i; j < len(b); j++ {
-				if 'A' <= b[j] && b[j] <= 'Z' {
-					b[j] += 'a' - 'A'
-				}
-			}
-			return string(b)
-		}
-	}
-	return s
-}
-
 // calcUnitSource looks up the base type of a dimension unit; the Lexer
 // implements it with its unit groups.
 type calcUnitSource interface {
@@ -375,7 +346,10 @@ func calcUnitBaseIn(units map[string][]string, unit string) (calcBase, bool) {
 		{"resolution", calcResolution},
 	}
 
-	unit = cssName(unit)
+	if strings.Contains(unit, `\`) {
+		unit = DecodeIdent(unit)
+	}
+	unit = asciiLowerCase(unit)
 	for _, group := range groups {
 		for _, u := range units[group.name] {
 			if u == unit {
@@ -397,14 +371,14 @@ func matchMathFunction(generic string, percentSibling bool, token *matchToken, g
 	if token == nil || token.typ != tokenizer.Function || !isMathGeneric(generic) {
 		return 0, false
 	}
-	if !isMathFunctionName(cssName(token.value)) {
+	if !isMathFunctionName(tokenName(token)) {
 		return 0, false
 	}
 
 	length := consumeFunction(token, getNextToken)
 	for i := 1; i < length; i++ {
 		t := getNextToken(i)
-		if t != nil && t.typ == tokenizer.Function && isSubstitutionFunctionName(cssName(t.value)) {
+		if t != nil && t.typ == tokenizer.Function && isSubstitutionFunctionName(tokenName(t)) {
 			return length, true
 		}
 	}
@@ -583,7 +557,7 @@ func (p *calcParser) value() (calcType, bool) {
 
 	case tokenizer.Ident:
 		// §10.7 <calc-keyword> = e | pi | infinity | -infinity | NaN
-		switch cssName(t.value) {
+		switch tokenName(t) {
 		case "e", "pi", "infinity", "-infinity", "nan":
 			p.pos++
 			return numberCalcType(), true
@@ -604,7 +578,7 @@ func (p *calcParser) value() (calcType, bool) {
 		return inner, true
 
 	case tokenizer.Function:
-		name := cssName(t.value)
+		name := tokenName(t)
 		if isMathFunctionName(name) {
 			return p.mathFunction()
 		}
@@ -681,7 +655,7 @@ func (p *calcParser) loneKeyword() (string, bool) {
 		return "", false
 	}
 	p.pos = start + 1
-	return cssName(t.value), true
+	return tokenName(t), true
 }
 
 func noKeywords(int, string) bool {
@@ -717,7 +691,7 @@ func (p *calcParser) mathFunction() (calcType, bool) {
 	}
 	defer p.leave()
 
-	name := cssName(p.tok().value)
+	name := tokenName(p.tok())
 	p.pos++
 
 	switch name {

@@ -5,7 +5,6 @@ package csstree
 import (
 	"math"
 	"slices"
-	"strings"
 
 	"github.com/typelate/csstree/definitionsyntax"
 	"github.com/typelate/csstree/internal/jsnum"
@@ -155,27 +154,6 @@ func balancePair(tokenType tokenizer.TokenType) tokenizer.TokenType {
 	return 0
 }
 
-// eqStr reports whether the name actual (an identifier or a function
-// name, escapes decoded) is an ASCII case-insensitive match for the
-// lowercase expected.
-func eqStr(actual, expected string) bool {
-	if strings.Contains(actual, `\`) {
-		actual = DecodeIdent(actual)
-	}
-
-	return tokenizer.CmpStr(actual, 0, len(actual), expected)
-}
-
-func eqStrAny(actual string, expected []string) bool {
-	for i := 0; i < len(expected); i++ {
-		if eqStr(actual, expected[i]) {
-			return true
-		}
-	}
-
-	return false
-}
-
 // IE postfix hack, i.e. 123\0 or 123px\9
 func isPostfixIeHack(str string, offset int) bool {
 	if offset != len(str)-2 {
@@ -278,7 +256,8 @@ func mathType(next genericFunc, functionNames []string) genericFunc {
 			return 0
 		}
 
-		if token.typ == tokenizer.Function && eqStrAny(token.value, functionNames) {
+		name := tokenValue(token)
+		if token.typ == tokenizer.Function && slices.ContainsFunc(functionNames, func(fn string) bool { return asciiEqualFold(name, fn) }) {
 			return consumeFunction(token, getNextToken)
 		}
 
@@ -780,18 +759,10 @@ func createAttrUnit(units map[string][]string) genericFunc {
 }
 
 func createGenericTypes(units map[string][]string) []genericType {
-	return concatGenericTypes(
+	return slices.Concat(
 		tokenTypes(),
 		productionTypes(),
 		createDemensionTypes(units),
 		[]genericType{{"attr-unit", createAttrUnit(units)}},
 	)
-}
-
-func concatGenericTypes(lists ...[]genericType) []genericType {
-	var result []genericType
-	for _, list := range lists {
-		result = append(result, list...)
-	}
-	return result
 }

@@ -83,11 +83,18 @@ func decodedNames(token *matchToken) []string {
 // decoded.
 func tokenNameIs(token *matchToken, name string) bool {
 	for _, decoded := range decodedNames(token) {
-		if areStringsEqualCaseInsensitive(decoded, name) {
+		if asciiEqualFold(decoded, name) {
 			return true
 		}
 	}
 	return false
+}
+
+// tokenName returns the value of token as it compares with lowercase
+// keywords, function names (with the parenthesis) and at-keywords (with
+// the @): escapes decoded for a name token and ASCII letters lowercased.
+func tokenName(token *matchToken) string {
+	return asciiLowerCase(tokenValue(token))
 }
 
 // tokenValue returns the value of token: its source text with escapes

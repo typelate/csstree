@@ -555,7 +555,7 @@ func FuzzMathFunction(f *testing.F) {
 // by its ) and nothing else, without substitution functions.
 func isSingleMathFunction(value string) bool {
 	tokens := stringToTokens(value)
-	if len(tokens) == 0 || tokens[0].typ != tokenizer.Function || !isMathFunctionName(cssName(tokens[0].value)) {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Function || !isMathFunctionName(tokenName(&tokens[0])) {
 		return false
 	}
 	if tokens[len(tokens)-1].typ != tokenizer.RightParenthesis {
@@ -563,7 +563,7 @@ func isSingleMathFunction(value string) bool {
 	}
 	for _, token := range tokens {
 		// a function with substitution functions is matched as upstream
-		if token.typ == tokenizer.Function && isSubstitutionFunctionName(cssName(token.value)) {
+		if token.typ == tokenizer.Function && isSubstitutionFunctionName(tokenName(&token)) {
 			return false
 		}
 	}

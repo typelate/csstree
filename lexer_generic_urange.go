@@ -115,7 +115,7 @@ func urangeTokens(token *matchToken, getNextToken func(offset int) *matchToken) 
 
 	// should start with the ident u (upstream: an ident starting with
 	// `u` or `U`, so ua+1 was a <urange>)
-	if token == nil || token.typ != tokenizer.Ident || !eqStr(token.value, "u") {
+	if token == nil || token.typ != tokenizer.Ident || !asciiEqualFold(tokenValue(token), "u") {
 		return 0
 	}
 
