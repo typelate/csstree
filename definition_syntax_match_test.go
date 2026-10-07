@@ -15,6 +15,8 @@ import (
 	"sync"
 	"testing"
 	"unicode"
+
+	"github.com/typelate/csstree/internal/fixturetest"
 )
 
 const definitionSyntaxMatchFixtureDir = "testdata/definition-syntax-match"
@@ -54,7 +56,7 @@ func forEachDefinitionSyntaxMatchTest(t *testing.T, factory func(t *testing.T, t
 		if err != nil {
 			t.Fatal(err)
 		}
-		locator, err := newJSONLocator(path.Join(definitionSyntaxMatchFixtureDir, fn), data)
+		locator, err := fixturetest.NewJSONLocator(path.Join(definitionSyntaxMatchFixtureDir, fn), data)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -64,9 +66,9 @@ func forEachDefinitionSyntaxMatchTest(t *testing.T, factory func(t *testing.T, t
 			t.Fatalf("%s: %v", filename, err)
 		}
 
-		for _, key := range locator.keys {
+		for _, key := range locator.Keys() {
 			test := tests[key]
-			test.Name, err = locator.get(key)
+			test.Name, err = locator.Get(key)
 			if err != nil {
 				t.Fatal(err)
 			}
