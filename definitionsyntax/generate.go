@@ -80,9 +80,9 @@ func generateTypeOpts(node *Range) string {
 }
 
 func generateSequence(node *Group, decorate func(string, Node) string, forceBraces, compact bool) string {
-	combinator := " " + node.Combinator + " "
-	if node.Combinator == " " || compact {
-		combinator = node.Combinator
+	combinator := " " + string(node.Combinator) + " "
+	if node.Combinator == Juxtaposition || compact {
+		combinator = string(node.Combinator)
 	}
 
 	terms := make([]string, 0, len(node.Terms))

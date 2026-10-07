@@ -100,7 +100,7 @@ func isEnumCapatible(term *matchGraphNode) bool {
 		term.typ == "Type" && isFunctionType(term.name)
 }
 
-func groupNode(terms []definitionsyntax.Node, combinator string, explicit bool) *definitionsyntax.Group {
+func groupNode(terms []definitionsyntax.Node, combinator definitionsyntax.Combinator, explicit bool) *definitionsyntax.Group {
 	return &definitionsyntax.Group{
 		Terms:         terms,
 		Combinator:    combinator,
@@ -141,9 +141,9 @@ func withoutTerm(terms []*matchGraphNode, term *matchGraphNode) []*matchGraphNod
 	return result
 }
 
-func buildGroupMatchGraph(combinator string, terms []*matchGraphNode, atLeastOneTermMatched bool) *matchGraphNode {
+func buildGroupMatchGraph(combinator definitionsyntax.Combinator, terms []*matchGraphNode, atLeastOneTermMatched bool) *matchGraphNode {
 	switch combinator {
-	case " ":
+	case definitionsyntax.Juxtaposition:
 		// Juxtaposing components means that all of them must occur, in the given order.
 		//
 		// a b c
@@ -169,7 +169,7 @@ func buildGroupMatchGraph(combinator string, terms []*matchGraphNode, atLeastOne
 
 		return result
 
-	case "|":
+	case definitionsyntax.SingleBar:
 		// A bar (|) separates two or more alternatives: exactly one of them must occur.
 		//
 		// a | b | c
@@ -227,7 +227,7 @@ func buildGroupMatchGraph(combinator string, terms []*matchGraphNode, atLeastOne
 
 		return result
 
-	case "&&":
+	case definitionsyntax.DoubleAmpersand:
 		// A double ampersand (&&) separates two or more components,
 		// all of which must occur, in any order.
 
@@ -289,7 +289,7 @@ func buildGroupMatchGraph(combinator string, terms []*matchGraphNode, atLeastOne
 
 		return result
 
-	case "||":
+	case definitionsyntax.DoubleBar:
 		// A double bar (||) separates two or more options:
 		// one or more of them must occur, in any order.
 
@@ -355,8 +355,9 @@ func buildGroupMatchGraph(combinator string, terms []*matchGraphNode, atLeastOne
 		return result
 	}
 
-	// upstream returns undefined for an unknown combinator, which the
-	// definition syntax parser never produces
+	// upstream returns undefined for an unknown combinator; the
+	// definition syntax parser produces only the four above, so only a
+	// Group built by hand with another Combinator value gets here
 	return nil
 }
 

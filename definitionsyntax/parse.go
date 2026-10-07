@@ -32,16 +32,17 @@ const (
 	minusSign          = "−" // U+2212, as CSS Values §2.4.1 writes −∞
 )
 
-// combinatorPrecedence is upstream COMBINATOR_PRECEDENCE.
-func combinatorPrecedence(combinator string) int {
-	switch combinator {
-	case " ":
+// precedence is upstream COMBINATOR_PRECEDENCE: a lower value binds
+// tighter.
+func (c Combinator) precedence() int {
+	switch c {
+	case Juxtaposition:
 		return 1
-	case "&&":
+	case DoubleAmpersand:
 		return 2
-	case "||":
+	case DoubleBar:
 		return 3
-	case "|":
+	case SingleBar:
 		return 4
 	}
 	return 0
@@ -50,7 +51,7 @@ func combinatorPrecedence(combinator string) int {
 // combinatorNode and spacesNode are the transient { type: 'Combinator' } and
 // { type: 'Spaces' } tokens; they never appear in a parsed AST.
 type combinatorNode struct {
-	value string
+	value Combinator
 }
 
 type spacesNode struct {
@@ -367,8 +368,8 @@ func readKeywordOrFunction(s *scanner) Node {
 
 // regroupTerms returns the regrouped terms, since a Go slice cannot be
 // spliced in place, and the lowest precedence combinator ("" for none).
-func regroupTerms(terms []Node, combinators map[string]bool) ([]Node, string) {
-	createGroup := func(terms []Node, combinator string) *Group {
+func regroupTerms(terms []Node, combinators map[Combinator]bool) ([]Node, Combinator) {
+	createGroup := func(terms []Node, combinator Combinator) *Group {
 		return &Group{
 			Terms:         terms,
 			Combinator:    combinator,
@@ -377,10 +378,10 @@ func regroupTerms(terms []Node, combinators map[string]bool) ([]Node, string) {
 		}
 	}
 
-	var combinator string
+	var combinator Combinator
 
-	sorted := slices.SortedFunc(maps.Keys(combinators), func(a, b string) int {
-		return combinatorPrecedence(a) - combinatorPrecedence(b)
+	sorted := slices.SortedFunc(maps.Keys(combinators), func(a, b Combinator) int {
+		return a.precedence() - b.precedence()
 	})
 
 	for len(sorted) > 0 {
@@ -428,7 +429,7 @@ func regroupTerms(terms []Node, combinators map[string]bool) ([]Node, string) {
 
 // readImplicitGroup reads terms until stopCharCode; -1 reads to the end.
 func readImplicitGroup(s *scanner, stopCharCode int) *Group {
-	combinators := make(map[string]bool)
+	combinators := make(map[Combinator]bool)
 	terms := []Node{}
 	var prevToken Node
 	prevTokenPos := s.pos
@@ -458,11 +459,11 @@ func readImplicitGroup(s *scanner, stopCharCode int) *Group {
 				continue
 			}
 
-			if group.Combinator == " " {
+			if group.Combinator == Juxtaposition {
 				for len(group.Terms) > 1 {
-					combinators[" "] = true // a b
+					combinators[Juxtaposition] = true // a b
 					terms = append(terms, &combinatorNode{
-						value: " ",
+						value: Juxtaposition,
 					}, group.Terms[0])
 					group.Terms = group.Terms[1:]
 				}
@@ -480,9 +481,9 @@ func readImplicitGroup(s *scanner, stopCharCode int) *Group {
 
 			combinators[combinator.value] = true
 		} else if prevToken != nil && !isCombinator(prevToken) {
-			combinators[" "] = true // a b
+			combinators[Juxtaposition] = true // a b
 			terms = append(terms, &combinatorNode{
-				value: " ",
+				value: Juxtaposition,
 			})
 		}
 
@@ -500,7 +501,7 @@ func readImplicitGroup(s *scanner, stopCharCode int) *Group {
 
 	terms, combinator := regroupTerms(terms, combinators)
 	if combinator == "" {
-		combinator = " "
+		combinator = Juxtaposition
 	}
 
 	return &Group{
@@ -549,7 +550,7 @@ func peek(s *scanner) Node {
 			end = s.pos + 2
 		}
 		return &combinatorNode{
-			value: s.substringToPos(end),
+			value: Combinator(s.substringToPos(end)),
 		}
 
 	case ampersand:
@@ -557,7 +558,7 @@ func peek(s *scanner) Node {
 		s.eat(ampersand)
 
 		return &combinatorNode{
-			value: "&&",
+			value: DoubleAmpersand,
 		}
 
 	case comma:

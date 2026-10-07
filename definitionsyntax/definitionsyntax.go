@@ -22,11 +22,26 @@ type Node interface {
 	node()
 }
 
-// Group is a sequence of terms joined by one combinator: " " (juxtaposition),
-// "&&", "||" or "|".
+// Combinator is how the terms of a Group combine (CSS Values 4 §2.2,
+// Component Value Combinators). Its value is the upstream string.
+type Combinator string
+
+// The combinators, from the tightest binding to the loosest.
+const (
+	// Juxtaposition: all terms must occur, in the given order.
+	Juxtaposition Combinator = " "
+	// DoubleAmpersand: all terms must occur, in any order.
+	DoubleAmpersand Combinator = "&&"
+	// DoubleBar: one or more terms must occur, in any order.
+	DoubleBar Combinator = "||"
+	// SingleBar: exactly one term must occur.
+	SingleBar Combinator = "|"
+)
+
+// Group is a sequence of terms joined by one combinator.
 type Group struct {
 	Terms         []Node
-	Combinator    string
+	Combinator    Combinator
 	DisallowEmpty bool // the group is followed by "!"
 	Explicit      bool // the group is written in square brackets
 }
@@ -199,11 +214,11 @@ func (n *Group) MarshalJSON() ([]byte, error) {
 		terms = []Node{}
 	}
 	return json.Marshal(struct {
-		Type          string `json:"type"`
-		Terms         []Node `json:"terms"`
-		Combinator    string `json:"combinator"`
-		DisallowEmpty bool   `json:"disallowEmpty"`
-		Explicit      bool   `json:"explicit"`
+		Type          string     `json:"type"`
+		Terms         []Node     `json:"terms"`
+		Combinator    Combinator `json:"combinator"`
+		DisallowEmpty bool       `json:"disallowEmpty"`
+		Explicit      bool       `json:"explicit"`
 	}{n.Type(), terms, n.Combinator, n.DisallowEmpty, n.Explicit})
 }
 

@@ -154,7 +154,7 @@ func TestWalkRange(t *testing.T) {
 
 // A Group built without terms encodes them as [], as upstream's always does.
 func TestMarshalGroupWithoutTerms(t *testing.T) {
-	data, err := json.Marshal(&definitionsyntax.Group{Combinator: " "})
+	data, err := json.Marshal(&definitionsyntax.Group{Combinator: definitionsyntax.Juxtaposition})
 	if err != nil {
 		t.Fatal(err)
 	}

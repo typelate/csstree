@@ -44,7 +44,7 @@ func TestParse(t *testing.T) {
 				for _, term := range node.Terms {
 					terms = append(terms, print(term))
 				}
-				return "(" + strings.Join(terms, node.Combinator) + ")"
+				return "(" + strings.Join(terms, string(node.Combinator)) + ")"
 			case *definitionsyntax.Keyword:
 				return node.Name
 			default:
