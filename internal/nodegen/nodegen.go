@@ -1,7 +1,7 @@
 // Package nodegen writes the boilerplate of the AST node types of package
-// csstree from their struct definitions: Type, Location and MarshalJSON
-// methods, the NodeConfig of each type and its Walk, Clone and
-// FromPlainObject functions.
+// csstree from their struct definitions: their Type, Location and
+// MarshalJSON methods, their Walk, Clone and FromPlainObject functions, and
+// nodeConfigs, which returns the NodeConfig of every node type.
 //
 // A node type is a struct in a node_*.go file whose doc comment holds the
 // directive
@@ -147,6 +147,12 @@ func generate(fset *token.FileSet, files []*ast.File) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteString(Header)
 	buf.WriteString("\npackage csstree\n")
+	buf.WriteString("\n// nodeConfigs returns the NodeConfig of every node type by name.\n")
+	buf.WriteString("func nodeConfigs() map[string]NodeConfig {\nreturn map[string]NodeConfig{\n")
+	for _, t := range types {
+		writeConfig(&buf, t)
+	}
+	buf.WriteString("}\n}\n")
 	for _, t := range types {
 		writeNodeType(&buf, t)
 	}
@@ -448,19 +454,35 @@ func (t fieldType) String() string {
 	}
 }
 
-// lowerFirst lower-cases the leading initialism or letter of s: CDC, cdc;
-// IDSelector, idSelector; AnPlusB, anPlusB.
-func lowerFirst(s string) string {
-	upper := strings.IndexFunc(s, func(r rune) bool { return r < 'A' || r > 'Z' })
-	switch {
-	case upper < 0:
-		return strings.ToLower(s)
-	case upper > 1:
-		upper--
-	default:
-		upper = 1
+// writeConfig writes the NodeConfig of t as an element of a map literal.
+func writeConfig(buf *bytes.Buffer, t nodeType) {
+	p := func(format string, args ...any) { fmt.Fprintf(buf, format, args...) }
+
+	p("%q: {\n", t.name)
+	p("Name: %q,\n", t.name)
+	if t.walkContext != "" {
+		p("WalkContext: %q,\n", t.walkContext)
 	}
-	return strings.ToLower(s[:upper]) + s[upper:]
+	if len(t.fields) == 0 {
+		p("Structure: []StructureField{},\n")
+	} else {
+		p("Structure: []StructureField{\n")
+		for _, f := range t.fields {
+			var types []string
+			for _, ft := range f.types {
+				types = append(types, ft.goExpr())
+			}
+			p("{Name: %q, Types: []FieldType{%s}},\n", f.name, strings.Join(types, ", "))
+		}
+		p("},\n")
+	}
+	p("Generate: generate%s,\n", t.goName)
+	if slices.ContainsFunc(t.fields, field.walked) {
+		p("Walk: walk%s,\n", t.goName)
+	}
+	p("Clone: clone%s,\n", t.goName)
+	p("FromPlainObject: fromPlainObject%s,\n", t.goName)
+	p("},\n")
 }
 
 func writeNodeType(buf *bytes.Buffer, t nodeType) {
@@ -488,33 +510,7 @@ func writeNodeType(buf *bytes.Buffer, t nodeType) {
 		p(")\n}\n")
 	}
 
-	// NodeConfig
 	walked := slices.ContainsFunc(t.fields, field.walked)
-	p("\nfunc %sNodeType() NodeConfig {\nreturn NodeConfig{\n", lowerFirst(t.goName))
-	p("Name: %q,\n", t.name)
-	if t.walkContext != "" {
-		p("WalkContext: %q,\n", t.walkContext)
-	}
-	if len(t.fields) == 0 {
-		p("Structure: []StructureField{},\n")
-	} else {
-		p("Structure: []StructureField{\n")
-		for _, f := range t.fields {
-			var types []string
-			for _, ft := range f.types {
-				types = append(types, ft.goExpr())
-			}
-			p("{Name: %q, Types: []FieldType{%s}},\n", f.name, strings.Join(types, ", "))
-		}
-		p("},\n")
-	}
-	p("Generate: generate%s,\n", t.goName)
-	if walked {
-		p("Walk: walk%s,\n", t.goName)
-	}
-	p("Clone: clone%s,\n", t.goName)
-	p("FromPlainObject: fromPlainObject%s,\n", t.goName)
-	p("}\n}\n")
 
 	// Walk
 	if walked {

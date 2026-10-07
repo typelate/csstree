@@ -1,5 +1,9 @@
 // Ported from lib/syntax/node/index.js and the node type definition shape
 // (name, structure, walkContext, generate) shared by lib/syntax/node/*.js.
+//
+// The node types of the package declare their structure in css struct
+// tags; nodegen writes their methods, NodeConfigs and Walk, Clone and
+// FromPlainObject functions to nodes_gen.go (see internal/nodegen).
 
 //go:generate go run ./internal/cmd/nodegen
 
@@ -84,7 +88,8 @@ type FromPlainObjectFunc func(r *PlainObjectReader, object map[string]any) Node
 //
 // Walk, Clone and FromPlainObject are Go-only: upstream reads and writes
 // node fields by name, which a typed AST cannot do without reflection, so
-// each node type supplies these functions. A node type added through
+// each node type supplies these functions (generated for the node types of
+// this package). A node type added through
 // Syntax.Fork supplies its own; without them the walker does not descend
 // into its nodes, Clone shares them and FromPlainObject rejects them.
 type NodeConfig struct {
@@ -96,65 +101,6 @@ type NodeConfig struct {
 	Walk            WalkFieldsFunc
 	Clone           CloneFunc
 	FromPlainObject FromPlainObjectFunc
-}
-
-// nodeConfigs returns every node type in upstream index.js order.
-func nodeConfigs() map[string]NodeConfig {
-	result := make(map[string]NodeConfig)
-	for _, nodeType := range []NodeConfig{
-		anPlusBNodeType(),
-		atruleNodeType(),
-		atrulePreludeNodeType(),
-		attributeSelectorNodeType(),
-		blockNodeType(),
-		bracketsNodeType(),
-		cdcNodeType(),
-		cdoNodeType(),
-		classSelectorNodeType(),
-		combinatorNodeType(),
-		commentNodeType(),
-		conditionNodeType(),
-		declarationNodeType(),
-		declarationListNodeType(),
-		dimensionNodeType(),
-		featureNodeType(),
-		featureFunctionNodeType(),
-		featureRangeNodeType(),
-		functionNodeType(),
-		generalEnclosedNodeType(),
-		hashNodeType(),
-		identifierNodeType(),
-		idSelectorNodeType(),
-		layerNodeType(),
-		layerListNodeType(),
-		mediaQueryNodeType(),
-		mediaQueryListNodeType(),
-		nestingSelectorNodeType(),
-		nthNodeType(),
-		numberNodeType(),
-		operatorNodeType(),
-		parenthesesNodeType(),
-		percentageNodeType(),
-		pseudoClassSelectorNodeType(),
-		pseudoElementSelectorNodeType(),
-		ratioNodeType(),
-		rawNodeType(),
-		ruleNodeType(),
-		scopeNodeType(),
-		selectorNodeType(),
-		selectorListNodeType(),
-		stringNodeType(),
-		styleSheetNodeType(),
-		supportsDeclarationNodeType(),
-		typeSelectorNodeType(),
-		unicodeRangeNodeType(),
-		urlNodeType(),
-		valueNodeType(),
-		whiteSpaceNodeType(),
-	} {
-		result[nodeType.Name] = nodeType
-	}
-	return result
 }
 
 // structure field helpers

@@ -2,6 +2,515 @@
 
 package csstree
 
+// nodeConfigs returns the NodeConfig of every node type by name.
+func nodeConfigs() map[string]NodeConfig {
+	return map[string]NodeConfig{
+		"AnPlusB": {
+			Name: "AnPlusB",
+			Structure: []StructureField{
+				{Name: "a", Types: []FieldType{stringField(), nullField()}},
+				{Name: "b", Types: []FieldType{stringField(), nullField()}},
+			},
+			Generate:        generateAnPlusB,
+			Clone:           cloneAnPlusB,
+			FromPlainObject: fromPlainObjectAnPlusB,
+		},
+		"Atrule": {
+			Name:        "Atrule",
+			WalkContext: "atrule",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{stringField()}},
+				{Name: "prelude", Types: []FieldType{nodeField("AtrulePrelude"), nodeField("Raw"), nullField()}},
+				{Name: "block", Types: []FieldType{nodeField("Block"), nullField()}},
+			},
+			Generate:        generateAtrule,
+			Walk:            walkAtrule,
+			Clone:           cloneAtrule,
+			FromPlainObject: fromPlainObjectAtrule,
+		},
+		"AtrulePrelude": {
+			Name:        "AtrulePrelude",
+			WalkContext: "atrulePrelude",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField()}},
+			},
+			Generate:        generateAtrulePrelude,
+			Walk:            walkAtrulePrelude,
+			Clone:           cloneAtrulePrelude,
+			FromPlainObject: fromPlainObjectAtrulePrelude,
+		},
+		"AttributeSelector": {
+			Name: "AttributeSelector",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{nodeField("Identifier")}},
+				{Name: "matcher", Types: []FieldType{stringField(), nullField()}},
+				{Name: "value", Types: []FieldType{nodeField("String"), nodeField("Identifier"), nullField()}},
+				{Name: "flags", Types: []FieldType{stringField(), nullField()}},
+			},
+			Generate:        generateAttributeSelector,
+			Walk:            walkAttributeSelector,
+			Clone:           cloneAttributeSelector,
+			FromPlainObject: fromPlainObjectAttributeSelector,
+		},
+		"Block": {
+			Name:        "Block",
+			WalkContext: "block",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField("Atrule", "Rule", "Declaration")}},
+			},
+			Generate:        generateBlock,
+			Walk:            walkBlock,
+			Clone:           cloneBlock,
+			FromPlainObject: fromPlainObjectBlock,
+		},
+		"Brackets": {
+			Name: "Brackets",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField()}},
+			},
+			Generate:        generateBrackets,
+			Walk:            walkBrackets,
+			Clone:           cloneBrackets,
+			FromPlainObject: fromPlainObjectBrackets,
+		},
+		"CDC": {
+			Name:            "CDC",
+			Structure:       []StructureField{},
+			Generate:        generateCDC,
+			Clone:           cloneCDC,
+			FromPlainObject: fromPlainObjectCDC,
+		},
+		"CDO": {
+			Name:            "CDO",
+			Structure:       []StructureField{},
+			Generate:        generateCDO,
+			Clone:           cloneCDO,
+			FromPlainObject: fromPlainObjectCDO,
+		},
+		"ClassSelector": {
+			Name: "ClassSelector",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateClassSelector,
+			Clone:           cloneClassSelector,
+			FromPlainObject: fromPlainObjectClassSelector,
+		},
+		"Combinator": {
+			Name: "Combinator",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateCombinator,
+			Clone:           cloneCombinator,
+			FromPlainObject: fromPlainObjectCombinator,
+		},
+		"Comment": {
+			Name: "Comment",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateComment,
+			Clone:           cloneComment,
+			FromPlainObject: fromPlainObjectComment,
+		},
+		"Condition": {
+			Name: "Condition",
+			Structure: []StructureField{
+				{Name: "kind", Types: []FieldType{stringField()}},
+				{Name: "children", Types: []FieldType{listField("Identifier", "Feature", "FeatureFunction", "FeatureRange", "SupportsDeclaration")}},
+			},
+			Generate:        generateCondition,
+			Walk:            walkCondition,
+			Clone:           cloneCondition,
+			FromPlainObject: fromPlainObjectCondition,
+		},
+		"Declaration": {
+			Name:        "Declaration",
+			WalkContext: "declaration",
+			Structure: []StructureField{
+				{Name: "important", Types: []FieldType{booleanField(), stringField()}},
+				{Name: "property", Types: []FieldType{stringField()}},
+				{Name: "value", Types: []FieldType{nodeField("Value"), nodeField("Raw")}},
+			},
+			Generate:        generateDeclaration,
+			Walk:            walkDeclaration,
+			Clone:           cloneDeclaration,
+			FromPlainObject: fromPlainObjectDeclaration,
+		},
+		"DeclarationList": {
+			Name: "DeclarationList",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField("Declaration", "Atrule", "Rule")}},
+			},
+			Generate:        generateDeclarationList,
+			Walk:            walkDeclarationList,
+			Clone:           cloneDeclarationList,
+			FromPlainObject: fromPlainObjectDeclarationList,
+		},
+		"Dimension": {
+			Name: "Dimension",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+				{Name: "unit", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateDimension,
+			Clone:           cloneDimension,
+			FromPlainObject: fromPlainObjectDimension,
+		},
+		"Feature": {
+			Name: "Feature",
+			Structure: []StructureField{
+				{Name: "kind", Types: []FieldType{stringField()}},
+				{Name: "name", Types: []FieldType{stringField()}},
+				{Name: "value", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function"), nullField()}},
+			},
+			Generate:        generateFeature,
+			Walk:            walkFeature,
+			Clone:           cloneFeature,
+			FromPlainObject: fromPlainObjectFeature,
+		},
+		"FeatureFunction": {
+			Name: "FeatureFunction",
+			Structure: []StructureField{
+				{Name: "kind", Types: []FieldType{stringField()}},
+				{Name: "feature", Types: []FieldType{stringField()}},
+				{Name: "value", Types: []FieldType{nodeField("Declaration"), nodeField("Selector")}},
+			},
+			Generate:        generateFeatureFunction,
+			Walk:            walkFeatureFunction,
+			Clone:           cloneFeatureFunction,
+			FromPlainObject: fromPlainObjectFeatureFunction,
+		},
+		"FeatureRange": {
+			Name: "FeatureRange",
+			Structure: []StructureField{
+				{Name: "kind", Types: []FieldType{stringField()}},
+				{Name: "left", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function")}},
+				{Name: "leftComparison", Types: []FieldType{stringField()}},
+				{Name: "middle", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function")}},
+				{Name: "rightComparison", Types: []FieldType{stringField(), nullField()}},
+				{Name: "right", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function"), nullField()}},
+			},
+			Generate:        generateFeatureRange,
+			Walk:            walkFeatureRange,
+			Clone:           cloneFeatureRange,
+			FromPlainObject: fromPlainObjectFeatureRange,
+		},
+		"Function": {
+			Name:        "Function",
+			WalkContext: "function",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{stringField()}},
+				{Name: "children", Types: []FieldType{listField()}},
+			},
+			Generate:        generateFunction,
+			Walk:            walkFunction,
+			Clone:           cloneFunction,
+			FromPlainObject: fromPlainObjectFunction,
+		},
+		"GeneralEnclosed": {
+			Name: "GeneralEnclosed",
+			Structure: []StructureField{
+				{Name: "kind", Types: []FieldType{stringField()}},
+				{Name: "function", Types: []FieldType{stringField(), nullField()}},
+				{Name: "children", Types: []FieldType{listField()}},
+			},
+			Generate:        generateGeneralEnclosed,
+			Walk:            walkGeneralEnclosed,
+			Clone:           cloneGeneralEnclosed,
+			FromPlainObject: fromPlainObjectGeneralEnclosed,
+		},
+		"Hash": {
+			Name: "Hash",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateHash,
+			Clone:           cloneHash,
+			FromPlainObject: fromPlainObjectHash,
+		},
+		"IdSelector": {
+			Name: "IdSelector",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateIDSelector,
+			Clone:           cloneIDSelector,
+			FromPlainObject: fromPlainObjectIDSelector,
+		},
+		"Identifier": {
+			Name: "Identifier",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateIdentifier,
+			Clone:           cloneIdentifier,
+			FromPlainObject: fromPlainObjectIdentifier,
+		},
+		"Layer": {
+			Name: "Layer",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateLayer,
+			Clone:           cloneLayer,
+			FromPlainObject: fromPlainObjectLayer,
+		},
+		"LayerList": {
+			Name: "LayerList",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField("Layer")}},
+			},
+			Generate:        generateLayerList,
+			Walk:            walkLayerList,
+			Clone:           cloneLayerList,
+			FromPlainObject: fromPlainObjectLayerList,
+		},
+		"MediaQuery": {
+			Name: "MediaQuery",
+			Structure: []StructureField{
+				{Name: "modifier", Types: []FieldType{stringField(), nullField()}},
+				{Name: "mediaType", Types: []FieldType{stringField(), nullField()}},
+				{Name: "condition", Types: []FieldType{nodeField("Condition"), nullField()}},
+			},
+			Generate:        generateMediaQuery,
+			Walk:            walkMediaQuery,
+			Clone:           cloneMediaQuery,
+			FromPlainObject: fromPlainObjectMediaQuery,
+		},
+		"MediaQueryList": {
+			Name: "MediaQueryList",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField("MediaQuery")}},
+			},
+			Generate:        generateMediaQueryList,
+			Walk:            walkMediaQueryList,
+			Clone:           cloneMediaQueryList,
+			FromPlainObject: fromPlainObjectMediaQueryList,
+		},
+		"NestingSelector": {
+			Name:            "NestingSelector",
+			Structure:       []StructureField{},
+			Generate:        generateNestingSelector,
+			Clone:           cloneNestingSelector,
+			FromPlainObject: fromPlainObjectNestingSelector,
+		},
+		"Nth": {
+			Name: "Nth",
+			Structure: []StructureField{
+				{Name: "nth", Types: []FieldType{nodeField("AnPlusB"), nodeField("Identifier")}},
+				{Name: "selector", Types: []FieldType{nodeField("SelectorList"), nullField()}},
+			},
+			Generate:        generateNth,
+			Walk:            walkNth,
+			Clone:           cloneNth,
+			FromPlainObject: fromPlainObjectNth,
+		},
+		"Number": {
+			Name: "Number",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateNumber,
+			Clone:           cloneNumber,
+			FromPlainObject: fromPlainObjectNumber,
+		},
+		"Operator": {
+			Name: "Operator",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateOperator,
+			Clone:           cloneOperator,
+			FromPlainObject: fromPlainObjectOperator,
+		},
+		"Parentheses": {
+			Name: "Parentheses",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField()}},
+			},
+			Generate:        generateParentheses,
+			Walk:            walkParentheses,
+			Clone:           cloneParentheses,
+			FromPlainObject: fromPlainObjectParentheses,
+		},
+		"Percentage": {
+			Name: "Percentage",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+			},
+			Generate:        generatePercentage,
+			Clone:           clonePercentage,
+			FromPlainObject: fromPlainObjectPercentage,
+		},
+		"PseudoClassSelector": {
+			Name:        "PseudoClassSelector",
+			WalkContext: "function",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{stringField()}},
+				{Name: "children", Types: []FieldType{listField("Raw"), nullField()}},
+			},
+			Generate:        generatePseudoClassSelector,
+			Walk:            walkPseudoClassSelector,
+			Clone:           clonePseudoClassSelector,
+			FromPlainObject: fromPlainObjectPseudoClassSelector,
+		},
+		"PseudoElementSelector": {
+			Name:        "PseudoElementSelector",
+			WalkContext: "function",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{stringField()}},
+				{Name: "children", Types: []FieldType{listField("Raw"), nullField()}},
+			},
+			Generate:        generatePseudoElementSelector,
+			Walk:            walkPseudoElementSelector,
+			Clone:           clonePseudoElementSelector,
+			FromPlainObject: fromPlainObjectPseudoElementSelector,
+		},
+		"Ratio": {
+			Name: "Ratio",
+			Structure: []StructureField{
+				{Name: "left", Types: []FieldType{nodeField("Number"), nodeField("Function")}},
+				{Name: "right", Types: []FieldType{nodeField("Number"), nodeField("Function"), nullField()}},
+			},
+			Generate:        generateRatio,
+			Walk:            walkRatio,
+			Clone:           cloneRatio,
+			FromPlainObject: fromPlainObjectRatio,
+		},
+		"Raw": {
+			Name: "Raw",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateRaw,
+			Clone:           cloneRaw,
+			FromPlainObject: fromPlainObjectRaw,
+		},
+		"Rule": {
+			Name:        "Rule",
+			WalkContext: "rule",
+			Structure: []StructureField{
+				{Name: "prelude", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw")}},
+				{Name: "block", Types: []FieldType{nodeField("Block")}},
+			},
+			Generate:        generateRule,
+			Walk:            walkRule,
+			Clone:           cloneRule,
+			FromPlainObject: fromPlainObjectRule,
+		},
+		"Scope": {
+			Name: "Scope",
+			Structure: []StructureField{
+				{Name: "root", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw"), nullField()}},
+				{Name: "limit", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw"), nullField()}},
+			},
+			Generate:        generateScope,
+			Walk:            walkScope,
+			Clone:           cloneScope,
+			FromPlainObject: fromPlainObjectScope,
+		},
+		"Selector": {
+			Name: "Selector",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField("TypeSelector", "IdSelector", "ClassSelector", "AttributeSelector", "PseudoClassSelector", "PseudoElementSelector", "Combinator")}},
+			},
+			Generate:        generateSelector,
+			Walk:            walkSelector,
+			Clone:           cloneSelector,
+			FromPlainObject: fromPlainObjectSelector,
+		},
+		"SelectorList": {
+			Name:        "SelectorList",
+			WalkContext: "selector",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField("Selector", "Raw")}},
+			},
+			Generate:        generateSelectorList,
+			Walk:            walkSelectorList,
+			Clone:           cloneSelectorList,
+			FromPlainObject: fromPlainObjectSelectorList,
+		},
+		"String": {
+			Name: "String",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateString,
+			Clone:           cloneString,
+			FromPlainObject: fromPlainObjectString,
+		},
+		"StyleSheet": {
+			Name:        "StyleSheet",
+			WalkContext: "stylesheet",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField("Comment", "CDO", "CDC", "Atrule", "Rule", "Raw")}},
+			},
+			Generate:        generateStyleSheet,
+			Walk:            walkStyleSheet,
+			Clone:           cloneStyleSheet,
+			FromPlainObject: fromPlainObjectStyleSheet,
+		},
+		"SupportsDeclaration": {
+			Name: "SupportsDeclaration",
+			Structure: []StructureField{
+				{Name: "declaration", Types: []FieldType{nodeField("Declaration")}},
+			},
+			Generate:        generateSupportsDeclaration,
+			Walk:            walkSupportsDeclaration,
+			Clone:           cloneSupportsDeclaration,
+			FromPlainObject: fromPlainObjectSupportsDeclaration,
+		},
+		"TypeSelector": {
+			Name: "TypeSelector",
+			Structure: []StructureField{
+				{Name: "name", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateTypeSelector,
+			Clone:           cloneTypeSelector,
+			FromPlainObject: fromPlainObjectTypeSelector,
+		},
+		"UnicodeRange": {
+			Name: "UnicodeRange",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateUnicodeRange,
+			Clone:           cloneUnicodeRange,
+			FromPlainObject: fromPlainObjectUnicodeRange,
+		},
+		"Url": {
+			Name: "Url",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateURL,
+			Clone:           cloneURL,
+			FromPlainObject: fromPlainObjectURL,
+		},
+		"Value": {
+			Name: "Value",
+			Structure: []StructureField{
+				{Name: "children", Types: []FieldType{listField()}},
+			},
+			Generate:        generateValue,
+			Walk:            walkValue,
+			Clone:           cloneValue,
+			FromPlainObject: fromPlainObjectValue,
+		},
+		"WhiteSpace": {
+			Name: "WhiteSpace",
+			Structure: []StructureField{
+				{Name: "value", Types: []FieldType{stringField()}},
+			},
+			Generate:        generateWhiteSpace,
+			Clone:           cloneWhiteSpace,
+			FromPlainObject: fromPlainObjectWhiteSpace,
+		},
+	}
+}
+
 func (n *AnPlusB) Type() string        { return "AnPlusB" }
 func (n *AnPlusB) Location() *Location { return n.Loc }
 
@@ -10,19 +519,6 @@ func (n *AnPlusB) MarshalJSON() ([]byte, error) {
 		jsonField{"a", nullableString(n.A)},
 		jsonField{"b", nullableString(n.B)},
 	)
-}
-
-func anPlusBNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "AnPlusB",
-		Structure: []StructureField{
-			{Name: "a", Types: []FieldType{stringField(), nullField()}},
-			{Name: "b", Types: []FieldType{stringField(), nullField()}},
-		},
-		Generate:        generateAnPlusB,
-		Clone:           cloneAnPlusB,
-		FromPlainObject: fromPlainObjectAnPlusB,
-	}
 }
 
 func cloneAnPlusB(node Node, _ func(Node) Node) Node {
@@ -48,22 +544,6 @@ func (n *Atrule) MarshalJSON() ([]byte, error) {
 		jsonField{"prelude", n.Prelude},
 		jsonField{"block", n.Block},
 	)
-}
-
-func atruleNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "Atrule",
-		WalkContext: "atrule",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-			{Name: "prelude", Types: []FieldType{nodeField("AtrulePrelude"), nodeField("Raw"), nullField()}},
-			{Name: "block", Types: []FieldType{nodeField("Block"), nullField()}},
-		},
-		Generate:        generateAtrule,
-		Walk:            walkAtrule,
-		Clone:           cloneAtrule,
-		FromPlainObject: fromPlainObjectAtrule,
-	}
 }
 
 func walkAtrule(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
@@ -104,20 +584,6 @@ func (n *AtrulePrelude) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func atrulePreludeNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "AtrulePrelude",
-		WalkContext: "atrulePrelude",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateAtrulePrelude,
-		Walk:            walkAtrulePrelude,
-		Clone:           cloneAtrulePrelude,
-		FromPlainObject: fromPlainObjectAtrulePrelude,
-	}
-}
-
 func walkAtrulePrelude(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
 	n := node.(*AtrulePrelude)
 	return n.Children != nil && walkList(n.Children)
@@ -147,22 +613,6 @@ func (n *AttributeSelector) MarshalJSON() ([]byte, error) {
 		jsonField{"value", n.Value},
 		jsonField{"flags", nullableString(n.Flags)},
 	)
-}
-
-func attributeSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "AttributeSelector",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{nodeField("Identifier")}},
-			{Name: "matcher", Types: []FieldType{stringField(), nullField()}},
-			{Name: "value", Types: []FieldType{nodeField("String"), nodeField("Identifier"), nullField()}},
-			{Name: "flags", Types: []FieldType{stringField(), nullField()}},
-		},
-		Generate:        generateAttributeSelector,
-		Walk:            walkAttributeSelector,
-		Clone:           cloneAttributeSelector,
-		FromPlainObject: fromPlainObjectAttributeSelector,
-	}
 }
 
 func walkAttributeSelector(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
@@ -204,20 +654,6 @@ func (n *Block) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func blockNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "Block",
-		WalkContext: "block",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField("Atrule", "Rule", "Declaration")}},
-		},
-		Generate:        generateBlock,
-		Walk:            walkBlock,
-		Clone:           cloneBlock,
-		FromPlainObject: fromPlainObjectBlock,
-	}
-}
-
 func walkBlock(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
 	n := node.(*Block)
 	return n.Children != nil && walkList(n.Children)
@@ -246,19 +682,6 @@ func (n *Brackets) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func bracketsNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Brackets",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateBrackets,
-		Walk:            walkBrackets,
-		Clone:           cloneBrackets,
-		FromPlainObject: fromPlainObjectBrackets,
-	}
-}
-
 func walkBrackets(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
 	n := node.(*Brackets)
 	return n.Children != nil && walkList(n.Children)
@@ -285,16 +708,6 @@ func (n *CDC) MarshalJSON() ([]byte, error) {
 	return marshalNode(n)
 }
 
-func cdcNodeType() NodeConfig {
-	return NodeConfig{
-		Name:            "CDC",
-		Structure:       []StructureField{},
-		Generate:        generateCDC,
-		Clone:           cloneCDC,
-		FromPlainObject: fromPlainObjectCDC,
-	}
-}
-
 func cloneCDC(node Node, _ func(Node) Node) Node {
 	c := *node.(*CDC)
 	c.Loc = cloneLocation(c.Loc)
@@ -312,16 +725,6 @@ func (n *CDO) Location() *Location { return n.Loc }
 
 func (n *CDO) MarshalJSON() ([]byte, error) {
 	return marshalNode(n)
-}
-
-func cdoNodeType() NodeConfig {
-	return NodeConfig{
-		Name:            "CDO",
-		Structure:       []StructureField{},
-		Generate:        generateCDO,
-		Clone:           cloneCDO,
-		FromPlainObject: fromPlainObjectCDO,
-	}
 }
 
 func cloneCDO(node Node, _ func(Node) Node) Node {
@@ -343,18 +746,6 @@ func (n *ClassSelector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
 	)
-}
-
-func classSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "ClassSelector",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateClassSelector,
-		Clone:           cloneClassSelector,
-		FromPlainObject: fromPlainObjectClassSelector,
-	}
 }
 
 func cloneClassSelector(node Node, _ func(Node) Node) Node {
@@ -379,18 +770,6 @@ func (n *Combinator) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func combinatorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Combinator",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateCombinator,
-		Clone:           cloneCombinator,
-		FromPlainObject: fromPlainObjectCombinator,
-	}
-}
-
 func cloneCombinator(node Node, _ func(Node) Node) Node {
 	c := *node.(*Combinator)
 	c.Loc = cloneLocation(c.Loc)
@@ -411,18 +790,6 @@ func (n *Comment) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
 	)
-}
-
-func commentNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Comment",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateComment,
-		Clone:           cloneComment,
-		FromPlainObject: fromPlainObjectComment,
-	}
 }
 
 func cloneComment(node Node, _ func(Node) Node) Node {
@@ -446,20 +813,6 @@ func (n *Condition) MarshalJSON() ([]byte, error) {
 		jsonField{"kind", n.Kind},
 		jsonField{"children", n.Children},
 	)
-}
-
-func conditionNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Condition",
-		Structure: []StructureField{
-			{Name: "kind", Types: []FieldType{stringField()}},
-			{Name: "children", Types: []FieldType{listField("Identifier", "Feature", "FeatureFunction", "FeatureRange", "SupportsDeclaration")}},
-		},
-		Generate:        generateCondition,
-		Walk:            walkCondition,
-		Clone:           cloneCondition,
-		FromPlainObject: fromPlainObjectCondition,
-	}
 }
 
 func walkCondition(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
@@ -493,22 +846,6 @@ func (n *Declaration) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func declarationNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "Declaration",
-		WalkContext: "declaration",
-		Structure: []StructureField{
-			{Name: "important", Types: []FieldType{booleanField(), stringField()}},
-			{Name: "property", Types: []FieldType{stringField()}},
-			{Name: "value", Types: []FieldType{nodeField("Value"), nodeField("Raw")}},
-		},
-		Generate:        generateDeclaration,
-		Walk:            walkDeclaration,
-		Clone:           cloneDeclaration,
-		FromPlainObject: fromPlainObjectDeclaration,
-	}
-}
-
 func walkDeclaration(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
 	n := node.(*Declaration)
 	return n.Value != nil && walkNode(n.Value)
@@ -537,19 +874,6 @@ func (n *DeclarationList) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
 	)
-}
-
-func declarationListNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "DeclarationList",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField("Declaration", "Atrule", "Rule")}},
-		},
-		Generate:        generateDeclarationList,
-		Walk:            walkDeclarationList,
-		Clone:           cloneDeclarationList,
-		FromPlainObject: fromPlainObjectDeclarationList,
-	}
 }
 
 func walkDeclarationList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
@@ -581,19 +905,6 @@ func (n *Dimension) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func dimensionNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Dimension",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-			{Name: "unit", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateDimension,
-		Clone:           cloneDimension,
-		FromPlainObject: fromPlainObjectDimension,
-	}
-}
-
 func cloneDimension(node Node, _ func(Node) Node) Node {
 	c := *node.(*Dimension)
 	c.Loc = cloneLocation(c.Loc)
@@ -617,21 +928,6 @@ func (n *Feature) MarshalJSON() ([]byte, error) {
 		jsonField{"name", n.Name},
 		jsonField{"value", n.Value},
 	)
-}
-
-func featureNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Feature",
-		Structure: []StructureField{
-			{Name: "kind", Types: []FieldType{stringField()}},
-			{Name: "name", Types: []FieldType{stringField()}},
-			{Name: "value", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function"), nullField()}},
-		},
-		Generate:        generateFeature,
-		Walk:            walkFeature,
-		Clone:           cloneFeature,
-		FromPlainObject: fromPlainObjectFeature,
-	}
 }
 
 func walkFeature(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
@@ -664,21 +960,6 @@ func (n *FeatureFunction) MarshalJSON() ([]byte, error) {
 		jsonField{"feature", n.Feature},
 		jsonField{"value", n.Value},
 	)
-}
-
-func featureFunctionNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "FeatureFunction",
-		Structure: []StructureField{
-			{Name: "kind", Types: []FieldType{stringField()}},
-			{Name: "feature", Types: []FieldType{stringField()}},
-			{Name: "value", Types: []FieldType{nodeField("Declaration"), nodeField("Selector")}},
-		},
-		Generate:        generateFeatureFunction,
-		Walk:            walkFeatureFunction,
-		Clone:           cloneFeatureFunction,
-		FromPlainObject: fromPlainObjectFeatureFunction,
-	}
 }
 
 func walkFeatureFunction(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
@@ -714,24 +995,6 @@ func (n *FeatureRange) MarshalJSON() ([]byte, error) {
 		jsonField{"rightComparison", nullableString(n.RightComparison)},
 		jsonField{"right", n.Right},
 	)
-}
-
-func featureRangeNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "FeatureRange",
-		Structure: []StructureField{
-			{Name: "kind", Types: []FieldType{stringField()}},
-			{Name: "left", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function")}},
-			{Name: "leftComparison", Types: []FieldType{stringField()}},
-			{Name: "middle", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function")}},
-			{Name: "rightComparison", Types: []FieldType{stringField(), nullField()}},
-			{Name: "right", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function"), nullField()}},
-		},
-		Generate:        generateFeatureRange,
-		Walk:            walkFeatureRange,
-		Clone:           cloneFeatureRange,
-		FromPlainObject: fromPlainObjectFeatureRange,
-	}
 }
 
 func walkFeatureRange(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
@@ -777,21 +1040,6 @@ func (n *Function) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func functionNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "Function",
-		WalkContext: "function",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateFunction,
-		Walk:            walkFunction,
-		Clone:           cloneFunction,
-		FromPlainObject: fromPlainObjectFunction,
-	}
-}
-
 func walkFunction(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
 	n := node.(*Function)
 	return n.Children != nil && walkList(n.Children)
@@ -821,21 +1069,6 @@ func (n *GeneralEnclosed) MarshalJSON() ([]byte, error) {
 		jsonField{"function", nullableString(n.Function)},
 		jsonField{"children", n.Children},
 	)
-}
-
-func generalEnclosedNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "GeneralEnclosed",
-		Structure: []StructureField{
-			{Name: "kind", Types: []FieldType{stringField()}},
-			{Name: "function", Types: []FieldType{stringField(), nullField()}},
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateGeneralEnclosed,
-		Walk:            walkGeneralEnclosed,
-		Clone:           cloneGeneralEnclosed,
-		FromPlainObject: fromPlainObjectGeneralEnclosed,
-	}
 }
 
 func walkGeneralEnclosed(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
@@ -868,18 +1101,6 @@ func (n *Hash) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func hashNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Hash",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateHash,
-		Clone:           cloneHash,
-		FromPlainObject: fromPlainObjectHash,
-	}
-}
-
 func cloneHash(node Node, _ func(Node) Node) Node {
 	c := *node.(*Hash)
 	c.Loc = cloneLocation(c.Loc)
@@ -900,18 +1121,6 @@ func (n *IDSelector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
 	)
-}
-
-func idSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "IdSelector",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateIDSelector,
-		Clone:           cloneIDSelector,
-		FromPlainObject: fromPlainObjectIDSelector,
-	}
 }
 
 func cloneIDSelector(node Node, _ func(Node) Node) Node {
@@ -936,18 +1145,6 @@ func (n *Identifier) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func identifierNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Identifier",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateIdentifier,
-		Clone:           cloneIdentifier,
-		FromPlainObject: fromPlainObjectIdentifier,
-	}
-}
-
 func cloneIdentifier(node Node, _ func(Node) Node) Node {
 	c := *node.(*Identifier)
 	c.Loc = cloneLocation(c.Loc)
@@ -970,18 +1167,6 @@ func (n *Layer) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func layerNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Layer",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateLayer,
-		Clone:           cloneLayer,
-		FromPlainObject: fromPlainObjectLayer,
-	}
-}
-
 func cloneLayer(node Node, _ func(Node) Node) Node {
 	c := *node.(*Layer)
 	c.Loc = cloneLocation(c.Loc)
@@ -1002,19 +1187,6 @@ func (n *LayerList) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
 	)
-}
-
-func layerListNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "LayerList",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField("Layer")}},
-		},
-		Generate:        generateLayerList,
-		Walk:            walkLayerList,
-		Clone:           cloneLayerList,
-		FromPlainObject: fromPlainObjectLayerList,
-	}
 }
 
 func walkLayerList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
@@ -1045,21 +1217,6 @@ func (n *MediaQuery) MarshalJSON() ([]byte, error) {
 		jsonField{"mediaType", nullableString(n.MediaType)},
 		jsonField{"condition", n.Condition},
 	)
-}
-
-func mediaQueryNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "MediaQuery",
-		Structure: []StructureField{
-			{Name: "modifier", Types: []FieldType{stringField(), nullField()}},
-			{Name: "mediaType", Types: []FieldType{stringField(), nullField()}},
-			{Name: "condition", Types: []FieldType{nodeField("Condition"), nullField()}},
-		},
-		Generate:        generateMediaQuery,
-		Walk:            walkMediaQuery,
-		Clone:           cloneMediaQuery,
-		FromPlainObject: fromPlainObjectMediaQuery,
-	}
 }
 
 func walkMediaQuery(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
@@ -1094,19 +1251,6 @@ func (n *MediaQueryList) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func mediaQueryListNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "MediaQueryList",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField("MediaQuery")}},
-		},
-		Generate:        generateMediaQueryList,
-		Walk:            walkMediaQueryList,
-		Clone:           cloneMediaQueryList,
-		FromPlainObject: fromPlainObjectMediaQueryList,
-	}
-}
-
 func walkMediaQueryList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
 	n := node.(*MediaQueryList)
 	return n.Children != nil && walkList(n.Children)
@@ -1133,16 +1277,6 @@ func (n *NestingSelector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n)
 }
 
-func nestingSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name:            "NestingSelector",
-		Structure:       []StructureField{},
-		Generate:        generateNestingSelector,
-		Clone:           cloneNestingSelector,
-		FromPlainObject: fromPlainObjectNestingSelector,
-	}
-}
-
 func cloneNestingSelector(node Node, _ func(Node) Node) Node {
 	c := *node.(*NestingSelector)
 	c.Loc = cloneLocation(c.Loc)
@@ -1163,20 +1297,6 @@ func (n *Nth) MarshalJSON() ([]byte, error) {
 		jsonField{"nth", n.Nth},
 		jsonField{"selector", n.Selector},
 	)
-}
-
-func nthNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Nth",
-		Structure: []StructureField{
-			{Name: "nth", Types: []FieldType{nodeField("AnPlusB"), nodeField("Identifier")}},
-			{Name: "selector", Types: []FieldType{nodeField("SelectorList"), nullField()}},
-		},
-		Generate:        generateNth,
-		Walk:            walkNth,
-		Clone:           cloneNth,
-		FromPlainObject: fromPlainObjectNth,
-	}
 }
 
 func walkNth(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
@@ -1216,18 +1336,6 @@ func (n *Number) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func numberNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Number",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateNumber,
-		Clone:           cloneNumber,
-		FromPlainObject: fromPlainObjectNumber,
-	}
-}
-
 func cloneNumber(node Node, _ func(Node) Node) Node {
 	c := *node.(*Number)
 	c.Loc = cloneLocation(c.Loc)
@@ -1250,18 +1358,6 @@ func (n *Operator) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func operatorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Operator",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateOperator,
-		Clone:           cloneOperator,
-		FromPlainObject: fromPlainObjectOperator,
-	}
-}
-
 func cloneOperator(node Node, _ func(Node) Node) Node {
 	c := *node.(*Operator)
 	c.Loc = cloneLocation(c.Loc)
@@ -1282,19 +1378,6 @@ func (n *Parentheses) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
 	)
-}
-
-func parenthesesNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Parentheses",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateParentheses,
-		Walk:            walkParentheses,
-		Clone:           cloneParentheses,
-		FromPlainObject: fromPlainObjectParentheses,
-	}
 }
 
 func walkParentheses(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
@@ -1325,18 +1408,6 @@ func (n *Percentage) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func percentageNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Percentage",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generatePercentage,
-		Clone:           clonePercentage,
-		FromPlainObject: fromPlainObjectPercentage,
-	}
-}
-
 func clonePercentage(node Node, _ func(Node) Node) Node {
 	c := *node.(*Percentage)
 	c.Loc = cloneLocation(c.Loc)
@@ -1358,21 +1429,6 @@ func (n *PseudoClassSelector) MarshalJSON() ([]byte, error) {
 		jsonField{"name", n.Name},
 		jsonField{"children", n.Children},
 	)
-}
-
-func pseudoClassSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "PseudoClassSelector",
-		WalkContext: "function",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-			{Name: "children", Types: []FieldType{listField("Raw"), nullField()}},
-		},
-		Generate:        generatePseudoClassSelector,
-		Walk:            walkPseudoClassSelector,
-		Clone:           clonePseudoClassSelector,
-		FromPlainObject: fromPlainObjectPseudoClassSelector,
-	}
 }
 
 func walkPseudoClassSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
@@ -1405,21 +1461,6 @@ func (n *PseudoElementSelector) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func pseudoElementSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "PseudoElementSelector",
-		WalkContext: "function",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-			{Name: "children", Types: []FieldType{listField("Raw"), nullField()}},
-		},
-		Generate:        generatePseudoElementSelector,
-		Walk:            walkPseudoElementSelector,
-		Clone:           clonePseudoElementSelector,
-		FromPlainObject: fromPlainObjectPseudoElementSelector,
-	}
-}
-
 func walkPseudoElementSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
 	n := node.(*PseudoElementSelector)
 	return n.Children != nil && walkList(n.Children)
@@ -1448,20 +1489,6 @@ func (n *Ratio) MarshalJSON() ([]byte, error) {
 		jsonField{"left", n.Left},
 		jsonField{"right", n.Right},
 	)
-}
-
-func ratioNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Ratio",
-		Structure: []StructureField{
-			{Name: "left", Types: []FieldType{nodeField("Number"), nodeField("Function")}},
-			{Name: "right", Types: []FieldType{nodeField("Number"), nodeField("Function"), nullField()}},
-		},
-		Generate:        generateRatio,
-		Walk:            walkRatio,
-		Clone:           cloneRatio,
-		FromPlainObject: fromPlainObjectRatio,
-	}
 }
 
 func walkRatio(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
@@ -1499,18 +1526,6 @@ func (n *Raw) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func rawNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Raw",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateRaw,
-		Clone:           cloneRaw,
-		FromPlainObject: fromPlainObjectRaw,
-	}
-}
-
 func cloneRaw(node Node, _ func(Node) Node) Node {
 	c := *node.(*Raw)
 	c.Loc = cloneLocation(c.Loc)
@@ -1532,21 +1547,6 @@ func (n *Rule) MarshalJSON() ([]byte, error) {
 		jsonField{"prelude", n.Prelude},
 		jsonField{"block", n.Block},
 	)
-}
-
-func ruleNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "Rule",
-		WalkContext: "rule",
-		Structure: []StructureField{
-			{Name: "prelude", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw")}},
-			{Name: "block", Types: []FieldType{nodeField("Block")}},
-		},
-		Generate:        generateRule,
-		Walk:            walkRule,
-		Clone:           cloneRule,
-		FromPlainObject: fromPlainObjectRule,
-	}
 }
 
 func walkRule(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
@@ -1587,20 +1587,6 @@ func (n *Scope) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func scopeNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Scope",
-		Structure: []StructureField{
-			{Name: "root", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw"), nullField()}},
-			{Name: "limit", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw"), nullField()}},
-		},
-		Generate:        generateScope,
-		Walk:            walkScope,
-		Clone:           cloneScope,
-		FromPlainObject: fromPlainObjectScope,
-	}
-}
-
 func walkScope(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
 	n := node.(*Scope)
 	if reverse {
@@ -1636,19 +1622,6 @@ func (n *Selector) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func selectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Selector",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField("TypeSelector", "IdSelector", "ClassSelector", "AttributeSelector", "PseudoClassSelector", "PseudoElementSelector", "Combinator")}},
-		},
-		Generate:        generateSelector,
-		Walk:            walkSelector,
-		Clone:           cloneSelector,
-		FromPlainObject: fromPlainObjectSelector,
-	}
-}
-
 func walkSelector(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
 	n := node.(*Selector)
 	return n.Children != nil && walkList(n.Children)
@@ -1675,20 +1648,6 @@ func (n *SelectorList) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
 	)
-}
-
-func selectorListNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "SelectorList",
-		WalkContext: "selector",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField("Selector", "Raw")}},
-		},
-		Generate:        generateSelectorList,
-		Walk:            walkSelectorList,
-		Clone:           cloneSelectorList,
-		FromPlainObject: fromPlainObjectSelectorList,
-	}
 }
 
 func walkSelectorList(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
@@ -1719,18 +1678,6 @@ func (n *String) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func stringNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "String",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateString,
-		Clone:           cloneString,
-		FromPlainObject: fromPlainObjectString,
-	}
-}
-
 func cloneString(node Node, _ func(Node) Node) Node {
 	c := *node.(*String)
 	c.Loc = cloneLocation(c.Loc)
@@ -1751,20 +1698,6 @@ func (n *StyleSheet) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
 	)
-}
-
-func styleSheetNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "StyleSheet",
-		WalkContext: "stylesheet",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField("Comment", "CDO", "CDC", "Atrule", "Rule", "Raw")}},
-		},
-		Generate:        generateStyleSheet,
-		Walk:            walkStyleSheet,
-		Clone:           cloneStyleSheet,
-		FromPlainObject: fromPlainObjectStyleSheet,
-	}
 }
 
 func walkStyleSheet(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
@@ -1793,19 +1726,6 @@ func (n *SupportsDeclaration) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"declaration", n.Declaration},
 	)
-}
-
-func supportsDeclarationNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "SupportsDeclaration",
-		Structure: []StructureField{
-			{Name: "declaration", Types: []FieldType{nodeField("Declaration")}},
-		},
-		Generate:        generateSupportsDeclaration,
-		Walk:            walkSupportsDeclaration,
-		Clone:           cloneSupportsDeclaration,
-		FromPlainObject: fromPlainObjectSupportsDeclaration,
-	}
 }
 
 func walkSupportsDeclaration(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
@@ -1838,18 +1758,6 @@ func (n *TypeSelector) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func typeSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "TypeSelector",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateTypeSelector,
-		Clone:           cloneTypeSelector,
-		FromPlainObject: fromPlainObjectTypeSelector,
-	}
-}
-
 func cloneTypeSelector(node Node, _ func(Node) Node) Node {
 	c := *node.(*TypeSelector)
 	c.Loc = cloneLocation(c.Loc)
@@ -1870,18 +1778,6 @@ func (n *UnicodeRange) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
 	)
-}
-
-func unicodeRangeNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "UnicodeRange",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateUnicodeRange,
-		Clone:           cloneUnicodeRange,
-		FromPlainObject: fromPlainObjectUnicodeRange,
-	}
 }
 
 func cloneUnicodeRange(node Node, _ func(Node) Node) Node {
@@ -1906,18 +1802,6 @@ func (n *URL) MarshalJSON() ([]byte, error) {
 	)
 }
 
-func urlNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Url",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateURL,
-		Clone:           cloneURL,
-		FromPlainObject: fromPlainObjectURL,
-	}
-}
-
 func cloneURL(node Node, _ func(Node) Node) Node {
 	c := *node.(*URL)
 	c.Loc = cloneLocation(c.Loc)
@@ -1938,19 +1822,6 @@ func (n *Value) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
 	)
-}
-
-func valueNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Value",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField()}},
-		},
-		Generate:        generateValue,
-		Walk:            walkValue,
-		Clone:           cloneValue,
-		FromPlainObject: fromPlainObjectValue,
-	}
 }
 
 func walkValue(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
@@ -1979,18 +1850,6 @@ func (n *WhiteSpace) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
 	)
-}
-
-func whiteSpaceNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "WhiteSpace",
-		Structure: []StructureField{
-			{Name: "value", Types: []FieldType{stringField()}},
-		},
-		Generate:        generateWhiteSpace,
-		Clone:           cloneWhiteSpace,
-		FromPlainObject: fromPlainObjectWhiteSpace,
-	}
 }
 
 func cloneWhiteSpace(node Node, _ func(Node) Node) Node {
