@@ -462,6 +462,16 @@ func TestLexerMatchDescriptorEdges(t *testing.T) {
 	if result := lexer.MatchAtrulePreludeString("font-face", ""); result.Matched != nil || result.Error != nil {
 		t.Errorf(`MatchAtrulePreludeString("font-face", "") = %v, %v, want no match and no error`, result.Matched, result.Error)
 	}
+
+	// a group with a combinator the definition syntax parser never
+	// produces fails to build (upstream builds an undefined graph)
+	unknownCombinator := lexer.CreateDescriptorFromTree(&definitionsyntax.Group{
+		Combinator: "x",
+		Terms:      []definitionsyntax.Node{&definitionsyntax.Keyword{Name: "a"}},
+	}, "Type", "anonymous", "")
+	if result := lexer.MatchDescriptorString(unknownCombinator, "a"); result.Matched != nil || result.Error == nil {
+		t.Errorf(`MatchDescriptorString(group with combinator "x", "a") = %v, %v, want an error`, result.Matched, result.Error)
+	}
 }
 
 // TestLexerFunctionFragmentsAndTrace finds the fragments and traces of

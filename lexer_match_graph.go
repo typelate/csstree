@@ -4,6 +4,7 @@ package csstree
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -141,224 +142,230 @@ func withoutTerm(terms []*matchGraphNode, term *matchGraphNode) []*matchGraphNod
 	return result
 }
 
-func buildGroupMatchGraph(combinator definitionsyntax.Combinator, terms []*matchGraphNode, atLeastOneTermMatched bool) *matchGraphNode {
+// buildGroupMatchGraph returns the match graph of the terms of a group
+// with combinator. It fails for a combinator the definition syntax parser
+// never produces, for which upstream returns undefined.
+func buildGroupMatchGraph(combinator definitionsyntax.Combinator, terms []*matchGraphNode) (*matchGraphNode, error) {
 	switch combinator {
 	case definitionsyntax.Juxtaposition:
-		// Juxtaposing components means that all of them must occur, in the given order.
-		//
-		// a b c
-		// =
-		// match a
-		//   then match b
-		//     then match c
-		//       then MATCH
-		//       else MISMATCH
-		//     else MISMATCH
-		//   else MISMATCH
-		result := matchState
-
-		for i := len(terms) - 1; i >= 0; i-- {
-			term := terms[i]
-
-			result = createCondition(
-				term,
-				result,
-				mismatchState,
-			)
-		}
-
-		return result
-
+		return buildJuxtaposedMatchGraph(terms), nil
 	case definitionsyntax.SingleBar:
-		// A bar (|) separates two or more alternatives: exactly one of them must occur.
-		//
-		// a | b | c
-		// =
-		// match a
-		//   then MATCH
-		//   else match b
-		//     then MATCH
-		//     else match c
-		//       then MATCH
-		//       else MISMATCH
-
-		result := mismatchState
-		var enumMap map[string]*matchGraphNode
-
-		for i := len(terms) - 1; i >= 0; i-- {
-			term := terms[i]
-
-			// reduce sequence of keywords into a Enum
-			if isEnumCapatible(term) {
-				if enumMap == nil && i > 0 && isEnumCapatible(terms[i-1]) {
-					enumMap = make(map[string]*matchGraphNode)
-					result = createCondition(
-						&matchGraphNode{
-							typ:     "Enum",
-							enumMap: enumMap,
-						},
-						matchState,
-						result,
-					)
-				}
-
-				if enumMap != nil {
-					key := term.name
-					if isFunctionType(term.name) {
-						key = term.name[:len(term.name)-1]
-					}
-					key = toLowerCase(key)
-					if _, ok := enumMap[key]; !ok {
-						enumMap[key] = term
-						continue
-					}
-				}
-			}
-
-			enumMap = nil
-
-			// create a new conditonal node
-			result = createCondition(
-				term,
-				matchState,
-				result,
-			)
-		}
-
-		return result
-
+		return buildAlternativesMatchGraph(terms), nil
 	case definitionsyntax.DoubleAmpersand:
-		// A double ampersand (&&) separates two or more components,
-		// all of which must occur, in any order.
-
-		// Use MatchOnce for groups with a large number of terms,
-		// since &&-groups produces at least N!-node trees
-		if len(terms) > 5 {
-			return &matchGraphNode{
-				typ:   "MatchOnce",
-				terms: terms,
-				all:   true,
-			}
-		}
-
-		// Use a combination tree for groups with small number of terms
-		//
-		// a && b && c
-		// =
-		// match a
-		//   then [b && c]
-		//   else match b
-		//     then [a && c]
-		//     else match c
-		//       then [a && b]
-		//       else MISMATCH
-		//
-		// a && b
-		// =
-		// match a
-		//   then match b
-		//     then MATCH
-		//     else MISMATCH
-		//   else match b
-		//     then match a
-		//       then MATCH
-		//       else MISMATCH
-		//     else MISMATCH
-		result := mismatchState
-
-		for i := len(terms) - 1; i >= 0; i-- {
-			term := terms[i]
-			var thenClause *matchGraphNode
-
-			if len(terms) > 1 {
-				thenClause = buildGroupMatchGraph(
-					combinator,
-					withoutTerm(terms, term),
-					false,
-				)
-			} else {
-				thenClause = matchState
-			}
-
-			result = createCondition(
-				term,
-				thenClause,
-				result,
-			)
-		}
-
-		return result
-
+		return buildAllInAnyOrderMatchGraph(terms), nil
 	case definitionsyntax.DoubleBar:
-		// A double bar (||) separates two or more options:
-		// one or more of them must occur, in any order.
-
-		// Use MatchOnce for groups with a large number of terms,
-		// since ||-groups produces at least N!-node trees
-		if len(terms) > 5 {
-			return &matchGraphNode{
-				typ:   "MatchOnce",
-				terms: terms,
-				all:   false,
-			}
-		}
-
-		// Use a combination tree for groups with small number of terms
-		//
-		// a || b || c
-		// =
-		// match a
-		//   then [b || c]
-		//   else match b
-		//     then [a || c]
-		//     else match c
-		//       then [a || b]
-		//       else MISMATCH
-		//
-		// a || b
-		// =
-		// match a
-		//   then match b
-		//     then MATCH
-		//     else MATCH
-		//   else match b
-		//     then match a
-		//       then MATCH
-		//       else MATCH
-		//     else MISMATCH
-		result := mismatchState
-		if atLeastOneTermMatched {
-			result = matchState
-		}
-
-		for i := len(terms) - 1; i >= 0; i-- {
-			term := terms[i]
-			var thenClause *matchGraphNode
-
-			if len(terms) > 1 {
-				thenClause = buildGroupMatchGraph(
-					combinator,
-					withoutTerm(terms, term),
-					true,
-				)
-			} else {
-				thenClause = matchState
-			}
-
-			result = createCondition(
-				term,
-				thenClause,
-				result,
-			)
-		}
-
-		return result
+		return buildAnyInAnyOrderMatchGraph(terms, false), nil
 	}
 
-	// upstream returns undefined for an unknown combinator; the
-	// definition syntax parser produces only the four above, so only a
-	// Group built by hand with another Combinator value gets here
-	return nil
+	return nil, fmt.Errorf("unknown combinator %q", combinator)
+}
+
+// buildJuxtaposedMatchGraph is the " " combinator.
+func buildJuxtaposedMatchGraph(terms []*matchGraphNode) *matchGraphNode {
+	// Juxtaposing components means that all of them must occur, in the given order.
+	//
+	// a b c
+	// =
+	// match a
+	//   then match b
+	//     then match c
+	//       then MATCH
+	//       else MISMATCH
+	//     else MISMATCH
+	//   else MISMATCH
+	result := matchState
+
+	for i := len(terms) - 1; i >= 0; i-- {
+		term := terms[i]
+
+		result = createCondition(
+			term,
+			result,
+			mismatchState,
+		)
+	}
+
+	return result
+}
+
+// buildAlternativesMatchGraph is the "|" combinator.
+func buildAlternativesMatchGraph(terms []*matchGraphNode) *matchGraphNode {
+	// A bar (|) separates two or more alternatives: exactly one of them must occur.
+	//
+	// a | b | c
+	// =
+	// match a
+	//   then MATCH
+	//   else match b
+	//     then MATCH
+	//     else match c
+	//       then MATCH
+	//       else MISMATCH
+
+	result := mismatchState
+	var enumMap map[string]*matchGraphNode
+
+	for i := len(terms) - 1; i >= 0; i-- {
+		term := terms[i]
+
+		// reduce sequence of keywords into a Enum
+		if isEnumCapatible(term) {
+			if enumMap == nil && i > 0 && isEnumCapatible(terms[i-1]) {
+				enumMap = make(map[string]*matchGraphNode)
+				result = createCondition(
+					&matchGraphNode{
+						typ:     "Enum",
+						enumMap: enumMap,
+					},
+					matchState,
+					result,
+				)
+			}
+
+			if enumMap != nil {
+				key := term.name
+				if isFunctionType(term.name) {
+					key = term.name[:len(term.name)-1]
+				}
+				key = toLowerCase(key)
+				if _, ok := enumMap[key]; !ok {
+					enumMap[key] = term
+					continue
+				}
+			}
+		}
+
+		enumMap = nil
+
+		// create a new conditonal node
+		result = createCondition(
+			term,
+			matchState,
+			result,
+		)
+	}
+
+	return result
+}
+
+// buildAllInAnyOrderMatchGraph is the "&&" combinator.
+func buildAllInAnyOrderMatchGraph(terms []*matchGraphNode) *matchGraphNode {
+	// A double ampersand (&&) separates two or more components,
+	// all of which must occur, in any order.
+
+	// Use MatchOnce for groups with a large number of terms,
+	// since &&-groups produces at least N!-node trees
+	if len(terms) > 5 {
+		return &matchGraphNode{
+			typ:   "MatchOnce",
+			terms: terms,
+			all:   true,
+		}
+	}
+
+	// Use a combination tree for groups with small number of terms
+	//
+	// a && b && c
+	// =
+	// match a
+	//   then [b && c]
+	//   else match b
+	//     then [a && c]
+	//     else match c
+	//       then [a && b]
+	//       else MISMATCH
+	//
+	// a && b
+	// =
+	// match a
+	//   then match b
+	//     then MATCH
+	//     else MISMATCH
+	//   else match b
+	//     then match a
+	//       then MATCH
+	//       else MISMATCH
+	//     else MISMATCH
+	result := mismatchState
+
+	for i := len(terms) - 1; i >= 0; i-- {
+		term := terms[i]
+		thenClause := matchState
+
+		if len(terms) > 1 {
+			thenClause = buildAllInAnyOrderMatchGraph(withoutTerm(terms, term))
+		}
+
+		result = createCondition(
+			term,
+			thenClause,
+			result,
+		)
+	}
+
+	return result
+}
+
+// buildAnyInAnyOrderMatchGraph is the "||" combinator; atLeastOneTermMatched
+// is set for the rest of the terms once one matched.
+func buildAnyInAnyOrderMatchGraph(terms []*matchGraphNode, atLeastOneTermMatched bool) *matchGraphNode {
+	// A double bar (||) separates two or more options:
+	// one or more of them must occur, in any order.
+
+	// Use MatchOnce for groups with a large number of terms,
+	// since ||-groups produces at least N!-node trees
+	if len(terms) > 5 {
+		return &matchGraphNode{
+			typ:   "MatchOnce",
+			terms: terms,
+			all:   false,
+		}
+	}
+
+	// Use a combination tree for groups with small number of terms
+	//
+	// a || b || c
+	// =
+	// match a
+	//   then [b || c]
+	//   else match b
+	//     then [a || c]
+	//     else match c
+	//       then [a || b]
+	//       else MISMATCH
+	//
+	// a || b
+	// =
+	// match a
+	//   then match b
+	//     then MATCH
+	//     else MATCH
+	//   else match b
+	//     then match a
+	//       then MATCH
+	//       else MATCH
+	//     else MISMATCH
+	result := mismatchState
+	if atLeastOneTermMatched {
+		result = matchState
+	}
+
+	for i := len(terms) - 1; i >= 0; i-- {
+		term := terms[i]
+		thenClause := matchState
+
+		if len(terms) > 1 {
+			thenClause = buildAnyInAnyOrderMatchGraph(withoutTerm(terms, term), true)
+		}
+
+		result = createCondition(
+			term,
+			thenClause,
+			result,
+		)
+	}
+
+	return result
 }
 
 func buildMultiplierMatchGraph(node *definitionsyntax.Multiplier) (*matchGraphNode, error) {
@@ -471,11 +478,10 @@ func buildMatchGraphInternal(node definitionsyntax.Node) (*matchGraphNode, error
 		}
 		markPercentSiblings(node, terms)
 
-		result := buildGroupMatchGraph(
-			node.Combinator,
-			terms,
-			false,
-		)
+		result, err := buildGroupMatchGraph(node.Combinator, terms)
+		if err != nil {
+			return nil, err
+		}
 
 		if node.DisallowEmpty {
 			result = createCondition(
