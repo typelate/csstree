@@ -86,78 +86,36 @@ func lastNonSC(p *Parser, start, end int) int {
 }
 
 // Declaration is a property declaration.
+//
+//csstree:node walkContext=declaration
 type Declaration struct {
 	Loc *Location
 	// Important is "" for no !important (upstream false), "important" for
 	// !important (upstream true), or the text after ! when it differs from
 	// "important", e.g. "IMPORTANT" or "ie" (upstream keeps that string).
-	Important string
-	Property  string
+	Important string `css:"important,boolean|string,json=importantJSON,read=plainObjectImportant"`
+	Property  string `css:"property,string"`
 	// Value is a *Value or a *Raw.
-	Value Node
+	Value Node `css:"value,Value|Raw"`
 }
 
-func (n *Declaration) Type() string        { return "Declaration" }
-func (n *Declaration) Location() *Location { return n.Loc }
-
-func (n *Declaration) MarshalJSON() ([]byte, error) {
-	var important any
-	switch n.Important {
+// importantJSON returns the JSON value of Declaration.Important: false,
+// true or a string.
+func importantJSON(important string) any {
+	switch important {
 	case "":
-		important = false
+		return false
 	case "important":
-		important = true
+		return true
 	default:
-		important = n.Important
-	}
-	return marshalNode(n,
-		jsonField{"important", important},
-		jsonField{"property", n.Property},
-		jsonField{"value", n.Value},
-	)
-}
-
-func declarationNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "Declaration",
-		WalkContext: "declaration",
-		Structure: []StructureField{
-			{Name: "important", Types: []FieldType{booleanField(), stringField()}},
-			{Name: "property", Types: []FieldType{stringField()}},
-			{Name: "value", Types: []FieldType{nodeField("Value"), nodeField("Raw")}},
-		},
-		Generate:        generateDeclaration,
-		Walk:            walkDeclaration,
-		Clone:           cloneDeclaration,
-		FromPlainObject: fromPlainObjectDeclaration,
+		return important
 	}
 }
 
-func walkDeclaration(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
-	n := node.(*Declaration)
-	return n.Value != nil && walkNode(n.Value)
-}
-
-func cloneDeclaration(node Node, clone func(Node) Node) Node {
-	c := *node.(*Declaration)
-	c.Loc = cloneLocation(c.Loc)
-	c.Value = clone(c.Value)
-	return &c
-}
-
-func fromPlainObjectDeclaration(r *PlainObjectReader, object map[string]any) Node {
-	return &Declaration{
-		Loc:       r.Location(object),
-		Important: plainObjectImportant(r, object),
-		Property:  r.String(object, "property"),
-		Value:     r.Node(object, "value"),
-	}
-}
-
-// plainObjectImportant reads Declaration.important: false, true or a
-// string.
-func plainObjectImportant(r *PlainObjectReader, object map[string]any) string {
-	switch value := object["important"].(type) {
+// plainObjectImportant reads Declaration.Important from object[key]:
+// false, true or a string.
+func plainObjectImportant(r *PlainObjectReader, object map[string]any, key string) string {
+	switch value := object[key].(type) {
 	case nil:
 		return ""
 	case bool:
@@ -168,7 +126,7 @@ func plainObjectImportant(r *PlainObjectReader, object map[string]any) string {
 	case string:
 		return value
 	default:
-		r.fieldError(object, "important", "a boolean or a string")
+		r.fieldError(object, key, "a boolean or a string")
 		return ""
 	}
 }

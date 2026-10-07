@@ -482,6 +482,54 @@ func fromPlainObjectCondition(r *PlainObjectReader, object map[string]any) Node 
 	}
 }
 
+func (n *Declaration) Type() string        { return "Declaration" }
+func (n *Declaration) Location() *Location { return n.Loc }
+
+func (n *Declaration) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"important", importantJSON(n.Important)},
+		jsonField{"property", n.Property},
+		jsonField{"value", n.Value},
+	)
+}
+
+func declarationNodeType() NodeConfig {
+	return NodeConfig{
+		Name:        "Declaration",
+		WalkContext: "declaration",
+		Structure: []StructureField{
+			{Name: "important", Types: []FieldType{booleanField(), stringField()}},
+			{Name: "property", Types: []FieldType{stringField()}},
+			{Name: "value", Types: []FieldType{nodeField("Value"), nodeField("Raw")}},
+		},
+		Generate:        generateDeclaration,
+		Walk:            walkDeclaration,
+		Clone:           cloneDeclaration,
+		FromPlainObject: fromPlainObjectDeclaration,
+	}
+}
+
+func walkDeclaration(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Declaration)
+	return n.Value != nil && walkNode(n.Value)
+}
+
+func cloneDeclaration(node Node, clone func(Node) Node) Node {
+	c := *node.(*Declaration)
+	c.Loc = cloneLocation(c.Loc)
+	c.Value = clone(c.Value)
+	return &c
+}
+
+func fromPlainObjectDeclaration(r *PlainObjectReader, object map[string]any) Node {
+	return &Declaration{
+		Loc:       r.Location(object),
+		Important: plainObjectImportant(r, object, "important"),
+		Property:  r.String(object, "property"),
+		Value:     r.Node(object, "value"),
+	}
+}
+
 func (n *DeclarationList) Type() string        { return "DeclarationList" }
 func (n *DeclarationList) Location() *Location { return n.Loc }
 
@@ -1735,6 +1783,49 @@ func fromPlainObjectStyleSheet(r *PlainObjectReader, object map[string]any) Node
 	return &StyleSheet{
 		Loc:      r.Location(object),
 		Children: r.List(object, "children"),
+	}
+}
+
+func (n *SupportsDeclaration) Type() string        { return "SupportsDeclaration" }
+func (n *SupportsDeclaration) Location() *Location { return n.Loc }
+
+func (n *SupportsDeclaration) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"declaration", n.Declaration},
+	)
+}
+
+func supportsDeclarationNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "SupportsDeclaration",
+		Structure: []StructureField{
+			{Name: "declaration", Types: []FieldType{nodeField("Declaration")}},
+		},
+		Generate:        generateSupportsDeclaration,
+		Walk:            walkSupportsDeclaration,
+		Clone:           cloneSupportsDeclaration,
+		FromPlainObject: fromPlainObjectSupportsDeclaration,
+	}
+}
+
+func walkSupportsDeclaration(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*SupportsDeclaration)
+	return n.Declaration != nil && walkNode(n.Declaration)
+}
+
+func cloneSupportsDeclaration(node Node, clone func(Node) Node) Node {
+	c := *node.(*SupportsDeclaration)
+	c.Loc = cloneLocation(c.Loc)
+	if c.Declaration != nil {
+		c.Declaration = cloneAs(c.Declaration, clone)
+	}
+	return &c
+}
+
+func fromPlainObjectSupportsDeclaration(r *PlainObjectReader, object map[string]any) Node {
+	return &SupportsDeclaration{
+		Loc:         r.Location(object),
+		Declaration: PlainObjectNode[*Declaration](r, object, "declaration"),
 	}
 }
 
