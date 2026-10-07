@@ -106,8 +106,10 @@ func createSyntaxMatchHandler(source string) func() (*matchGraphNode, error) {
 }
 
 // createGenericMatchHandler is createSyntaxMatchHandler for a generic type.
-func createGenericMatchHandler(fn genericFunc) func() (*matchGraphNode, error) {
-	match := buildGenericMatchGraphRoot(fn, nil)
+// The graph names the type, as the lexer's do, for the matcher to type
+// check math functions.
+func createGenericMatchHandler(name string, fn genericFunc) func() (*matchGraphNode, error) {
+	match := buildGenericMatchGraphRoot(fn, &SyntaxRef{Kind: "Type", Name: name})
 	return func() (*matchGraphNode, error) {
 		return match, nil
 	}
@@ -197,7 +199,7 @@ func createSyntaxTest(t *testing.T, testName string, test definitionSyntaxMatchT
 		}
 
 		for _, generic := range createGenericTypes(defaultUnits()) {
-			syntaxes.types[generic.name] = createGenericMatchHandler(generic.fn)
+			syntaxes.types[generic.name] = createGenericMatchHandler(generic.name, generic.fn)
 		}
 
 		for name, source := range test.Types {
@@ -208,7 +210,8 @@ func createSyntaxTest(t *testing.T, testName string, test definitionSyntaxMatchT
 			syntaxes.properties[name] = createSyntaxMatchHandler(source)
 		}
 
-		for _, input := range test.Valid {
+		valid, invalid := specMathFixtureValues(testName, test.Valid, test.Invalid)
+		for _, input := range valid {
 			t.Run(`should MATCH to "`+input+`"`, func(t *testing.T) {
 				graph, err := matchGraph()
 				if err != nil {
@@ -240,7 +243,7 @@ func createSyntaxTest(t *testing.T, testName string, test definitionSyntaxMatchT
 			})
 		}
 
-		for _, input := range test.Invalid {
+		for _, input := range invalid {
 			t.Run(`should NOT MATCH to "`+input+`"`, func(t *testing.T) {
 				graph, err := matchGraph()
 				if err != nil {

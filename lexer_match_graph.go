@@ -19,7 +19,7 @@ import (
 //   - MatchOnce: terms, all
 //   - MatchOnceBuffer, AddMatchOnce (matcher states): once (the MatchOnce
 //     node, upstream syntax), index, mask
-//   - Generic: fn
+//   - Generic: fn, name (the generic type's name)
 //   - Type, Property, Keyword, AtKeyword, Function: name, syntax
 //   - Token, String: value, syntax
 //   - Comma: syntax (a Comma or a Multiplier node)
@@ -45,6 +45,10 @@ type matchGraphNode struct {
 	name   string
 	value  string
 	syntax definitionsyntax.Node
+
+	// percentSibling is set on a numeric Type term of a "|" group that
+	// has a <percentage> term (see markPercentSiblings).
+	percentSibling bool
 
 	ref    *SyntaxRef
 	source definitionsyntax.Node
@@ -464,6 +468,7 @@ func buildMatchGraphInternal(node definitionsyntax.Node) (*matchGraphNode, error
 			}
 			terms[i] = graph
 		}
+		markPercentSiblings(node, terms)
 
 		result := buildGroupMatchGraph(
 			node.Combinator,
@@ -638,9 +643,13 @@ func buildMatchGraphFromString(syntaxTree string, ref *SyntaxRef) (*matchGraphNo
 // buildGenericMatchGraphRoot is buildMatchGraph for a generic type
 // function (upstream passes the function as syntaxTree).
 func buildGenericMatchGraphRoot(fn genericFunc, ref *SyntaxRef) *matchGraphNode {
+	match := buildGenericMatchGraph(fn)
+	if ref != nil {
+		match.name = ref.Name
+	}
 	return &matchGraphNode{
 		typ:   "MatchGraph",
-		match: buildGenericMatchGraph(fn),
+		match: match,
 		ref:   ref,
 	}
 }

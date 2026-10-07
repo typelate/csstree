@@ -408,7 +408,9 @@ func popTokenType(stack []tokenizer.TokenType) (tokenizer.TokenType, []tokenizer
 // TODO: implement
 // can be used wherever <length>, <frequency>, <angle>, <time>, <percentage>, <number>, or <integer> values are allowed
 // https://drafts.csswg.org/css-values/#calc-notation
-// mathType is upstream math (renamed: Go code imports package math).
+// mathType is upstream math (renamed: Go code imports package math). The
+// matcher type checks math functions with matchMathFunction before it
+// calls a generic type, so the function branch is only reached directly.
 func mathType(next genericFunc, functionNames []string) genericFunc {
 	return func(token *matchToken, getNextToken func(offset int) *matchToken, opts *definitionsyntax.Range) int {
 		if token == nil {

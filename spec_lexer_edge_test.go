@@ -312,10 +312,12 @@ func TestLexerSpecEdgeCases(t *testing.T) {
 		{kind: "type", name: "angle", value: "0", iterations: 3},
 		{kind: "type", name: "time", value: "0", iterations: 3},
 
-		// Values 4 §10 math functions are consumed without checking their
-		// arguments: calc(red) is a <length>, hypot(1px) a <number>
-		{kind: "property", name: "width", value: "calc(red)", matched: true, iterations: 12},
-		{kind: "type", name: "number", value: "hypot(1px)", matched: true, iterations: 3},
+		// Values 4 §10.9 math functions are type checked (upstream
+		// consumes them without checking their arguments, so calc(red) is
+		// a <length> and hypot(1px) a <number> there); a math function
+		// resolving to a <number> is taken for an <integer>
+		{kind: "property", name: "width", value: "calc(red)", iterations: 29},
+		{kind: "type", name: "number", value: "hypot(1px)", iterations: 3},
 		{kind: "type", name: "integer", value: "calc(1.5)", matched: true, iterations: 3},
 
 		// CSS Color 4 <hex-color>
