@@ -22,7 +22,6 @@ func (r *MatchResult) GetTrace(node Node) []MatchSyntax {
 	var hasMatch func(matchNode *MatchNode) bool
 	hasMatch = func(matchNode *MatchNode) bool {
 		if matchNode.Match != nil {
-			// use for-loop for better perfomance
 			for i := 0; i < len(matchNode.Match); i++ {
 				if hasMatch(matchNode.Match[i]) {
 					if shouldPutToTrace(matchNode.Syntax) {

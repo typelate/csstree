@@ -94,7 +94,7 @@ func isFunctionType(name string) bool {
 		name[len(name)-1] == rightParenthesis
 }
 
-func isEnumCapatible(term *matchGraphNode) bool {
+func isEnumCompatible(term *matchGraphNode) bool {
 	return term.typ == "Keyword" ||
 		term.typ == "AtKeyword" ||
 		term.typ == "Function" ||
@@ -209,8 +209,8 @@ func buildAlternativesMatchGraph(terms []*matchGraphNode) *matchGraphNode {
 		term := terms[i]
 
 		// reduce sequence of keywords into a Enum
-		if isEnumCapatible(term) {
-			if enumMap == nil && i > 0 && isEnumCapatible(terms[i-1]) {
+		if isEnumCompatible(term) {
+			if enumMap == nil && i > 0 && isEnumCompatible(terms[i-1]) {
 				enumMap = make(map[string]*matchGraphNode)
 				result = createCondition(
 					&matchGraphNode{
@@ -237,7 +237,7 @@ func buildAlternativesMatchGraph(terms []*matchGraphNode) *matchGraphNode {
 
 		enumMap = nil
 
-		// create a new conditonal node
+		// create a new conditional node
 		result = createCondition(
 			term,
 			matchState,

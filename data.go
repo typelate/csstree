@@ -49,7 +49,7 @@ type mdnAtrule struct {
 }
 
 // patchEntry is an entry of patch.json's types or properties, or a
-// descriptor of an at-rule patch after preprocessPatchAtrulesDescritors.
+// descriptor of an at-rule patch after preprocessPatchAtrulesDescriptors.
 type patchEntry struct {
 	Syntax string `json:"syntax"`
 }
@@ -146,7 +146,7 @@ func patchDictionary(dict map[string]string, patchDict map[string]patchEntry) ma
 	return result
 }
 
-func preprocessPatchAtrulesDescritors(declarations map[string]json.RawMessage) (map[string]patchEntry, error) {
+func preprocessPatchAtrulesDescriptors(declarations map[string]json.RawMessage) (map[string]patchEntry, error) {
 	result := make(map[string]patchEntry)
 
 	for key, value := range declarations {
@@ -201,7 +201,7 @@ func patchAtrules(dict map[string]atruleEntry, patchDict map[string]*atrulePatch
 			}
 		}
 
-		descriptors, err := preprocessPatchAtrulesDescritors(entryPatch.Descriptors)
+		descriptors, err := preprocessPatchAtrulesDescriptors(entryPatch.Descriptors)
 		if err != nil {
 			return nil, fmt.Errorf("at-rule %s: %w", key, err)
 		}
@@ -226,7 +226,7 @@ func patchAtrules(dict map[string]atruleEntry, patchDict map[string]*atrulePatch
 
 			var descriptors map[string]string
 			if atrulePatch.Descriptors != nil {
-				patchDescriptors, err := preprocessPatchAtrulesDescritors(atrulePatch.Descriptors)
+				patchDescriptors, err := preprocessPatchAtrulesDescriptors(atrulePatch.Descriptors)
 				if err != nil {
 					return nil, fmt.Errorf("at-rule %s: %w", key, err)
 				}

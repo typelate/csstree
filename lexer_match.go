@@ -167,7 +167,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 	// nil, !syntaxStashDisabled – stashing allowed, nothing stashed
 	// nil, syntaxStashDisabled – stashing disabled, nothing stashed
-	// anithing else – fail stashable syntaxes, some syntax stashed
+	// anything else – fail stashable syntaxes, some syntax stashed
 	// (upstream: null, false, a state snapshot)
 	var syntaxStash *elseStackItem
 	syntaxStashDisabled := false
