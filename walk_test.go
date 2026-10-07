@@ -605,16 +605,14 @@ func TestWalk(t *testing.T) {
 
 		visitTests := func(t *testing.T, visitType string, reverse bool) {
 			for _, file := range testWithRules(t) {
-				for _, test := range file.Tests {
-					t.Run(test.Name, func(t *testing.T) {
-						createWalkVisitTest(t, test, visitType, func(ast Node, fn func(node Node)) error {
-							options := enterOnly(fn)
-							options.Visit = visitType
-							options.Reverse = reverse
-							return Walk(ast, options)
-						})
+				forEachASTFileTest(t, file, false, func(t *testing.T, test astFixtureTest) {
+					createWalkVisitTest(t, test, visitType, func(ast Node, fn func(node Node)) error {
+						options := enterOnly(fn)
+						options.Visit = visitType
+						options.Reverse = reverse
+						return Walk(ast, options)
 					})
-				}
+				})
 			}
 		}
 
@@ -636,15 +634,13 @@ func TestWalk(t *testing.T) {
 
 		t.Run("walk(ast, { visit: 'Declaration' })", func(t *testing.T) {
 			for _, file := range testWithRules(t) {
-				for _, test := range file.Tests {
-					t.Run(test.Name, func(t *testing.T) {
-						createWalkDeclarationsTest(t, test, func(ast Node, fn func(node Node)) error {
-							options := enterOnly(fn)
-							options.Visit = "Declaration"
-							return Walk(ast, options)
-						})
+				forEachASTFileTest(t, file, false, func(t *testing.T, test astFixtureTest) {
+					createWalkDeclarationsTest(t, test, func(ast Node, fn func(node Node)) error {
+						options := enterOnly(fn)
+						options.Visit = "Declaration"
+						return Walk(ast, options)
 					})
-				}
+				})
 			}
 
 			t.Run("iterate DeclarationList", func(t *testing.T) {

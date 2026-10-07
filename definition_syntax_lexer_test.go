@@ -14,7 +14,8 @@ import (
 
 // forEachLexerDictionarySyntax visits every serializable syntax of the
 // default lexer as upstream's loops over lexer.properties, lexer.types and
-// lexer.atrules do, naming subtests the same way.
+// lexer.atrules do, naming subtests the same way. The subtests of the
+// properties, types and atrules run in parallel.
 func forEachLexerDictionarySyntax(t *testing.T, fn func(t *testing.T, definition *Descriptor)) {
 	lexer := DefaultLexer()
 
@@ -26,6 +27,7 @@ func forEachLexerDictionarySyntax(t *testing.T, fn func(t *testing.T, definition
 		for name, definition := range dict {
 			if definition.Serializable {
 				t.Run(section+"/"+name, func(t *testing.T) {
+					t.Parallel()
 					fn(t, definition)
 				})
 			}
@@ -34,6 +36,7 @@ func forEachLexerDictionarySyntax(t *testing.T, fn func(t *testing.T, definition
 
 	for name, definition := range lexer.Atrules() {
 		t.Run("atrules/"+name, func(t *testing.T) {
+			t.Parallel()
 			if definition.Prelude != nil {
 				t.Run("prelude", func(t *testing.T) {
 					fn(t, definition.Prelude)

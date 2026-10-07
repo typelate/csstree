@@ -183,6 +183,7 @@ func createSyntaxTest(t *testing.T, testName string, test definitionSyntaxMatchT
 	}
 
 	t.Run(name, func(t *testing.T) {
+		t.Parallel()
 		if test.Test == "skip" {
 			t.Skip("skipped by fixture")
 		}

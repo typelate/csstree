@@ -146,6 +146,8 @@ func forEachSelectorASTTest(t *testing.T, errors bool, factory func(t *testing.T
 	}
 }
 
+// forEachASTFileTest runs factory as a parallel subtest per test of file;
+// factory must not change test or state shared with other subtests.
 func forEachASTFileTest(t *testing.T, file astFixtureFile, errors bool, factory func(t *testing.T, test astFixtureTest)) {
 	tests := file.Tests
 	if errors {
@@ -153,6 +155,7 @@ func forEachASTFileTest(t *testing.T, file astFixtureFile, errors bool, factory 
 	}
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
+			t.Parallel()
 			factory(t, test)
 		})
 	}
