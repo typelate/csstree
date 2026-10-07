@@ -16,7 +16,9 @@ const (
 )
 
 // DecodeURL returns the URL of a CSS url token such as `url(foo)`, with
-// whitespace trimmed and escapes resolved (upstream url.decode).
+// whitespace trimmed and escapes resolved (upstream url.decode). NUL and
+// invalid UTF-8, escaped or not, decode to U+FFFD as CSS Syntax §3.3
+// preprocessing replaces them.
 func DecodeURL(str string) string {
 	length := len(str)
 	start := 4 // length of "url("
@@ -66,7 +68,7 @@ func DecodeURL(str string) string {
 				}
 			}
 		} else {
-			decoded.WriteByte(str[i])
+			i += writeCodePoint(&decoded, str, i) - 1
 		}
 	}
 

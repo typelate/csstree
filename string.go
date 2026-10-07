@@ -16,7 +16,9 @@ const (
 )
 
 // DecodeString returns the value of a CSS string token: str without its
-// quotes and with escapes resolved (upstream string.decode).
+// quotes and with escapes resolved (upstream string.decode). NUL and invalid
+// UTF-8, escaped or not, decode to U+FFFD as CSS Syntax §3.3 preprocessing
+// replaces them.
 func DecodeString(str string) string {
 	length := len(str)
 	firstChar := tokenizer.CharCodeAt(str, 0)
@@ -62,11 +64,20 @@ func DecodeString(str string) string {
 				}
 			}
 		} else {
-			decoded.WriteByte(str[i])
+			i += writeCodePoint(&decoded, str, i) - 1
 		}
 	}
 
 	return decoded.String()
+}
+
+// writeCodePoint writes the code point at str[i:] to decoded as CSS Syntax
+// §3.3 preprocessing reads it, with U+FFFD for NUL and for invalid UTF-8, and
+// returns its length in bytes (upstream copies the char as is).
+func writeCodePoint(decoded *strings.Builder, str string, i int) int {
+	r, size := tokenizer.CodePointAt(str, i)
+	decoded.WriteRune(r)
+	return size
 }
 
 // EncodeString serializes str as a CSS string, quoted with an apostrophe

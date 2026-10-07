@@ -4,9 +4,17 @@ package tokenizer
 
 import "unicode/utf8"
 
+// replacementCharacter is U+FFFD REPLACEMENT CHARACTER.
+const replacementCharacter = 0xFFFD
+
 func getCharCode(source string, offset int) int {
 	if offset >= 0 && offset < len(source) {
-		return int(source[offset])
+		if code := source[offset]; code != 0 {
+			return int(code)
+		}
+		// § 3.3. Preprocessing the input stream
+		// Replace any U+0000 NULL ... code points in input with U+FFFD REPLACEMENT CHARACTER.
+		return replacementCharacter
 	}
 	return 0
 }
@@ -15,8 +23,73 @@ func getCharCode(source string, offset int) int {
 // or 0 when offset is out of range (where JavaScript returns NaN, which
 // compares unequal to every code these helpers test for). It is not an
 // upstream export.
+//
+// A NUL byte reads as U+FFFD REPLACEMENT CHARACTER, as CSS Syntax §3.3
+// preprocessing replaces it (upstream returns 0, which its helpers then take
+// for EOF), so 0 always means out of range. Every other byte >= 0x80 is
+// returned as is: it is part of a non-ASCII code point, or of an invalid
+// UTF-8 sequence that decodes to U+FFFD, and either classifies as a name
+// code point.
 func CharCodeAt(source string, offset int) int {
 	return getCharCode(source, offset)
+}
+
+// CodePointAt returns the code point that starts at byte offset in source and
+// its length in bytes, after CSS Syntax §3.3 preprocessing: a NUL byte is
+// U+FFFD, and so is each invalid UTF-8 sequence, measured as the WHATWG
+// Encoding Standard's UTF-8 decoder does (the longest prefix of a valid
+// sequence, at least one byte). It returns 0, 0 when offset is out of range.
+// Newlines are not normalized. It is not an upstream export.
+func CodePointAt(source string, offset int) (rune, int) {
+	if offset < 0 || offset >= len(source) {
+		return 0, 0
+	}
+
+	code := source[offset]
+	if code == 0 {
+		return replacementCharacter, 1
+	}
+	if code < utf8.RuneSelf {
+		return rune(code), 1
+	}
+
+	r, size := utf8.DecodeRuneInString(source[offset:])
+	if r != utf8.RuneError || size != 1 {
+		return r, size
+	}
+
+	// An invalid sequence: count the bytes that could still start a valid one.
+	need := 0
+	lower, upper := byte(0x80), byte(0xBF)
+	switch {
+	case 0xC2 <= code && code <= 0xDF:
+		need = 1
+	case 0xE0 <= code && code <= 0xEF:
+		need = 2
+		if code == 0xE0 {
+			lower = 0xA0
+		} else if code == 0xED {
+			upper = 0x9F // no surrogates
+		}
+	case 0xF0 <= code && code <= 0xF4:
+		need = 3
+		if code == 0xF0 {
+			lower = 0x90
+		} else if code == 0xF4 {
+			upper = 0x8F
+		}
+	}
+
+	size = 1
+	for size <= need && offset+size < len(source) {
+		if next := source[offset+size]; next < lower || next > upper {
+			break
+		}
+		size++
+		lower, upper = 0x80, 0xBF
+	}
+
+	return replacementCharacter, size
 }
 
 // GetNewlineLength returns 2 for "\r\n" at offset, else 1. code is the char
@@ -113,23 +186,31 @@ func FindDecimalNumberEnd(source string, offset int) int {
 func ConsumeEscaped(source string, offset int) int {
 	// It assumes that the U+005C REVERSE SOLIDUS (\) has already been consumed and
 	// that the next input code point has already been verified to be part of a valid escape.
-	offset += 2
+	offset++
+
+	// anything else
+	// Return the current input code point.
+	// (Go only: the whole code point; upstream consumes one UTF-16 code unit,
+	// and offset+1 past the end, where this returns that too.)
+	if !IsHexDigit(getCharCode(source, offset)) {
+		_, size := CodePointAt(source, offset)
+		return offset + max(size, 1)
+	}
 
 	// hex digit
-	if IsHexDigit(getCharCode(source, offset-1)) {
-		// Consume as many hex digits as possible, but no more than 5.
-		// Note that this means 1-6 hex digits have been consumed in total.
-		for maxOffset := min(len(source), offset+5); offset < maxOffset; offset++ {
-			if !IsHexDigit(getCharCode(source, offset)) {
-				break
-			}
+	// Consume as many hex digits as possible, but no more than 5.
+	// Note that this means 1-6 hex digits have been consumed in total.
+	offset++
+	for maxOffset := min(len(source), offset+5); offset < maxOffset; offset++ {
+		if !IsHexDigit(getCharCode(source, offset)) {
+			break
 		}
+	}
 
-		// If the next input code point is whitespace, consume it as well.
-		code := getCharCode(source, offset)
-		if IsWhiteSpace(code) {
-			offset += GetNewlineLength(source, offset, code)
-		}
+	// If the next input code point is whitespace, consume it as well.
+	code := getCharCode(source, offset)
+	if IsWhiteSpace(code) {
+		offset += GetNewlineLength(source, offset, code)
 	}
 
 	return offset
@@ -269,9 +350,10 @@ func ConsumeBadURLRemnants(source string, offset int) int {
 func DecodeEscaped(escaped string) string {
 	// Single char escaped that's not a hex digit
 	// (upstream counts one UTF-16 code unit; a non-ASCII char is more than
-	// one byte here, so count code points)
-	if utf8.RuneCountInString(escaped) == 1 && !IsHexDigit(int(escaped[0])) {
-		return escaped
+	// one byte here, so count code points, read as §3.3 preprocessing does:
+	// NUL and invalid UTF-8 are U+FFFD)
+	if r, size := CodePointAt(escaped, 0); size > 0 && size == len(escaped) && !IsHexDigit(int(escaped[0])) {
+		return string(r)
 	}
 
 	// Interpret the hex digits as a hexadecimal number.

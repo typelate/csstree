@@ -10,13 +10,14 @@ import (
 )
 
 // DecodeIdent returns the value of a CSS identifier with escapes resolved
-// (upstream ident.decode).
+// (upstream ident.decode). NUL and invalid UTF-8, escaped or not, decode to
+// U+FFFD as CSS Syntax §3.3 preprocessing replaces them.
 func DecodeIdent(str string) string {
 	end := len(str) - 1
 	var decoded strings.Builder
 
 	for i := 0; i < len(str); i++ {
-		code := int(str[i])
+		code := tokenizer.CharCodeAt(str, i)
 
 		if code == reverseSolidus {
 			// special case at the ending
@@ -26,7 +27,7 @@ func DecodeIdent(str string) string {
 			}
 
 			i++
-			code = int(str[i])
+			code = tokenizer.CharCodeAt(str, i)
 
 			// consume escaped
 			if tokenizer.IsValidEscape(reverseSolidus, code) {
@@ -42,7 +43,7 @@ func DecodeIdent(str string) string {
 				}
 			}
 		} else {
-			decoded.WriteByte(str[i])
+			i += writeCodePoint(&decoded, str, i) - 1
 		}
 	}
 

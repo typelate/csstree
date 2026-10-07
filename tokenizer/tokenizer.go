@@ -14,6 +14,13 @@ import (
 // Tokenize splits source into tokens and calls onToken for each one with its
 // type and the byte offsets [start, end) of its text. A leading byte order
 // mark is skipped. Tokens cover the rest of source without gaps.
+//
+// Tokenize reads source as CSS Syntax §3.3 preprocessing leaves it, without
+// copying it: a NUL byte is U+FFFD REPLACEMENT CHARACTER, a name code point,
+// and so is any invalid UTF-8 (every byte >= 0x80 is a name code point).
+// Offsets still index the original bytes, so a token's text keeps the NUL or
+// invalid bytes; DecodeEscaped and the csstree Decode functions turn them
+// into U+FFFD. CR, FF and CRLF are newlines without being rewritten.
 func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) {
 	sourceLength := len(source)
 	var (
@@ -21,11 +28,10 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 		tokenType TokenType
 	)
 
+	// getCharCode reads U+FFFD for a NUL byte (§ 3.3. Preprocessing the
+	// input stream) and 0 for EOF; see CharCodeAt.
 	getCharCode := func(offset int) int {
-		if offset < sourceLength {
-			return int(source[offset])
-		}
-		return 0
+		return CharCodeAt(source, offset)
 	}
 
 	var consumeURLToken func()
@@ -112,7 +118,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 
 		// Repeatedly consume the next input code point from the stream:
 		for ; offset < len(source); offset++ {
-			code := int(source[offset])
+			code := getCharCode(offset)
 
 			switch CharCodeCategory(code) {
 			// ending code point
@@ -176,7 +182,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 
 		// Repeatedly consume the next input code point from the stream:
 		for ; offset < len(source); offset++ {
-			code := int(source[offset])
+			code := getCharCode(offset)
 
 			switch CharCodeCategory(code) {
 			// U+0029 RIGHT PARENTHESIS ())
@@ -254,7 +260,7 @@ func Tokenize(source string, onToken func(tokenType TokenType, start, end int)) 
 	// https://drafts.csswg.org/css-syntax-3/#consume-token
 	// § 4.3.1. Consume a token
 	for offset < sourceLength {
-		code := int(source[offset])
+		code := getCharCode(offset)
 
 		switch CharCodeCategory(code) {
 		// whitespace

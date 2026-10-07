@@ -77,9 +77,6 @@ func TestTokenizeSpecEdges(t *testing.T) {
 		{"§4.3.1 punctuation", "a:b;c,d", []tokenChunk{{"ident-token", "a"}, {"colon-token", ":"}, {"ident-token", "b"}, {"semicolon-token", ";"}, {"ident-token", "c"}, {"comma-token", ","}, {"ident-token", "d"}}},
 		{"§3.3 a leading BOM is skipped", "\ufeffa", []tokenChunk{{"ident-token", "a"}}},
 		{"§3.3 only a leading BOM is skipped", "a\ufeffb", []tokenChunk{{"ident-token", "a\ufeffb"}}},
-		{"§3.3 NUL is not replaced by U+FFFD (upstream does no preprocessing)", "a\u0000b", []tokenChunk{{"ident-token", "a"}, {"delim-token", "\u0000"}, {"ident-token", "b"}}},
-		{"§3.3 a backslash before NUL is not an escape (upstream does no preprocessing)", "\\\u0000", []tokenChunk{{"delim-token", "\\"}, {"delim-token", "\u0000"}}},
-		{"§3.3 NUL makes a url bad (upstream does no preprocessing)", "url(a\u0000b)", []tokenChunk{{"bad-url-token", "url(a\u0000b)"}}},
 		{"non-ASCII code points are name code points", "é😀 \u0080\u00a0\u2028", []tokenChunk{{"ident-token", "é😀"}, {"whitespace-token", " "}, {"ident-token", "\u0080\u00a0\u2028"}}},
 		{"DEL and C0 controls are delims", "\u007f\u0001", []tokenChunk{{"delim-token", "\u007f"}, {"delim-token", "\u0001"}}},
 		// Go only: upstream sees U+FFFD for invalid UTF-8, a name code point
