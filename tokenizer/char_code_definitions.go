@@ -264,8 +264,12 @@ var category = func() (category [0x80]int) {
 // CharCodeCategory returns one of the *Category constants for code, or code
 // itself when it has no category.
 func CharCodeCategory(code int) int {
-	if code < 0x80 {
+	switch {
+	case code < 0:
+		return code
+	case code < len(category):
 		return category[code]
+	default:
+		return NameStartCategory
 	}
-	return NameStartCategory
 }

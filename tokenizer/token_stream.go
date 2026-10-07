@@ -66,13 +66,20 @@ func boundIndex(index, minimum, maximum int) int {
 	return index
 }
 
-// TokenStream is a cursor over the tokens of a source. Use NewTokenStream or
-// call SetSource before using it.
+// TokenStream is a cursor over the tokens of a source. NewTokenStream and
+// SetSource tokenize a source and move the cursor to its first token. The
+// zero value is a stream over an empty source whose cursor has not moved
+// yet: it reports EOF after the first Next.
+//
+// The exported fields are the cursor's state, for reading only (a Parser
+// embeds the stream, so syntax extensions see them): change them with
+// SetSource, Reset, Next, Skip and the other methods.
 //
 // Tokens are stored packed as (type << 58 | end) in uint64 cells. Upstream
 // packs (type << 24 | end) into uint32 cells, which silently corrupts offsets
 // in sources of 16 MiB or more; 58 offset bits exceed any addressable source.
 type TokenStream struct {
+	// Source is the tokenized CSS text.
 	Source string
 
 	// TokenIndex, TokenType, TokenStart and TokenEnd describe the current
@@ -83,6 +90,7 @@ type TokenStream struct {
 	TokenStart int
 	TokenEnd   int
 
+	// TokenCount is the number of tokens in Source.
 	TokenCount int
 
 	// Balance holds, for every token index, the index of the matching
@@ -105,7 +113,7 @@ func NewTokenStream(source string) *TokenStream {
 func (ts *TokenStream) Reset() {
 	ts.EOF = false
 	ts.TokenIndex = -1
-	ts.TokenType = 0
+	ts.TokenType = EOF
 	ts.TokenStart = ts.firstCharOffset
 	ts.TokenEnd = ts.firstCharOffset
 }
@@ -251,7 +259,7 @@ func (ts *TokenStream) LookupOffset(offset int) int {
 }
 
 // LookupOffsetNonSC returns how many tokens after the current one the idx-th
-// token that is not whitespace or a comment is, or 0 (EOF).
+// token that is not whitespace or a comment is, or 0 when there is none.
 func (ts *TokenStream) LookupOffsetNonSC(idx int) int {
 	for offset := ts.TokenIndex; offset < ts.TokenCount; offset++ {
 		tokenType := TokenType(ts.packed(offset) >> typeShift)
@@ -264,7 +272,7 @@ func (ts *TokenStream) LookupOffsetNonSC(idx int) int {
 		}
 	}
 
-	return int(EOF)
+	return 0
 }
 
 // LookupValue reports whether the token offset tokens after the current one
@@ -293,9 +301,9 @@ func (ts *TokenStream) GetTokenStart(tokenIndex int) int {
 
 	if tokenIndex > 0 {
 		if tokenIndex < ts.TokenCount {
-			return int(ts.offsetAndType[tokenIndex-1] & offsetMask)
+			return int(ts.packed(tokenIndex-1) & offsetMask)
 		}
-		return int(ts.offsetAndType[ts.TokenCount] & offsetMask)
+		return int(ts.packed(ts.TokenCount) & offsetMask)
 	}
 
 	return ts.firstCharOffset
@@ -307,7 +315,7 @@ func (ts *TokenStream) GetTokenEnd(tokenIndex int) int {
 		return ts.TokenEnd
 	}
 
-	return int(ts.offsetAndType[boundIndex(tokenIndex, 0, ts.TokenCount)] & offsetMask)
+	return int(ts.packed(boundIndex(tokenIndex, 0, ts.TokenCount)) & offsetMask)
 }
 
 // GetTokenType returns the type of the token at tokenIndex.
@@ -316,7 +324,7 @@ func (ts *TokenStream) GetTokenType(tokenIndex int) TokenType {
 		return ts.TokenType
 	}
 
-	return TokenType(ts.offsetAndType[boundIndex(tokenIndex, 0, ts.TokenCount)] >> typeShift)
+	return TokenType(ts.packed(boundIndex(tokenIndex, 0, ts.TokenCount)) >> typeShift)
 }
 
 // SubstrToCursor returns Source[start:TokenStart].
@@ -361,8 +369,12 @@ func (ts *TokenStream) IsBalanceEdge(tokenIndex int) bool {
 }
 
 // balanceAt reads Balance[index]; ok is false out of range, where a
-// JavaScript typed array read gives undefined.
+// JavaScript typed array read gives undefined. The EOF entry at TokenCount
+// is TokenCount, also in the zero value, which has no Balance.
 func (ts *TokenStream) balanceAt(index int) (balance int, ok bool) {
+	if index == ts.TokenCount {
+		return ts.TokenCount, true
+	}
 	if index < 0 || index >= len(ts.Balance) {
 		return 0, false
 	}
@@ -405,7 +417,7 @@ func (ts *TokenStream) Next() {
 	if next < ts.TokenCount {
 		ts.TokenIndex = next
 		ts.TokenStart = ts.TokenEnd
-		item := ts.offsetAndType[next]
+		item := ts.packed(next)
 		ts.TokenType = TokenType(item >> typeShift)
 		ts.TokenEnd = int(item & offsetMask)
 	} else {
@@ -443,12 +455,12 @@ type StopFunc func(code int) StopMode
 // SkipUntilBalanced moves the cursor forward from startToken to the end of
 // the enclosing block, stopping early where stop says so. Blocks opened on
 // the way are skipped whole, without calling stop for their tokens. A nil
-// stop never stops early.
+// stop never stops early; a negative startToken is 0.
 func (ts *TokenStream) SkipUntilBalanced(startToken int, stop StopFunc) {
 	if stop == nil {
 		stop = func(int) StopMode { return NoStop }
 	}
-	cursor := startToken
+	cursor := max(startToken, 0)
 	balanceEnd := 0
 	offset := 0
 

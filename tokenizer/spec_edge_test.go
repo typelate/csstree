@@ -872,3 +872,55 @@ func TestTokenTypeBlockOutOfRange(t *testing.T) {
 		}
 	}
 }
+
+// The zero TokenStream answers reads as a stream over "" does instead of
+// indexing missing buffers.
+func TestTokenStreamZeroValue(t *testing.T) {
+	var zero TokenStream
+	empty := NewTokenStream("")
+	for _, index := range []int{-2, -1, 0, 1, 5} {
+		for _, read := range []struct {
+			name string
+			fn   func(ts *TokenStream) any
+		}{
+			{"GetTokenType", func(ts *TokenStream) any { return ts.GetTokenType(index) }},
+			{"GetTokenStart", func(ts *TokenStream) any { return ts.GetTokenStart(index) }},
+			{"GetTokenEnd", func(ts *TokenStream) any { return ts.GetTokenEnd(index) }},
+			{"GetBlockTokenPairIndex", func(ts *TokenStream) any { return ts.GetBlockTokenPairIndex(index) }},
+			{"LookupType", func(ts *TokenStream) any { return ts.LookupType(index) }},
+			{"LookupTypeNonSC", func(ts *TokenStream) any { return ts.LookupTypeNonSC(index) }},
+			{"LookupOffset", func(ts *TokenStream) any { return ts.LookupOffset(index) }},
+			{"LookupOffsetNonSC", func(ts *TokenStream) any { return ts.LookupOffsetNonSC(index) }},
+			{"LookupValue", func(ts *TokenStream) any { return ts.LookupValue(index, "") }},
+			{"IsBalanceEdge", func(ts *TokenStream) any { return ts.IsBalanceEdge(index) }},
+			{"IsDelim", func(ts *TokenStream) any { return ts.IsDelim('.', index) }},
+		} {
+			if got, want := read.fn(&zero), read.fn(empty); got != want {
+				t.Errorf("zero TokenStream %s(%d) = %v, want %v", read.name, index, got, want)
+			}
+		}
+	}
+	if got := zero.Dump(); len(got) != 0 {
+		t.Errorf("zero TokenStream Dump() = %v, want no tokens", got)
+	}
+	zero.SkipUntilBalanced(-1, nil)
+	if !zero.EOF || zero.TokenType != EOF || zero.TokenIndex != 0 {
+		t.Errorf("after SkipUntilBalanced EOF, TokenType, TokenIndex = %t, %v, %d, want true, %v, 0", zero.EOF, zero.TokenType, zero.TokenIndex, EOF)
+	}
+}
+
+// A negative start token is the first token.
+func TestSkipUntilBalancedNegativeStart(t *testing.T) {
+	ts := NewTokenStream("a;b")
+	ts.SkipUntilBalanced(-1, stopAt(';', StopBefore))
+	if ts.TokenIndex != 1 {
+		t.Errorf("SkipUntilBalanced(-1) TokenIndex = %d, want 1", ts.TokenIndex)
+	}
+}
+
+// A negative code has no category instead of indexing before the table.
+func TestCharCodeCategoryNegative(t *testing.T) {
+	if got := CharCodeCategory(-1); got != -1 {
+		t.Errorf("CharCodeCategory(-1) = %d, want -1", got)
+	}
+}
