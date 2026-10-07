@@ -4,30 +4,34 @@ package csstree
 
 import (
 	"strings"
+	"unicode"
 
 	"github.com/typelate/csstree/definitionsyntax"
 	"github.com/typelate/csstree/tokenizer"
 )
 
-const (
-	urangePlusSign     = 0x002B // U+002B PLUS SIGN (+)
-	urangeHyphenMinus  = 0x002D // U+002D HYPHEN-MINUS (-)
-	urangeQuestionMark = 0x003F // U+003F QUESTION MARK (?)
-)
+// maxURangeDigits is the most hex digits a number of a <urange> may have,
+// counting question marks as hex digits.
+const maxURangeDigits = 6
 
-func tokenStartsWith(token *matchToken, code int) bool {
-	return tokenizer.CharCodeAt(token.value, 0) == code
+func tokenStartsWith(token *matchToken, c rune) bool {
+	return tokenizer.CharCodeAt(token.value, 0) == int(c)
 }
 
+// hexSequence returns how many hex digits the value of token has from
+// offset, 0 when there are other characters or too many. With allowDash, a
+// - after the digits starts the end of a range: hexSequence then returns
+// maxURangeDigits, so that no question mark may follow.
 func hexSequence(token *matchToken, offset int, allowDash bool) int {
 	hexlen := 0
 
 	for pos := offset; pos < len(token.value); pos++ {
 		code := tokenizer.CharCodeAt(token.value, pos)
 
-		if code == urangeHyphenMinus && allowDash && hexlen != 0 {
-			hexSequence(token, offset+hexlen+1, false)
-			return 6 // dissallow following question marks
+		if code == '-' && allowDash && hexlen != 0 {
+			// upstream checks the digits after the - here, and ignores
+			// the result; validURange checks them
+			return maxURangeDigits // disallow following question marks
 		}
 
 		if !tokenizer.IsHexDigit(code) {
@@ -35,7 +39,7 @@ func hexSequence(token *matchToken, offset int, allowDash bool) int {
 		}
 
 		hexlen++
-		if hexlen > 6 {
+		if hexlen > maxURangeDigits {
 			return 0 // too many hex digits
 		}
 	}
@@ -43,14 +47,17 @@ func hexSequence(token *matchToken, offset int, allowDash bool) int {
 	return hexlen
 }
 
+// withQuestionMarkSequence returns length plus the question marks at
+// index length of tokens, 0 when consumed, the hex digits before them, is
+// 0 or the digits and question marks are too many.
 func withQuestionMarkSequence(consumed, length int, tokens []matchToken) int {
 	if consumed == 0 {
 		return 0 // nothing consumed
 	}
 
-	for isDelimToken(tokenAt(tokens, length), urangeQuestionMark) {
+	for isDelimToken(tokenAt(tokens, length), '?') {
 		consumed++
-		if consumed > 6 {
+		if consumed > maxURangeDigits {
 			return 0 // too many question marks
 		}
 
@@ -128,7 +135,7 @@ func urangeTokens(tokens []matchToken) int {
 
 	// u '+' <ident-token> '?'*
 	// u '+' '?'+
-	if isDelimToken(token, urangePlusSign) {
+	if isDelimToken(token, '+') {
 		length++
 		token = tokenAt(tokens, length)
 		if token == nil {
@@ -141,7 +148,7 @@ func urangeTokens(tokens []matchToken) int {
 			return withQuestionMarkSequence(hexSequence(token, 0, true), length, tokens)
 		}
 
-		if isDelimToken(token, urangeQuestionMark) {
+		if isDelimToken(token, '?') {
 			// u '+' '?'+
 			length++
 			return withQuestionMarkSequence(1, length, tokens)
@@ -170,7 +177,7 @@ func urangeTokens(tokens []matchToken) int {
 		if token.typ == tokenizer.Dimension || token.typ == tokenizer.Number {
 			// u <number-token> <dimension-token>
 			// u <number-token> <number-token>
-			if !tokenStartsWith(token, urangeHyphenMinus) || hexSequence(token, 1, false) == 0 {
+			if !tokenStartsWith(token, '-') || hexSequence(token, 1, false) == 0 {
 				return 0
 			}
 
@@ -189,9 +196,6 @@ func urangeTokens(tokens []matchToken) int {
 
 	return 0
 }
-
-// maxCodePoint is the maximum allowed code point (CSS Syntax 3 §4.2).
-const maxCodePoint = 0x10FFFF
 
 // validURange reports whether text, the representations of the tokens of
 // a <urange> after its u, is a valid range: it interprets text into a
@@ -215,7 +219,7 @@ func validURange(text string) bool {
 	questionMarks := len(text[digits:]) - len(strings.TrimLeft(text[digits:], "?"))
 	consumed := text[:digits+questionMarks]
 	text = text[len(consumed):]
-	if len(consumed) == 0 || len(consumed) > 6 {
+	if len(consumed) == 0 || len(consumed) > maxURangeDigits {
 		return false
 	}
 
@@ -252,7 +256,7 @@ func validURange(text string) bool {
 		// or there are any code points left in text, this is an invalid
 		// <urange>.
 		digits := hexDigitsPrefix(text)
-		if digits == 0 || digits > 6 || digits != len(text) {
+		if digits == 0 || digits > maxURangeDigits || digits != len(text) {
 			return false
 		}
 		end = parseHex(text)
@@ -260,7 +264,7 @@ func validURange(text string) bool {
 
 	// If end value is greater than the maximum allowed code point, or
 	// start value is greater than end value, the <urange> is invalid.
-	return end <= maxCodePoint && start <= end
+	return end <= unicode.MaxRune && start <= end
 }
 
 // hexDigitsPrefix returns the number of hex digits at the start of s.

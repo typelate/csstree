@@ -55,7 +55,7 @@ func isPostfixIeHack(str string, offset int) bool {
 		return false
 	}
 
-	return tokenizer.CharCodeAt(str, offset) == 0x005C && // U+005C REVERSE SOLIDUS (\)
+	return tokenizer.CharCodeAt(str, offset) == '\\' &&
 		tokenizer.IsDigit(tokenizer.CharCodeAt(str, offset+1))
 }
 
@@ -203,7 +203,7 @@ func dashedIdent(tokens []matchToken, _ *definitionsyntax.Range) int {
 	// ... must start with two dashes (U+002D HYPHEN-MINUS), in its value
 	// (escapes decoded)
 	value := tokenValue(token)
-	if tokenizer.CharCodeAt(value, 0) != 0x002D || tokenizer.CharCodeAt(value, 1) != 0x002D {
+	if tokenizer.CharCodeAt(value, 0) != '-' || tokenizer.CharCodeAt(value, 1) != '-' {
 		return 0
 	}
 
@@ -448,8 +448,7 @@ func integer(tokens []matchToken, bounds *definitionsyntax.Range) int {
 
 	// The first digit of an integer may be immediately preceded by `-` or `+` to indicate the integer’s sign.
 	i := 0
-	if tokenizer.CharCodeAt(token.value, 0) == 0x002B || // U+002B PLUS SIGN (+)
-		tokenizer.CharCodeAt(token.value, 0) == 0x002D { // U+002D HYPHEN-MINUS (-)
+	if isSign(tokenizer.CharCodeAt(token.value, 0)) {
 		i = 1
 	}
 
