@@ -11,12 +11,11 @@ import (
 	"github.com/typelate/csstree/tokenizer"
 )
 
-// genericFunc is a generic type: it returns how many tokens starting at
-// token (nil at the end of the input) it consumes, 0 for a mismatch.
-// getNextToken(offset) returns the token offset tokens ahead of token, nil
-// past the end. bounds is the range restriction of the type reference being
-// matched, nil when there is none.
-type genericFunc func(token *matchToken, getNextToken func(offset int) *matchToken, bounds *definitionsyntax.Range) int
+// genericFunc is a generic type: it returns how many of tokens, the rest of
+// the input, it consumes from their start, 0 for a mismatch. bounds is the
+// range restriction of the type reference being matched, nil when there is
+// none.
+type genericFunc func(tokens []matchToken, bounds *definitionsyntax.Range) int
 
 // genericType is a generic type with its name; createGenericTypes returns
 // them in upstream's object key order. calc says how the matcher type
@@ -26,6 +25,14 @@ type genericType struct {
 	name string
 	fn   genericFunc
 	calc calcTarget
+}
+
+// tokenAt returns tokens[i], nil past the end.
+func tokenAt(tokens []matchToken, i int) *matchToken {
+	if i < len(tokens) {
+		return &tokens[i]
+	}
+	return nil
 }
 
 // balancePair returns the closing token type for an opening one (upstream
@@ -90,14 +97,18 @@ func outOfRangeUnit(bounds *definitionsyntax.Range, value string, numEnd int, un
 	return false
 }
 
-func consumeFunction(token *matchToken, getNextToken func(offset int) *matchToken) int {
+// consumeFunction returns how many of tokens the function or block they
+// start with takes: up to its closing token, or all of them when it is not
+// closed.
+func consumeFunction(tokens []matchToken) int {
 	var balanceCloseType tokenizer.TokenType
 	var balanceStash []tokenizer.TokenType
 	length := 0
 
 	// balanced token consuming
 scan:
-	for token != nil {
+	for ; length < len(tokens); length++ {
+		token := &tokens[length]
 		switch token.typ {
 		case tokenizer.RightCurlyBracket, tokenizer.RightParenthesis, tokenizer.RightSquareBracket:
 			if token.typ != balanceCloseType {
@@ -115,9 +126,6 @@ scan:
 			balanceStash = append(balanceStash, balanceCloseType)
 			balanceCloseType = balancePair(token.typ)
 		}
-
-		length++
-		token = getNextToken(length)
 	}
 
 	return length
@@ -133,8 +141,8 @@ func popTokenType(stack []tokenizer.TokenType) (tokenizer.TokenType, []tokenizer
 }
 
 func tokenType(expectedTokenType tokenizer.TokenType) genericFunc {
-	return func(token *matchToken, _ func(offset int) *matchToken, _ *definitionsyntax.Range) int {
-		if token == nil || token.typ != expectedTokenType {
+	return func(tokens []matchToken, _ *definitionsyntax.Range) int {
+		if len(tokens) == 0 || tokens[0].typ != expectedTokenType {
 			return 0
 		}
 
@@ -153,10 +161,11 @@ func tokenType(expectedTokenType tokenizer.TokenType) genericFunc {
 // that would not be misinterpreted as a pre-defined keyword in that property’s value definition.
 //
 // See also: https://developer.mozilla.org/en-US/docs/Web/CSS/custom-ident
-func customIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitionsyntax.Range) int {
-	if token == nil || token.typ != tokenizer.Ident {
+func customIdent(tokens []matchToken, _ *definitionsyntax.Range) int {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Ident {
 		return 0
 	}
+	token := &tokens[0]
 
 	// the identifier's value: escapes decoded, compared ASCII
 	// case-insensitively
@@ -184,10 +193,11 @@ func customIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitio
 // https://drafts.csswg.org/css-values-4/#dashed-idents
 // The <dashed-ident> production is a <custom-ident>, with all the case-sensitivity that implies,
 // with the additional restriction that it must start with two dashes (U+002D HYPHEN-MINUS).
-func dashedIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitionsyntax.Range) int {
-	if token == nil || token.typ != tokenizer.Ident {
+func dashedIdent(tokens []matchToken, _ *definitionsyntax.Range) int {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Ident {
 		return 0
 	}
+	token := &tokens[0]
 
 	// ... must start with two dashes (U+002D HYPHEN-MINUS), in its value
 	// (escapes decoded)
@@ -203,14 +213,14 @@ func dashedIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitio
 // A custom property is any property whose name starts with two dashes (U+002D HYPHEN-MINUS), like --foo.
 // The <custom-property-name> production corresponds to this: it’s defined as any <dashed-ident>
 // (a valid identifier that starts with two dashes), except -- itself, which is reserved for future use by CSS.
-func customPropertyName(token *matchToken, getNextToken func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
+func customPropertyName(tokens []matchToken, bounds *definitionsyntax.Range) int {
 	// ... it’s defined as any <dashed-ident>
-	if dashedIdent(token, getNextToken, bounds) == 0 {
+	if dashedIdent(tokens, bounds) == 0 {
 		return 0
 	}
 
 	// ... except -- itself, which is reserved for future use by CSS
-	if tokenValue(token) == "--" {
+	if tokenValue(&tokens[0]) == "--" {
 		return 0
 	}
 
@@ -221,10 +231,11 @@ func customPropertyName(token *matchToken, getNextToken func(offset int) *matchT
 // The syntax of a <hex-color> is a <hash-token> token whose value consists of 3, 4, 6, or 8 hexadecimal digits.
 // In other words, a hex color is written as a hash character, "#", followed by some number of digits 0-9 or
 // letters a-f (the case of the letters doesn’t matter - #00ff00 is identical to #00FF00).
-func hexColor(token *matchToken, _ func(offset int) *matchToken, _ *definitionsyntax.Range) int {
-	if token == nil || token.typ != tokenizer.Hash {
+func hexColor(tokens []matchToken, _ *definitionsyntax.Range) int {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Hash {
 		return 0
 	}
+	token := &tokens[0]
 
 	length := len(token.value)
 
@@ -242,10 +253,11 @@ func hexColor(token *matchToken, _ func(offset int) *matchToken, _ *definitionsy
 	return 1
 }
 
-func idSelector(token *matchToken, _ func(offset int) *matchToken, _ *definitionsyntax.Range) int {
-	if token == nil || token.typ != tokenizer.Hash {
+func idSelector(tokens []matchToken, _ *definitionsyntax.Range) int {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Hash {
 		return 0
 	}
+	token := &tokens[0]
 
 	if !tokenizer.IsIdentifierStart(tokenizer.CharCodeAt(token.value, 1), tokenizer.CharCodeAt(token.value, 2), tokenizer.CharCodeAt(token.value, 3)) {
 		return 0
@@ -256,8 +268,8 @@ func idSelector(token *matchToken, _ func(offset int) *matchToken, _ *definition
 
 // https://drafts.csswg.org/css-syntax/#any-value
 // It represents the entirety of what a valid declaration can have as its value.
-func declarationValue(token *matchToken, getNextToken func(offset int) *matchToken, _ *definitionsyntax.Range) int {
-	if token == nil {
+func declarationValue(tokens []matchToken, _ *definitionsyntax.Range) int {
+	if len(tokens) == 0 {
 		return 0
 	}
 
@@ -268,7 +280,8 @@ func declarationValue(token *matchToken, getNextToken func(offset int) *matchTok
 	// The <declaration-value> production matches any sequence of one or more tokens,
 	// so long as the sequence does not contain ...
 scan:
-	for token != nil {
+	for ; length < len(tokens); length++ {
+		token := &tokens[length]
 		switch token.typ {
 		// ... <bad-string-token>, <bad-url-token>,
 		case tokenizer.BadString, tokenizer.BadURL:
@@ -298,9 +311,6 @@ scan:
 			balanceStash = append(balanceStash, balanceCloseType)
 			balanceCloseType = balancePair(token.typ)
 		}
-
-		length++
-		token = getNextToken(length)
 	}
 
 	return length
@@ -310,8 +320,8 @@ scan:
 // The <any-value> production is identical to <declaration-value>, but also
 // allows top-level <semicolon-token> tokens and <delim-token> tokens
 // with a value of "!". It represents the entirety of what valid CSS can be in any context.
-func anyValue(token *matchToken, getNextToken func(offset int) *matchToken, _ *definitionsyntax.Range) int {
-	if token == nil {
+func anyValue(tokens []matchToken, _ *definitionsyntax.Range) int {
+	if len(tokens) == 0 {
 		return 0
 	}
 
@@ -322,7 +332,8 @@ func anyValue(token *matchToken, getNextToken func(offset int) *matchToken, _ *d
 	// The <any-value> production matches any sequence of one or more tokens,
 	// so long as the sequence ...
 scan:
-	for token != nil {
+	for ; length < len(tokens); length++ {
+		token := &tokens[length]
 		switch token.typ {
 		// ... does not contain <bad-string-token>, <bad-url-token>,
 		case tokenizer.BadString, tokenizer.BadURL:
@@ -340,9 +351,6 @@ scan:
 			balanceStash = append(balanceStash, balanceCloseType)
 			balanceCloseType = balancePair(token.typ)
 		}
-
-		length++
-		token = getNextToken(length)
 	}
 
 	return length
@@ -360,8 +368,8 @@ func dimension(units []string) genericFunc {
 		unitSet[unit] = true
 	}
 
-	return func(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
-		unit, ok := dimensionTokenUnit(token, bounds)
+	return func(tokens []matchToken, bounds *definitionsyntax.Range) int {
+		unit, ok := dimensionTokenUnit(tokens, bounds)
 		if !ok || !unitSet[unit] {
 			return 0
 		}
@@ -371,8 +379,8 @@ func dimension(units []string) genericFunc {
 
 // anyDimension is the generic type of dimension tokens of any unit
 // (upstream dimension(null)).
-func anyDimension(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
-	if _, ok := dimensionTokenUnit(token, bounds); !ok {
+func anyDimension(tokens []matchToken, bounds *definitionsyntax.Range) int {
+	if _, ok := dimensionTokenUnit(tokens, bounds); !ok {
 		return 0
 	}
 	return 1
@@ -381,10 +389,11 @@ func anyDimension(token *matchToken, _ func(offset int) *matchToken, bounds *def
 // dimensionTokenUnit returns the lowercase unit of a dimension token in
 // the range bounds, and false for other tokens and dimensions out of the
 // range.
-func dimensionTokenUnit(token *matchToken, bounds *definitionsyntax.Range) (string, bool) {
-	if token == nil || token.typ != tokenizer.Dimension {
+func dimensionTokenUnit(tokens []matchToken, bounds *definitionsyntax.Range) (string, bool) {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Dimension {
 		return "", false
 	}
+	token := &tokens[0]
 
 	numberEnd := tokenizer.ConsumeNumber(token.value, 0)
 
@@ -406,11 +415,12 @@ func dimensionTokenUnit(token *matchToken, bounds *definitionsyntax.Range) (stri
 
 // §5.5. Percentages: the <percentage> type
 // https://drafts.csswg.org/css-values-4/#percentages
-func percentage(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
+func percentage(tokens []matchToken, bounds *definitionsyntax.Range) int {
 	// ... corresponds to the <percentage-token> production
-	if token == nil || token.typ != tokenizer.Percentage {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Percentage {
 		return 0
 	}
+	token := &tokens[0]
 
 	// check range if specified
 	if outOfRangeUnit(bounds, token.value, len(token.value)-1, "%") {
@@ -428,10 +438,11 @@ func percentage(token *matchToken, _ func(offset int) *matchToken, bounds *defin
 // The value <zero> represents a literal number with the value 0. Expressions that merely
 // evaluate to a <number> with the value 0 (for example, calc(0)) do not match <zero>;
 // only literal <number-token>s do.
-func zero(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
-	if token == nil || token.typ != tokenizer.Number {
+func zero(tokens []matchToken, bounds *definitionsyntax.Range) int {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Number {
 		return 0
 	}
+	token := &tokens[0]
 
 	// a zero is out of a range such as [1px,∞]
 	if jsnum.Parse(token.value) != 0 || outOfRange(bounds, "0", -1) {
@@ -443,12 +454,12 @@ func zero(token *matchToken, _ func(offset int) *matchToken, bounds *definitions
 
 // zeroOr returns a generic type that takes a <zero> or what next takes.
 func zeroOr(next genericFunc) genericFunc {
-	return func(token *matchToken, getNextToken func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
-		if zero(token, getNextToken, bounds) == 1 {
+	return func(tokens []matchToken, bounds *definitionsyntax.Range) int {
+		if zero(tokens, bounds) == 1 {
 			return 1
 		}
 
-		return next(token, getNextToken, bounds)
+		return next(tokens, bounds)
 	}
 }
 
@@ -456,13 +467,14 @@ func zeroOr(next genericFunc) genericFunc {
 // https://drafts.csswg.org/css-values-4/#numbers
 // Number values are denoted by <number>, and represent real numbers, possibly with a fractional component.
 // ... It corresponds to the <number-token> production
-func number(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
+func number(tokens []matchToken, bounds *definitionsyntax.Range) int {
 	// ... a <number-token>, or the <dimension-token> of a number with the
 	// IE postfix hack (123\9); upstream reads any token whose text is a
 	// number, such as the delims + and - or the ident e5
-	if token == nil || token.typ != tokenizer.Number && token.typ != tokenizer.Dimension {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Number && tokens[0].typ != tokenizer.Dimension {
 		return 0
 	}
+	token := &tokens[0]
 
 	numberEnd := tokenizer.ConsumeNumber(token.value, 0)
 	isNumber := token.typ == tokenizer.Number && numberEnd == len(token.value)
@@ -480,11 +492,12 @@ func number(token *matchToken, _ func(offset int) *matchToken, bounds *definitio
 
 // §5.2. Integers: the <integer> type
 // https://drafts.csswg.org/css-values-4/#integers
-func integer(token *matchToken, _ func(offset int) *matchToken, bounds *definitionsyntax.Range) int {
+func integer(tokens []matchToken, bounds *definitionsyntax.Range) int {
 	// ... corresponds to a subset of the <number-token> production
-	if token == nil || token.typ != tokenizer.Number {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Number {
 		return 0
 	}
+	token := &tokens[0]
 
 	// The first digit of an integer may be immediately preceded by `-` or `+` to indicate the integer’s sign.
 	i := 0
@@ -599,10 +612,11 @@ func createAttrUnit(units map[string][]string) genericFunc {
 		}
 	}
 
-	return func(token *matchToken, _ func(offset int) *matchToken, _ *definitionsyntax.Range) int {
-		if token == nil {
+	return func(tokens []matchToken, _ *definitionsyntax.Range) int {
+		if len(tokens) == 0 {
 			return 0
 		}
+		token := &tokens[0]
 
 		if token.typ == tokenizer.Delim && token.value == "%" {
 			return 1

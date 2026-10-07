@@ -567,11 +567,5 @@ func isSingleMathFunction(value string) bool {
 			return false
 		}
 	}
-	n := consumeFunction(&tokens[0], func(offset int) *matchToken {
-		if offset < len(tokens) {
-			return &tokens[offset]
-		}
-		return nil
-	})
-	return n == len(tokens)
+	return consumeFunction(tokens) == len(tokens)
 }

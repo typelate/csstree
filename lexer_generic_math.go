@@ -358,8 +358,9 @@ func (u calcUnits) base(unit string) (calcBase, bool) {
 	return base, ok
 }
 
-// matchMathFunction matches a math function token for a generic type with
-// the calculation target. handled is false when token is not a math
+// matchMathFunction matches a math function at the start of tokens for a
+// generic type with the calculation target. handled is false when it is
+// not a math
 // function or the type does not take math functions, leaving the token to
 // the type's own matching. Otherwise it returns how many tokens the
 // function takes, 0 when its calculation is invalid or does not resolve
@@ -369,18 +370,18 @@ func (u calcUnits) base(unit string) (calcBase, bool) {
 // Upstream wraps the numeric generic types in math(), which consumes a
 // math function without looking at its arguments; the matcher calls
 // matchMathFunction before the type instead.
-func matchMathFunction(target calcTarget, percentSibling bool, token *matchToken, getNextToken func(offset int) *matchToken) (consumed int, handled bool) {
-	if token == nil || token.typ != tokenizer.Function || target.want == calcWantNone {
+func matchMathFunction(target calcTarget, percentSibling bool, tokens []matchToken) (consumed int, handled bool) {
+	if len(tokens) == 0 || tokens[0].typ != tokenizer.Function || target.want == calcWantNone {
 		return 0, false
 	}
-	if !isMathFunctionName(tokenName(token)) {
+	if !isMathFunctionName(tokenName(&tokens[0])) {
 		return 0, false
 	}
 
-	length := consumeFunction(token, getNextToken)
+	length := consumeFunction(tokens)
 	for i := 1; i < length; i++ {
-		t := getNextToken(i)
-		if t != nil && t.typ == tokenizer.Function && isSubstitutionFunctionName(tokenName(t)) {
+		t := &tokens[i]
+		if t.typ == tokenizer.Function && isSubstitutionFunctionName(tokenName(t)) {
 			return length, true
 		}
 	}
@@ -393,7 +394,7 @@ func matchMathFunction(target calcTarget, percentSibling bool, token *matchToken
 	if percentSibling {
 		ctx = target.percentCtx
 	}
-	p := &calcParser{next: getNextToken, ctx: ctx, units: target.units}
+	p := &calcParser{tokens: tokens, ctx: ctx, units: target.units}
 	t, ok := p.mathFunction()
 	// a type matching the target also resolves to one of the §10.9
 	// productions
@@ -403,21 +404,22 @@ func matchMathFunction(target calcTarget, percentSibling bool, token *matchToken
 	return p.pos, true
 }
 
-// calcParser parses a math function from the tokens at offsets from the
-// function token (§10.8) and computes its type (§10.9).
+// calcParser parses a math function from tokens, which start with the
+// function token (§10.8), and computes its type (§10.9). pos is the index
+// of the token to parse next.
 type calcParser struct {
-	next  func(offset int) *matchToken
-	pos   int
-	depth int
-	ctx   calcBase
-	units calcUnits
+	tokens []matchToken
+	pos    int
+	depth  int
+	ctx    calcBase
+	units  calcUnits
 }
 
 // skipComments advances pos past comments and returns the token there,
 // nil at the end.
 func (p *calcParser) skipComments() *matchToken {
 	for {
-		t := p.next(p.pos)
+		t := tokenAt(p.tokens, p.pos)
 		if t == nil || t.typ != tokenizer.Comment {
 			return t
 		}
@@ -430,7 +432,7 @@ func (p *calcParser) skipComments() *matchToken {
 func (p *calcParser) skipWhiteSpace() bool {
 	seen := false
 	for {
-		t := p.next(p.pos)
+		t := tokenAt(p.tokens, p.pos)
 		if t == nil || (t.typ != tokenizer.WhiteSpace && t.typ != tokenizer.Comment) {
 			return seen
 		}
@@ -589,7 +591,7 @@ func (p *calcParser) value() (calcType, bool) {
 			return p.mathFunction()
 		}
 		if isLengthFunctionName(name) {
-			p.pos += consumeFunction(t, func(offset int) *matchToken { return p.next(p.pos + offset) })
+			p.pos += consumeFunction(p.tokens[p.pos:])
 			return baseCalcType(calcLength), true
 		}
 	}

@@ -198,16 +198,6 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 		}
 	}
 
-	getNextToken := func(offset int) *matchToken {
-		nextIndex := tokenIndex + offset
-
-		if nextIndex >= 0 && nextIndex < len(tokens) {
-			return &tokens[nextIndex]
-		}
-
-		return nil
-	}
-
 	stateSnapshotFromSyntax := func(nextState *matchGraphNode, prev *elseStackItem) *elseStackItem {
 		return &elseStackItem{
 			nextState:   nextState,
@@ -466,9 +456,10 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			}
 			// math functions are type checked (Values 4 §10.9)
 			percentSibling := syntaxStack != nil && syntaxStack.percentSibling
-			consumed, handled := matchMathFunction(state.calc, percentSibling, token, getNextToken)
+			rest := tokens[tokenIndex:]
+			consumed, handled := matchMathFunction(state.calc, percentSibling, rest)
 			if !handled {
-				consumed = state.fn(token, getNextToken, bounds)
+				consumed = state.fn(rest, bounds)
 			}
 			lastTokenIndex := tokenIndex + consumed
 

@@ -43,12 +43,12 @@ func hexSequence(token *matchToken, offset int, allowDash bool) int {
 	return hexlen
 }
 
-func withQuestionMarkSequence(consumed, length int, getNextToken func(offset int) *matchToken) int {
+func withQuestionMarkSequence(consumed, length int, tokens []matchToken) int {
 	if consumed == 0 {
 		return 0 // nothing consumed
 	}
 
-	for isDelimToken(getNextToken(length), urangeQuestionMark) {
+	for isDelimToken(tokenAt(tokens, length), urangeQuestionMark) {
 		consumed++
 		if consumed > 6 {
 			return 0 // too many question marks
@@ -88,8 +88,8 @@ func withQuestionMarkSequence(consumed, length int, getNextToken func(offset int
 //	u '+' '?'+
 //
 // The tokens must then interpret into a valid range, see validURange.
-func urange(token *matchToken, getNextToken func(offset int) *matchToken, _ *definitionsyntax.Range) int {
-	length := urangeTokens(token, getNextToken)
+func urange(tokens []matchToken, _ *definitionsyntax.Range) int {
+	length := urangeTokens(tokens)
 	if length == 0 {
 		return 0
 	}
@@ -98,7 +98,7 @@ func urange(token *matchToken, getNextToken func(offset int) *matchToken, _ *def
 	// the tokens in the production together.
 	var text strings.Builder
 	for i := 1; i < length; i++ {
-		text.WriteString(getNextToken(i).value)
+		text.WriteString(tokens[i].value)
 	}
 
 	if !validURange(text.String()) {
@@ -108,10 +108,11 @@ func urange(token *matchToken, getNextToken func(offset int) *matchToken, _ *def
 	return length
 }
 
-// urangeTokens returns how many tokens starting at token have the forms
-// of <urange>, 0 for none.
-func urangeTokens(token *matchToken, getNextToken func(offset int) *matchToken) int {
+// urangeTokens returns how many tokens from the start of tokens have the
+// forms of <urange>, 0 for none.
+func urangeTokens(tokens []matchToken) int {
 	length := 0
+	token := tokenAt(tokens, length)
 
 	// should start with the ident u (upstream: an ident starting with
 	// `u` or `U`, so ua+1 was a <urange>)
@@ -120,7 +121,7 @@ func urangeTokens(token *matchToken, getNextToken func(offset int) *matchToken) 
 	}
 
 	length++
-	token = getNextToken(length)
+	token = tokenAt(tokens, length)
 	if token == nil {
 		return 0
 	}
@@ -129,7 +130,7 @@ func urangeTokens(token *matchToken, getNextToken func(offset int) *matchToken) 
 	// u '+' '?'+
 	if isDelimToken(token, urangePlusSign) {
 		length++
-		token = getNextToken(length)
+		token = tokenAt(tokens, length)
 		if token == nil {
 			return 0
 		}
@@ -137,13 +138,13 @@ func urangeTokens(token *matchToken, getNextToken func(offset int) *matchToken) 
 		if token.typ == tokenizer.Ident {
 			// u '+' <ident-token> '?'*
 			length++
-			return withQuestionMarkSequence(hexSequence(token, 0, true), length, getNextToken)
+			return withQuestionMarkSequence(hexSequence(token, 0, true), length, tokens)
 		}
 
 		if isDelimToken(token, urangeQuestionMark) {
 			// u '+' '?'+
 			length++
-			return withQuestionMarkSequence(1, length, getNextToken)
+			return withQuestionMarkSequence(1, length, tokens)
 		}
 
 		// Hex digit or question mark is expected
@@ -160,7 +161,7 @@ func urangeTokens(token *matchToken, getNextToken func(offset int) *matchToken) 
 		}
 
 		length++
-		token = getNextToken(length)
+		token = tokenAt(tokens, length)
 		if token == nil {
 			// u <number-token> <eof>
 			return length
@@ -177,13 +178,13 @@ func urangeTokens(token *matchToken, getNextToken func(offset int) *matchToken) 
 		}
 
 		// u <number-token> '?'*
-		return withQuestionMarkSequence(consumedHexLength, length, getNextToken)
+		return withQuestionMarkSequence(consumedHexLength, length, tokens)
 	}
 
 	// u <dimension-token> '?'*
 	if token.typ == tokenizer.Dimension {
 		length++
-		return withQuestionMarkSequence(hexSequence(token, 1, true), length, getNextToken)
+		return withQuestionMarkSequence(hexSequence(token, 1, true), length, tokens)
 	}
 
 	return 0

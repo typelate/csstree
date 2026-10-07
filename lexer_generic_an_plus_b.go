@@ -97,7 +97,9 @@ func consumeAnPlusBB(token *matchToken, offset_ int, getNextToken func(offset in
 }
 
 // An+B microsyntax https://www.w3.org/TR/css-syntax-3/#anb
-func anPlusB(token *matchToken, getNextToken func(offset int) *matchToken, _ *definitionsyntax.Range) int {
+func anPlusB(tokens []matchToken, _ *definitionsyntax.Range) int {
+	getNextToken := func(offset int) *matchToken { return tokenAt(tokens, offset) }
+	token := tokenAt(tokens, 0)
 	offset := 0
 
 	if token == nil {
