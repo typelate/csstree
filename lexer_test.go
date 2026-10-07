@@ -19,11 +19,11 @@ func testCSSWideKeywords() []string {
 	}
 }
 
-func mustCreateLexer(t *testing.T, config *Config) *Lexer {
+func mustNewLexer(t *testing.T, config *Config) *Lexer {
 	t.Helper()
-	lexer, err := CreateLexer(config)
+	lexer, err := DefaultSyntax().NewLexer(config)
 	if err != nil {
-		t.Fatalf("CreateLexer() error = %v", err)
+		t.Fatalf("NewLexer() error = %v", err)
 	}
 	return lexer
 }
@@ -53,7 +53,7 @@ func assertNotMatched(t *testing.T, call string, result *MatchResult) {
 
 func TestLexer(t *testing.T) {
 	t.Run("should not override generic types when used", func(t *testing.T) {
-		customLexer := mustCreateLexer(t, &Config{
+		customLexer := mustNewLexer(t, &Config{
 			Generic: new(true),
 			Types: map[string]string{
 				"length": "foo",
@@ -65,7 +65,7 @@ func TestLexer(t *testing.T) {
 	})
 
 	t.Run("should not use generic type names when generics are not used", func(t *testing.T) {
-		customLexer := mustCreateLexer(t, &Config{
+		customLexer := mustNewLexer(t, &Config{
 			Types: map[string]string{
 				"length": "foo",
 			},
@@ -76,7 +76,7 @@ func TestLexer(t *testing.T) {
 	})
 
 	t.Run("validate()", func(t *testing.T) {
-		customLexer := mustCreateLexer(t, &Config{
+		customLexer := mustNewLexer(t, &Config{
 			Generic: new(true),
 			Types: map[string]string{
 				"ref":     "<string>",
@@ -115,7 +115,7 @@ func TestLexer(t *testing.T) {
 	})
 
 	t.Run("should allow override units", func(t *testing.T) {
-		customLexer := mustCreateLexer(t, &Config{
+		customLexer := mustNewLexer(t, &Config{
 			Generic: new(true),
 			Units: map[string][]string{
 				"length": {"xx", "yy"},
@@ -131,7 +131,7 @@ func TestLexer(t *testing.T) {
 	})
 
 	t.Run("should not add new unit groups or discard existing", func(t *testing.T) {
-		customLexer := mustCreateLexer(t, &Config{
+		customLexer := mustNewLexer(t, &Config{
 			Generic: new(true),
 			Units: map[string][]string{
 				"foo": {"xx", "yy"},
@@ -153,7 +153,7 @@ func TestLexer(t *testing.T) {
 	})
 
 	t.Run("should allow to override CSS wide keywords", func(t *testing.T) {
-		customLexer := mustCreateLexer(t, &Config{
+		customLexer := mustNewLexer(t, &Config{
 			CSSWideKeywords: []string{"foo", "bar"},
 			Generic:         new(true),
 			Properties: map[string]string{
@@ -199,7 +199,7 @@ func TestLexer(t *testing.T) {
 	})
 
 	t.Run("dump & recovery", func(t *testing.T) {
-		customLexer := mustCreateLexer(t, &Config{
+		customLexer := mustNewLexer(t, &Config{
 			Generic:         new(true),
 			CSSWideKeywords: []string{"wide"},
 			Units: map[string][]string{

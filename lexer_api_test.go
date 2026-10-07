@@ -20,7 +20,7 @@ import (
 // list as given), nil keeps the default and an empty list leaves the group
 // without units. <attr-unit> takes every unit lowercased.
 func TestNewLexerCustomUnits(t *testing.T) {
-	lexer, err := NewLexer(&Config{
+	lexer, err := DefaultSyntax().NewLexer(&Config{
 		Generic: new(true),
 		Units: map[string][]string{
 			"length": {"foo", "BAR"},
@@ -28,7 +28,7 @@ func TestNewLexerCustomUnits(t *testing.T) {
 			"time":   {},
 		},
 		Types: map[string]string{"a": "<length>"},
-	}, nil)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

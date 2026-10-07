@@ -41,7 +41,7 @@ func fixtureLexer(t *testing.T, test fixturetest.DefinitionSyntaxTest) *Lexer {
 	if config == nil {
 		return DefaultLexer()
 	}
-	lexer, err := CreateLexer(&Config{
+	lexer, err := DefaultSyntax().NewLexer(&Config{
 		Generic:         config.Generic,
 		CSSWideKeywords: config.CSSWideKeywords,
 		Units:           config.Units,
@@ -49,7 +49,7 @@ func fixtureLexer(t *testing.T, test fixturetest.DefinitionSyntaxTest) *Lexer {
 		Properties:      config.Properties,
 	})
 	if err != nil {
-		t.Fatalf("%s: CreateLexer() error = %v", test.Name, err)
+		t.Fatalf("%s: NewLexer() error = %v", test.Name, err)
 	}
 	return lexer
 }

@@ -303,23 +303,6 @@ type Lexer struct {
 	cssWideKeywordsSyntax *matchGraphNode
 }
 
-// NewLexer returns a lexer for the lexer keys of config: Generic,
-// CSSWideKeywords, Units, Types, Atrules, Properties and Node (whose
-// Structure gives the node structures CheckStructure checks). syntax
-// generates and walks the ASTs the lexer matches; nil means the default
-// syntax. It fails when a node type has no or a bad Structure, or when
-// the CSS-wide keywords do not parse as a definition syntax.
-//
-// Config maps are read in key order, which decides the order of Types,
-// Properties, Atrules and of Validate's results.
-func NewLexer(config *Config, syntax *Syntax) (*Lexer, error) {
-	if syntax == nil {
-		syntax = defaultParseSyntax()
-	}
-
-	return newLexer(config, syntax, nil)
-}
-
 func newLexer(config *Config, syntax *Syntax, structure map[string]*nodeStructure) (*Lexer, error) {
 	l := &Lexer{
 		cssWideKeywords: cssWideKeywords(),

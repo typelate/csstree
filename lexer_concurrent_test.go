@@ -9,7 +9,7 @@ import (
 // from several goroutines while its syntaxes are parsed on first use (Go
 // only; run with -race).
 func TestLexerConcurrentMatch(t *testing.T) {
-	lexer, err := CreateLexer(&Config{
+	lexer, err := DefaultSyntax().NewLexer(&Config{
 		Generic: new(true),
 		Types: map[string]string{
 			"foo": "<bar>#",

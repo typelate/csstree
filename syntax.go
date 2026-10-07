@@ -86,10 +86,14 @@ func (s *Syntax) Lexer() *Lexer {
 	return s.lexer
 }
 
-// CreateLexer returns a new lexer for the lexer keys of config, sharing
-// this syntax and its node structures (upstream createLexer). It fails when
-// the CSS-wide keywords do not parse as a definition syntax.
-func (s *Syntax) CreateLexer(config *Config) (*Lexer, error) {
+// NewLexer returns a new lexer for the lexer keys of config (Generic,
+// CSSWideKeywords, Units, Types, Atrules and Properties) that shares this
+// syntax, which generates the ASTs it matches, and the syntax's node
+// structures (upstream createLexer). Config maps are read in key order,
+// which decides the order of Types, Properties, Atrules and of Validate's
+// results. It fails when the CSS-wide keywords do not parse as a
+// definition syntax.
+func (s *Syntax) NewLexer(config *Config) (*Lexer, error) {
 	return newLexer(config, s, s.lexer.structure)
 }
 
@@ -267,12 +271,6 @@ func DefaultSyntax() *Syntax {
 // DefaultLexer returns the lexer of the default syntax (upstream lexer).
 func DefaultLexer() *Lexer {
 	return defaultSyntax().lexer
-}
-
-// CreateLexer returns a new lexer for the lexer keys of config with the
-// default syntax (see Syntax.CreateLexer).
-func CreateLexer(config *Config) (*Lexer, error) {
-	return defaultSyntax().CreateLexer(config)
 }
 
 // Walk traverses an AST with the default syntax (see Syntax.Walk).

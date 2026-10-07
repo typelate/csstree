@@ -211,7 +211,7 @@ func TestExports(t *testing.T) {
 
 		t.Run("lexer", func(t *testing.T) {
 			// upstream: css-tree/lexer exports only the Lexer class
-			_ = []any{NewLexer, (*Lexer).Match}
+			_ = []any{(*Syntax).NewLexer, (*Lexer).Match}
 		})
 
 		t.Run("definitionSyntax", func(t *testing.T) {
