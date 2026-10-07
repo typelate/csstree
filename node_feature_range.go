@@ -191,7 +191,8 @@ func (p *Parser) FeatureRange(kind string) *FeatureRange {
 	p.Eat(tokenizer.LeftParenthesis)
 
 	left := readTerm(p)
-	leftComparison := readComparison(p, left.Type() == "Identifier")
+	_, leftIsIdentifier := left.(*Identifier)
+	leftComparison := readComparison(p, leftIsIdentifier)
 	middle := readTerm(p)
 	rightComparison := ""
 	var right Node

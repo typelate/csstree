@@ -90,7 +90,7 @@ func (p *Parser) DeclarationList() *DeclarationList {
 func generateDeclarationList(g *Generator, node Node) {
 	n := node.(*DeclarationList)
 	g.Children(n.Children, func(prev Node) {
-		if prev.Type() == "Declaration" {
+		if _, ok := prev.(*Declaration); ok {
 			g.Token(tokenizer.Semicolon, ";")
 		}
 	})

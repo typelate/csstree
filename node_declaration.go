@@ -25,7 +25,8 @@ func consumeValueRaw(p *Parser, end int, excludeWhiteSpace bool) *Raw {
 func consumeValue(p *Parser, end int) Node {
 	value := p.Value()
 
-	if value.Type() != "Raw" && p.TokenIndex != end {
+	// upstream also lets a Raw value through, which Value never returns
+	if p.TokenIndex != end {
 		p.Unexpected()
 	}
 

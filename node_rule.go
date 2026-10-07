@@ -11,9 +11,9 @@ func ruleConsumeRaw(p *Parser) Node {
 func consumePrelude(p *Parser) Node {
 	prelude := p.SelectorList()
 
-	if prelude.Type() != "Raw" &&
-		!p.EOF &&
-		p.TokenType != tokenizer.LeftCurlyBracket {
+	// upstream also lets a Raw prelude through, which SelectorList never
+	// returns
+	if !p.EOF && p.TokenType != tokenizer.LeftCurlyBracket {
 		p.Unexpected()
 	}
 

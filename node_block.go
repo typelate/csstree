@@ -162,7 +162,7 @@ func generateBlock(g *Generator, node Node) {
 	n := node.(*Block)
 	g.Token(tokenizer.LeftCurlyBracket, "{")
 	g.Children(n.Children, func(prev Node) {
-		if prev.Type() == "Declaration" {
+		if _, ok := prev.(*Declaration); ok {
 			g.Token(tokenizer.Semicolon, ";")
 		}
 	})
