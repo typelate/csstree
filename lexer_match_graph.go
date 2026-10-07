@@ -20,7 +20,7 @@ import (
 //   - MatchOnce: terms, all
 //   - MatchOnceBuffer, AddMatchOnce (matcher states): once (the MatchOnce
 //     node, upstream syntax), index, mask
-//   - Generic: fn, calc
+//   - Generic: generic
 //   - Type, Property, Keyword, AtKeyword, Function: name, syntax
 //   - Token, String: value, syntax
 //   - Comma: syntax (a Comma or a Multiplier node)
@@ -41,8 +41,7 @@ type matchGraphNode struct {
 	index int
 	mask  int
 
-	fn   genericFunc
-	calc calcTarget
+	generic *genericType
 
 	name   string
 	value  string
@@ -461,9 +460,8 @@ func buildMultiplierMatchGraph(node *definitionsyntax.Multiplier) (*matchGraphNo
 // buildMatchGraphInternal: a generic type.
 func buildGenericMatchGraph(generic genericType) *matchGraphNode {
 	return &matchGraphNode{
-		typ:  "Generic",
-		fn:   generic.fn,
-		calc: generic.calc,
+		typ:     "Generic",
+		generic: &generic,
 	}
 }
 

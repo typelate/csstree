@@ -457,9 +457,9 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			// math functions are type checked (Values 4 §10.9)
 			percentSibling := syntaxStack != nil && syntaxStack.percentSibling
 			rest := tokens[tokenIndex:]
-			consumed, handled := matchMathFunction(state.calc, percentSibling, rest)
+			consumed, handled := matchMathFunction(state.generic.calc, percentSibling, rest)
 			if !handled {
-				consumed = state.fn(rest, bounds)
+				consumed = state.generic.fn(rest, bounds)
 			}
 			lastTokenIndex := tokenIndex + consumed
 
