@@ -14,3 +14,13 @@ func cssWideKeywords() []string {
 		"revert-layer",
 	}
 }
+
+// isCSSWideKeyword reports whether name, which is lowercase, is one of
+// cssWideKeywords.
+func isCSSWideKeyword(name string) bool {
+	switch name {
+	case "initial", "inherit", "unset", "revert", "revert-layer":
+		return true
+	}
+	return false
+}

@@ -170,15 +170,15 @@ func customIdent(tokens []matchToken, _ *definitionsyntax.Range) int {
 
 	// the identifier's value: escapes decoded, compared ASCII
 	// case-insensitively
-	name := tokenValue(token)
+	name := tokenName(token)
 
 	// The CSS-wide keywords are not valid <custom-ident>s
-	if slices.ContainsFunc(cssWideKeywords(), func(keyword string) bool { return asciiEqualFold(name, keyword) }) {
+	if isCSSWideKeyword(name) {
 		return 0
 	}
 
 	// The default keyword is reserved and is also not a valid <custom-ident>
-	if asciiEqualFold(name, "default") {
+	if name == "default" {
 		return 0
 	}
 
