@@ -1062,15 +1062,16 @@ func (l *Lexer) Validate() (*LexerValidation, error) {
 					}
 
 					var nodeName string
+					var isType bool
 					switch node := node.(type) {
 					case *definitionsyntax.Type:
 						nodeName = node.Name
+						isType = true
 					case *definitionsyntax.Property:
 						nodeName = node.Name
 					default:
 						return
 					}
-					isType := node.Type() == "Type"
 
 					dict := l.properties
 					brokenDict := brokenProperties
