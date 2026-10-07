@@ -10,7 +10,10 @@ import (
 
 // Syntax is a CSS syntax: the parser, generator, walker, convertor and
 // lexer of one configuration (upstream the object createSyntax returns).
-// A Syntax is safe for concurrent use; the ASTs it returns are not.
+// A Syntax is safe for concurrent use. An AST may be read by several
+// goroutines at once (Generate, Find, FindLast, FindAll, Clone,
+// ToPlainObject, lexer matching), but Walk and any change to the AST need
+// exclusive access to it.
 type Syntax struct {
 	// Lexer is upstream syntax.lexer: the lexer of the lexer keys of the
 	// config (Generic, CSSWideKeywords, Units, Types, Atrules, Properties,
@@ -116,6 +119,13 @@ func (s *Syntax) Generate(node Node, options GenerateOptions) (string, error) {
 // Walk traverses an AST (see Walker.Walk).
 func (s *Syntax) Walk(root Node, options WalkOptions) error {
 	return s.walker.Walk(root, options)
+}
+
+// walkReadOnly is Walk for handlers that do not change the AST: it does not
+// write to the lists it walks, so it may run concurrently with other
+// read-only uses of the AST.
+func (s *Syntax) walkReadOnly(root Node, options WalkOptions) error {
+	return s.walker.walk(root, options, false)
 }
 
 // Find returns the first node for which fn returns true, or nil (see

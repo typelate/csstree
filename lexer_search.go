@@ -57,7 +57,7 @@ func matchFragments(lexer *Lexer, ast Node, match *MatchResult, typ, name string
 				return err
 			}
 
-			err = lexer.syntax.Walk(ast, WalkOptions{
+			err = lexer.syntax.walkReadOnly(ast, WalkOptions{
 				Enter: func(_ *WalkContext, node Node, item *ListItem[Node], list *List[Node]) WalkAction {
 					// upstream reads item.data and throws when start is the
 					// root, which has no item

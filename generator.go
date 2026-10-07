@@ -69,24 +69,16 @@ func (g *Generator) Node(node Node) {
 // nil) with the previous node between two nodes (upstream
 // children(node, delimiter) takes the node and reads node.children).
 func (g *Generator) Children(children *List[Node], delimiter func(prev Node)) {
-	if delimiter != nil {
-		var prev Node
+	var prev Node
 
-		children.ForEach(func(node Node, _ *ListItem[Node]) {
-			if prev != nil {
-				delimiter(prev)
-			}
+	for node := range children.All() {
+		if delimiter != nil && prev != nil {
+			delimiter(prev)
+		}
 
-			g.Node(node)
-			prev = node
-		})
-
-		return
-	}
-
-	children.ForEach(func(node Node, _ *ListItem[Node]) {
 		g.Node(node)
-	})
+		prev = node
+	}
 }
 
 // Token emits a token of tokenType with text value.

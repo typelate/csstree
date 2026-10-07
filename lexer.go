@@ -893,7 +893,7 @@ func (l *Lexer) FindAllFragments(ast Node, typ, name string) ([]Fragment, error)
 	var result []Fragment
 	var findErr error
 
-	err := l.syntax.Walk(ast, WalkOptions{
+	err := l.syntax.walkReadOnly(ast, WalkOptions{
 		Visit: "Declaration",
 		Enter: func(_ *WalkContext, declaration Node, _ *ListItem[Node], _ *List[Node]) WalkAction {
 			fragments, err := l.FindDeclarationValueFragments(declaration, typ, name)

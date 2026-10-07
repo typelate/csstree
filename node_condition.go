@@ -242,7 +242,7 @@ func conditionTermError(p *Parser, keyword string, allowOr bool) {
 
 func generateCondition(g *Generator, node Node) {
 	n := node.(*Condition)
-	n.Children.ForEach(func(child Node, _ *ListItem[Node]) {
+	for child := range n.Children.All() {
 		if child.Type() == "Condition" {
 			g.Token(tokenizer.LeftParenthesis, "(")
 			g.Node(child)
@@ -250,5 +250,5 @@ func generateCondition(g *Generator, node Node) {
 		} else {
 			g.Node(child)
 		}
-	})
+	}
 }

@@ -174,16 +174,16 @@ func getTypesFromConfig(config *Config) (map[string]*walkerType, error) {
 	return types, nil
 }
 
-// typeIterator walks the fields of a node and reports whether the walk
-// broke.
-type typeIterator func(node Node, context *WalkContext, walk func(node Node) bool, walkItem func(node Node, item *ListItem[Node], list *List[Node]) bool) bool
+// typeIterator walks the fields of a node with walkNode and walkList and
+// reports whether the walk broke.
+type typeIterator func(node Node, context *WalkContext, walkNode func(node Node) bool, walkList func(list *List[Node]) bool) bool
 
 func createTypeIterator(config *walkerType, reverse bool) typeIterator {
 	fields := config.fields
 	contextName := config.context
 	useContext := contextName != ""
 
-	return func(node Node, context *WalkContext, walk func(node Node) bool, walkItem func(node Node, item *ListItem[Node], list *List[Node]) bool) bool {
+	return func(node Node, context *WalkContext, walkNode func(node Node) bool, walkList func(list *List[Node]) bool) bool {
 		var prevContextValue Node
 
 		if useContext {
@@ -191,20 +191,7 @@ func createTypeIterator(config *walkerType, reverse bool) typeIterator {
 			context.set(contextName, node)
 		}
 
-		walkList := func(ref *List[Node]) bool {
-			broke := false
-			visit := func(data Node, item *ListItem[Node]) {
-				broke = broke || walkItem(data, item, ref)
-			}
-			if reverse {
-				ref.ForEachRight(visit)
-			} else {
-				ref.ForEach(visit)
-			}
-			return broke
-		}
-
-		if fields(node, reverse, walk, walkList) {
+		if fields(node, reverse, walkNode, walkList) {
 			return true
 		}
 
@@ -236,7 +223,8 @@ func createFastTraveralMap(iterators map[string]typeIterator) map[string]map[str
 
 // Walker traverses ASTs of the node types of a config (upstream walk, the
 // function createWalker returns, with its find, findLast and findAll
-// properties). A Walker is safe for concurrent use.
+// properties). A Walker is safe for concurrent use; see Walk for the ASTs
+// it walks.
 type Walker struct {
 	types                         map[string]*walkerType
 	iteratorsNatural              map[string]typeIterator
@@ -278,7 +266,18 @@ func CreateWalker(config *Config) (*Walker, error) {
 // options.Leave after the children of each node. It fails when neither
 // handler is set or options.Visit names an unknown node type. Nil nodes
 // (a nil root or nil list data) are not visited.
+//
+// The handlers may change the list holding the current node (insert or
+// remove items, as List.ForEach allows), which is why Walk records its
+// position in each list it walks: it must not run concurrently with any
+// other use of the same AST, not even a read-only one such as Generate or
+// Find.
 func (w *Walker) Walk(root Node, options WalkOptions) error {
+	return w.walk(root, options, true)
+}
+
+// walk is Walk; mutable is walkAST's.
+func (w *Walker) walk(root Node, options WalkOptions, mutable bool) error {
 	enter := WalkHandler(noopWalkHandler)
 	leave := WalkHandler(noopWalkHandler)
 	enterIsNoop := true
@@ -326,16 +325,52 @@ func (w *Walker) Walk(root Node, options WalkOptions) error {
 		return errors.New("Neither `enter` nor `leave` walker handler is set or both aren't a function")
 	}
 
-	walkAST(root, enter, leave, iterators)
+	walkAST(root, enter, leave, iterators, options.Reverse, mutable)
 
 	return nil
 }
 
 // walkAST is the traversal of upstream walk once the options are resolved.
-func walkAST(root Node, enter, leave WalkHandler, iterators map[string]typeIterator) {
+// iterators walk the fields of nodes in reverse order when reverse is set.
+// When mutable is set, lists are iterated with ForEach or ForEachRight, so
+// that handlers may change the list being walked; otherwise they are only
+// read, so that walks of one AST may run concurrently.
+func walkAST(root Node, enter, leave WalkHandler, iterators map[string]typeIterator, reverse, mutable bool) {
 	var walkNode func(node Node, item *ListItem[Node], list *List[Node]) bool
 	context := &WalkContext{
 		Root: root,
+	}
+
+	walkList := func(list *List[Node]) bool {
+		switch {
+		case mutable:
+			broke := false
+			visit := func(data Node, item *ListItem[Node]) {
+				broke = broke || walkNode(data, item, list)
+			}
+			if reverse {
+				list.ForEachRight(visit)
+			} else {
+				list.ForEach(visit)
+			}
+			return broke
+		case reverse:
+			for item := list.Tail(); item != nil; item = item.Prev {
+				if walkNode(item.Data, item, list) {
+					return true
+				}
+			}
+		default:
+			for item := list.Head(); item != nil; item = item.Next {
+				if walkNode(item.Data, item, list) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	walkField := func(node Node) bool {
+		return walkNode(node, nil, nil)
 	}
 
 	walkNode = func(node Node, item *ListItem[Node], list *List[Node]) bool {
@@ -354,7 +389,7 @@ func walkAST(root Node, enter, leave WalkHandler, iterators map[string]typeItera
 		}
 
 		if iterator, ok := iterators[node.Type()]; ok {
-			if iterator(node, context, func(node Node) bool { return walkNode(node, nil, nil) }, walkNode) {
+			if iterator(node, context, walkField, walkList) {
 				return true
 			}
 		}
@@ -370,7 +405,8 @@ func walkAST(root Node, enter, leave WalkHandler, iterators map[string]typeItera
 }
 
 // Find returns the first node, in natural walk order, for which fn returns
-// true, or nil.
+// true, or nil. fn must not change the AST: Find, FindLast and FindAll only
+// read it, so they may run concurrently with other reads of the same AST.
 func (w *Walker) Find(ast Node, fn func(context *WalkContext, node Node, item *ListItem[Node], list *List[Node]) bool) Node {
 	var found Node
 
@@ -380,7 +416,7 @@ func (w *Walker) Find(ast Node, fn func(context *WalkContext, node Node, item *L
 			return WalkBreak
 		}
 		return WalkContinue
-	}, noopWalkHandler, w.iteratorsNatural)
+	}, noopWalkHandler, w.iteratorsNatural, false, false)
 
 	return found
 }
@@ -396,7 +432,7 @@ func (w *Walker) FindLast(ast Node, fn func(context *WalkContext, node Node, ite
 			return WalkBreak
 		}
 		return WalkContinue
-	}, noopWalkHandler, w.iteratorsReverse)
+	}, noopWalkHandler, w.iteratorsReverse, true, false)
 
 	return found
 }
@@ -411,7 +447,7 @@ func (w *Walker) FindAll(ast Node, fn func(context *WalkContext, node Node, item
 			found = append(found, node)
 		}
 		return WalkContinue
-	}, noopWalkHandler, w.iteratorsNatural)
+	}, noopWalkHandler, w.iteratorsNatural, false, false)
 
 	return found
 }
