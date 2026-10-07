@@ -142,15 +142,16 @@ func TestGenerateTokens(t *testing.T) {
 	}
 }
 
-// A panic in a handler ends the generation with an error, as an exception
-// thrown by an upstream handler reaches the caller of generate.
+// A panic in a handler ends the generation with an *InternalError, as an
+// exception thrown by an upstream handler reaches the caller of generate.
 func TestGenerateHandlerPanics(t *testing.T) {
 	css, err := Generate(&Identifier{Name: "a"}, GenerateOptions{Decorator: func(handlers GenerateHandlers) GenerateHandlers {
 		handlers.Emit = func(*GenerateHandlers, string, tokenizer.TokenType, bool) { panic("boom") }
 		return handlers
 	}})
-	if css != "" || err == nil || err.Error() != "boom" {
-		t.Errorf("Generate() = %q, %v; want boom", css, err)
+	var internal *InternalError
+	if css != "" || !errors.As(err, &internal) || internal.Value != "boom" {
+		t.Errorf("Generate() = %q, %v; want an *InternalError of boom", css, err)
 	}
 
 	// upstream: reading the type of a null child throws

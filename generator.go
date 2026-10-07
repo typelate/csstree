@@ -194,8 +194,8 @@ func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (s
 					result, err = "", failure.err
 					return
 				}
-				// upstream: whatever a generate function throws reaches the caller
-				result, err = "", recoveredError(r)
+				// a bug in a generate function or an extension
+				result, err = "", newInternalError(r)
 			}
 		}()
 

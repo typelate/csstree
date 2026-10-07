@@ -111,9 +111,10 @@ func TestNamesLowercaseAsJavaScript(t *testing.T) {
 	}
 }
 
-// A panic in OnParseError ends the parse, as an exception thrown by
-// upstream's onParseError reaches the caller of parse, even from a nested
-// parseWithFallback (upstream: one call, then "boom" is thrown).
+// A panic in OnParseError ends the parse with an *InternalError, as an
+// exception thrown by upstream's onParseError reaches the caller of parse,
+// even from a nested parseWithFallback (upstream: one call, then "boom" is
+// thrown).
 func TestParseOnParseErrorPanics(t *testing.T) {
 	const source = "@media ((a:])){}"
 
@@ -124,7 +125,10 @@ func TestParseOnParseErrorPanics(t *testing.T) {
 		check func(err error) bool
 	}{
 		{name: "error", value: errBoom, check: func(err error) bool { return errors.Is(err, errBoom) }},
-		{name: "string", value: "boom", check: func(err error) bool { return err.Error() == "boom" }},
+		{name: "string", value: "boom", check: func(err error) bool {
+			var internal *InternalError
+			return errors.As(err, &internal) && internal.Value == "boom"
+		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			calls := 0

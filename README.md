@@ -40,6 +40,10 @@ See `Example` in [example_test.go](example_test.go) for walking an AST.
   `list: false` (array children) mode.
 - Functions that throw upstream return an `error`. Lexer matches report
   failures in `MatchResult.Error`.
+- Only syntax errors fall back to a `Raw` node. Any other panic in a parse
+  or generate function, an extension or a callback is a bug: `Parse` and
+  `Generate` return it as an `*InternalError` holding the panic value and
+  stack, where upstream's `parseWithFallback` catches every exception.
 - Forks can extend parse contexts, scopes, at-rules, pseudo-classes, features
   and node generators, but not replace a built-in node's parse function.
 - Upstream bugs that throw or overflow in JavaScript are fixed: sources over

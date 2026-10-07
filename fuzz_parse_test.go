@@ -1,6 +1,7 @@
 package csstree
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -18,6 +19,10 @@ func FuzzParse(f *testing.F) {
 	f.Fuzz(func(t *testing.T, source string, context uint8, positions bool) {
 		opts := ParseOptions{Context: fuzzContexts[int(context)%len(fuzzContexts)], Positions: positions}
 		ast, err := Parse(source, opts)
+		var internal *InternalError
+		if errors.As(err, &internal) {
+			t.Fatalf("Parse(%q, %+v) = %v\n%s", source, opts, err, internal.Stack)
+		}
 		if err != nil {
 			return
 		}

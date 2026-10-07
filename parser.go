@@ -4,7 +4,6 @@
 package csstree
 
 import (
-	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -222,6 +221,20 @@ func CreateParser(config *Config) ParseFunc {
 }
 
 func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch r := r.(type) {
+			case parseAbort:
+				ast, err = nil, r.err
+			case *SyntaxError:
+				ast, err = nil, r
+			default:
+				// a bug in a parse function, an extension or a callback
+				ast, err = nil, newInternalError(r)
+			}
+		}
+	}()
+
 	p.SetSource(source)
 
 	p.filename = options.Filename
@@ -283,17 +296,6 @@ func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error
 			}
 		})
 	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			if abort, ok := r.(parseAbort); ok {
-				ast, err = nil, abort.err
-				return
-			}
-			// upstream: whatever the parse throws reaches the caller
-			ast, err = nil, recoveredError(r)
-		}
-	}()
 
 	ast = contextParser(p, options)
 
@@ -398,8 +400,10 @@ func (p *Parser) GetLastListNode(list *List[Node]) Node {
 }
 
 // ParseWithFallback returns consumer(). When consumer reports a syntax
-// error, the parser rewinds to where consumer started, returns fallback()
-// instead and reports the error to OnParseError.
+// error (panics with a *SyntaxError, as Error does), the parser rewinds to
+// where consumer started, returns fallback() instead and reports the error
+// to OnParseError. Any other panic is not recovered: it ends the parse
+// with an *InternalError.
 func (p *Parser) ParseWithFallback(consumer, fallback func() Node) Node {
 	startIndex := p.TokenIndex
 
@@ -429,29 +433,22 @@ func (p *Parser) ParseWithFallback(consumer, fallback func() Node) Node {
 	return fallbackNode
 }
 
-// try calls fn and returns the *SyntaxError it panics with, if any.
-func (p *Parser) try(fn func() Node) (node Node, err error) {
+// try calls fn and returns the *SyntaxError it panics with, if any. Any
+// other panic goes on: upstream catches any exception, but a Go panic that
+// is not a syntax error is a bug, which a Raw fallback would hide (the
+// parse function reports it as an *InternalError).
+func (p *Parser) try(fn func() Node) (node Node, err *SyntaxError) {
 	defer func() {
 		if r := recover(); r != nil {
-			if abort, ok := r.(parseAbort); ok {
-				panic(abort)
+			syntaxErr, ok := r.(*SyntaxError)
+			if !ok {
+				panic(r)
 			}
-			// upstream catches any exception, not only syntax errors
-			node, err = nil, recoveredError(r)
+			node, err = nil, syntaxErr
 		}
 	}()
 
 	return fn(), nil
-}
-
-// recoveredError is the error upstream's catch would receive for a recovered
-// panic value: the value itself when it is an error (a *SyntaxError, or a
-// runtime error where upstream gets a TypeError), otherwise its text.
-func recoveredError(r any) error {
-	if err, ok := r.(error); ok {
-		return err
-	}
-	return fmt.Errorf("%v", r)
 }
 
 // LookupNonWSType returns the type of the first token at or after offset
