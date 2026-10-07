@@ -494,7 +494,7 @@ func (ts *TokenStream) Dump() []DumpToken {
 	ts.ForEachToken(func(tokenType TokenType, start, end, index int) {
 		tokens[index] = DumpToken{
 			Idx:     index,
-			Type:    TokenNames[tokenType],
+			Type:    tokenType.String(),
 			Chunk:   substring(ts.Source, start, end),
 			Balance: ts.Balance[index],
 		}

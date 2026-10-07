@@ -84,7 +84,7 @@ func (api *TokenIterateAPI) GetTokenType(index int) tokenizer.TokenType {
 
 // GetTokenTypeName returns the name of the type of the token at index.
 func (api *TokenIterateAPI) GetTokenTypeName(index int) string {
-	return tokenizer.TokenNames[api.parser.GetTokenType(index)]
+	return api.parser.GetTokenType(index).String()
 }
 
 // GetTokenStart returns the start offset of the token at index.
@@ -538,7 +538,7 @@ func (p *Parser) ConsumeNumber(tokenType tokenizer.TokenType) string {
 // not have tokenType.
 func (p *Parser) Eat(tokenType tokenizer.TokenType) {
 	if p.TokenType != tokenType {
-		tokenName := tokenizer.TokenNames[tokenType]
+		tokenName := tokenType.String()
 		tokenName = strings.ReplaceAll(tokenName[:len(tokenName)-6], "-", " ")
 		tokenName = strings.ToUpper(tokenName[:1]) + tokenName[1:]
 		message := tokenName + " is expected"

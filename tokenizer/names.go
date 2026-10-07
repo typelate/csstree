@@ -2,9 +2,9 @@
 
 package tokenizer
 
-// TokenNames maps a TokenType to its name in CSS Syntax Module Level 3.
+// tokenNames maps a TokenType to its name in CSS Syntax Module Level 3.
 // It is read-only.
-var TokenNames = [...]string{
+var tokenNames = [...]string{
 	"EOF-token",
 	"ident-token",
 	"function-token",

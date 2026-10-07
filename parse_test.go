@@ -631,7 +631,7 @@ func TestParse(t *testing.T) {
 					Source:                 source,
 					TokenCount:             tokenStream.TokenCount,
 					Type:                   token.Type,
-					TypeName:               tokenizer.TokenNames[token.Type],
+					TypeName:               token.Type.String(),
 					IsBlockOpenerTokenType: slices.Contains([]tokenizer.TokenType{tokenizer.Function, tokenizer.LeftParenthesis, tokenizer.LeftSquareBracket, tokenizer.LeftCurlyBracket}, token.Type),
 					IsBlockCloserTokenType: slices.Contains([]tokenizer.TokenType{tokenizer.RightParenthesis, tokenizer.RightSquareBracket, tokenizer.RightCurlyBracket}, token.Type),
 					Balance:                tokenStream.Balance[index],

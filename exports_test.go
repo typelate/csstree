@@ -104,7 +104,6 @@ func TestExports(t *testing.T) {
 				tokenizer.IsUppercaseLetter,
 				tokenizer.IsValidEscape,
 				tokenizer.IsWhiteSpace,
-				tokenizer.TokenNames,
 				tokenizer.Tokenize,
 			}
 		})

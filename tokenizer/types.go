@@ -6,7 +6,7 @@ import "strconv"
 
 // TokenType identifies the kind of a token. Upstream token types are plain
 // numbers stored in the top 8 bits of a Uint32Array cell; TokenType is an int
-// so it can index tables such as TokenNames directly.
+// so it can index the package's per-type tables directly.
 type TokenType int
 
 // CSS Syntax Module Level 3
@@ -40,10 +40,11 @@ const (
 	Comment            TokenType = 25
 )
 
-// String returns the upstream token name (see TokenNames), e.g. "ident-token".
+// String returns the token's name in CSS Syntax Module Level 3, e.g.
+// "ident-token", as upstream's tokenNames does.
 func (t TokenType) String() string {
-	if t >= 0 && int(t) < len(TokenNames) {
-		return TokenNames[t]
+	if uint(t) < uint(len(tokenNames)) {
+		return tokenNames[t]
 	}
 	return "TokenType(" + strconv.Itoa(int(t)) + ")"
 }

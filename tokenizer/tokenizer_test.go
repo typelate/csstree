@@ -126,7 +126,7 @@ func TestTokenizeStream(t *testing.T) {
 			var actual []string
 
 			for !stream.EOF {
-				actual = append(actual, TokenNames[stream.TokenType])
+				actual = append(actual, stream.TokenType.String())
 				stream.Next()
 			}
 
@@ -178,7 +178,7 @@ func TestTokenizeStream(t *testing.T) {
 					skip = tokenIndex - targetTokens[idx-1]
 				}
 				stream.Skip(skip)
-				actual = append(actual, TokenNames[stream.TokenType])
+				actual = append(actual, stream.TokenType.String())
 				want = append(want, tokens[tokenIndex].Type)
 			}
 
@@ -382,7 +382,7 @@ func TestTokenizeStream(t *testing.T) {
 
 						Tokenize(value, func(tokenType TokenType, start, end int) {
 							actual = append(actual, tokenChunk{
-								Type:  TokenNames[tokenType],
+								Type:  tokenType.String(),
 								Chunk: value[start:end],
 							})
 						})
