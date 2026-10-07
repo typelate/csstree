@@ -490,30 +490,30 @@ func TestPortDeviations(t *testing.T) {
 			t.Errorf("Tokenize(%q) starts = %v, want %v", source, starts, want)
 		}
 
-		loc := NewOffsetToLocation(source, 0, 1, 1).GetLocationRange(3, 5, "x.css")
-		want := &Location{Source: "x.css", Start: Position{Offset: 3, Line: 1, Column: 1}, End: Position{Offset: 5, Line: 1, Column: 3}}
-		if *loc != *want {
-			t.Errorf("GetLocationRange(3, 5) = %+v, want %+v", *loc, *want)
+		l := &OffsetToLocation{Source: source, Filename: "x.css"}
+		want := Location{Filename: "x.css", Start: Position{Offset: 3, Line: 1, Column: 1}, End: Position{Offset: 5, Line: 1, Column: 3}}
+		if got := l.Range(3, 5); got != want {
+			t.Errorf("Range(3, 5) = %+v, want %+v", got, want)
 		}
 	})
 
-	t.Run("OffsetToLocation reuses a buffer as long as the source", func(t *testing.T) {
-		l := NewOffsetToLocation("a", 0, 1, 1)
-		l.GetLocation(0, "")
-		source := strings.Repeat("a", len(l.lines))
-		l.SetSource(source, 10, 2, 5)
-		got := l.GetLocation(len(source), "")
-		want := SourcePosition{Position: Position{Offset: 10 + len(source), Line: 2, Column: 5 + len(source)}}
+	t.Run("OffsetToLocation follows changes to its fields", func(t *testing.T) {
+		l := &OffsetToLocation{Source: "a\nb"}
+		l.Position(0)
+		source := strings.Repeat("a", 100)
+		l.Source, l.StartOffset, l.StartLine, l.StartColumn = source, 10, 2, 5
+		got := l.Position(len(source))
+		want := Position{Offset: 10 + len(source), Line: 2, Column: 5 + len(source)}
 		if got != want {
-			t.Errorf("GetLocation(%d) = %+v, want %+v", len(source), got, want)
+			t.Errorf("Position(%d) = %+v, want %+v", len(source), got, want)
 		}
 	})
 
 	t.Run("columns count bytes", func(t *testing.T) {
 		const source = "é\nab"
-		got := NewOffsetToLocation(source, 0, 1, 1).GetLocation(len(source), "")
-		if want := (Position{Offset: 5, Line: 2, Column: 3}); got.Position != want {
-			t.Errorf("GetLocation(%d) = %+v, want %+v", len(source), got.Position, want)
+		got := (&OffsetToLocation{Source: source}).Position(len(source))
+		if want := (Position{Offset: 5, Line: 2, Column: 3}); got != want {
+			t.Errorf("Position(%d) = %+v, want %+v", len(source), got, want)
 		}
 	})
 

@@ -125,12 +125,13 @@ func (api *TokenIterateAPI) GetBlockTokenPairIndex(index int) int {
 
 // GetLocation returns the position of offset.
 func (api *TokenIterateAPI) GetLocation(offset int) tokenizer.SourcePosition {
-	return api.locationMap.GetLocation(offset, api.Filename)
+	return tokenizer.SourcePosition{Filename: api.Filename, Position: api.locationMap.Position(offset)}
 }
 
 // GetRangeLocation returns the location of [start, end).
 func (api *TokenIterateAPI) GetRangeLocation(start, end int) *Location {
-	return api.locationMap.GetLocationRange(start, end, api.Filename)
+	loc := api.locationMap.Range(start, end)
+	return &loc
 }
 
 // UnknownContextError is returned by a parse with a context the syntax does
@@ -222,23 +223,17 @@ func CreateParser(config *Config) ParseFunc {
 
 func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error) {
 	p.SetSource(source)
-	line, column := options.Line, options.Column
-	if line == 0 {
-		line = 1
-	}
-	if column == 0 {
-		column = 1
-	}
-	p.locationMap.SetSource(
-		source,
-		options.Offset,
-		line,
-		column,
-	)
 
 	p.filename = options.Filename
 	if p.filename == "" {
 		p.filename = "<unknown>"
+	}
+	*p.locationMap = tokenizer.OffsetToLocation{
+		Source:      source,
+		Filename:    p.filename,
+		StartOffset: options.Offset,
+		StartLine:   options.Line,
+		StartColumn: options.Column,
 	}
 	p.needPositions = options.Positions
 	p.onParseError = options.OnParseError
@@ -601,11 +596,8 @@ func (p *Parser) EatDelim(code int) {
 // are off.
 func (p *Parser) GetLocation(start, end int) *Location {
 	if p.needPositions {
-		return p.locationMap.GetLocationRange(
-			start,
-			end,
-			p.filename,
-		)
+		loc := p.locationMap.Range(start, end)
+		return &loc
 	}
 
 	return nil
@@ -625,11 +617,8 @@ func (p *Parser) GetLocationFromList(list *List[Node]) *Location {
 		if tail != nil {
 			end = tail.Location().End.Offset - p.locationMap.StartOffset
 		}
-		return p.locationMap.GetLocationRange(
-			start,
-			end,
-			p.filename,
-		)
+		loc := p.locationMap.Range(start, end)
+		return &loc
 	}
 
 	return nil
@@ -644,14 +633,14 @@ func (p *Parser) GetLocationFromList(list *List[Node]) *Location {
 // calls them.
 func (p *Parser) Error(message string, offset int) {
 	source := p.Source
-	var location tokenizer.SourcePosition
+	var location tokenizer.Position
 	switch {
 	case offset >= 0 && offset < len(source):
-		location = p.locationMap.GetLocation(offset, "")
+		location = p.locationMap.Position(offset)
 	case p.EOF:
-		location = p.locationMap.GetLocation(tokenizer.FindWhiteSpaceStart(source, len(source)-1), "")
+		location = p.locationMap.Position(tokenizer.FindWhiteSpaceStart(source, len(source)-1))
 	default:
-		location = p.locationMap.GetLocation(p.TokenStart, "")
+		location = p.locationMap.Position(p.TokenStart)
 	}
 
 	if message == "" {
@@ -664,8 +653,8 @@ func (p *Parser) Error(message string, offset int) {
 		location.Offset,
 		location.Line,
 		location.Column,
-		p.locationMap.StartLine,
-		p.locationMap.StartColumn,
+		max(p.locationMap.StartLine, 1),
+		max(p.locationMap.StartColumn, 1),
 	))
 }
 

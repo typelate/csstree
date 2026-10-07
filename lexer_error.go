@@ -225,14 +225,14 @@ func newSyntaxMatchError(message string, syntax definitionsyntax.Node, node Node
 	err.Column = mismatch.start.Column
 	source := "<unknown>"
 	if node != nil {
-		if loc := node.Location(); loc != nil && loc.Source != "" {
-			source = loc.Source
+		if loc := node.Location(); loc != nil && loc.Filename != "" {
+			source = loc.Filename
 		}
 	}
 	err.Loc = Location{
-		Source: source,
-		Start:  mismatch.start,
-		End:    mismatch.end,
+		Filename: source,
+		Start:    mismatch.start,
+		End:      mismatch.end,
 	}
 
 	return err

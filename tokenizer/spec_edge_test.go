@@ -743,10 +743,10 @@ func TestOffsetToLocationNewlines(t *testing.T) {
 		{"\n\n\f\na\r", []Position{{0, 1, 1}, {1, 2, 1}, {2, 3, 1}, {3, 4, 1}, {4, 5, 1}, {5, 5, 2}, {6, 6, 1}}},
 		{"\r\r\n\r", []Position{{0, 1, 1}, {1, 2, 1}, {2, 2, 2}, {3, 3, 1}, {4, 4, 1}}},
 	} {
-		l := NewOffsetToLocation(tt.source, 0, 1, 1)
+		l := &OffsetToLocation{Source: tt.source}
 		for offset, want := range tt.want {
-			if got := l.GetLocation(offset, ""); got.Position != want {
-				t.Errorf("NewOffsetToLocation(%q).GetLocation(%d) = %+v, want %+v", tt.source, offset, got.Position, want)
+			if got := l.Position(offset); got != want {
+				t.Errorf("OffsetToLocation{Source: %q}.Position(%d) = %+v, want %+v", tt.source, offset, got, want)
 			}
 		}
 	}
@@ -821,35 +821,47 @@ func TestTokenStreamEmptyAndBOM(t *testing.T) {
 
 func TestOffsetToLocationLines(t *testing.T) {
 	const source = "a\r\nb\nc\rd\fe"
-	l := NewOffsetToLocation(source, 10, 3, 5)
+	l := &OffsetToLocation{Source: source, Filename: "f.css", StartOffset: 10, StartLine: 3, StartColumn: 5}
 	want := []Position{{10, 3, 5}, {11, 3, 6}, {12, 3, 7}, {13, 4, 1}, {14, 4, 2}, {15, 5, 1}, {16, 5, 2}, {17, 6, 1}, {18, 6, 2}, {19, 7, 1}, {20, 7, 2}}
 	for offset, want := range want {
-		got := l.GetLocation(offset, "f.css")
-		if got.Position != want || got.Source != "f.css" {
-			t.Errorf("GetLocation(%d) = %+v, want %+v", offset, got, want)
+		if got := l.Position(offset); got != want {
+			t.Errorf("Position(%d) = %+v, want %+v", offset, got, want)
 		}
 	}
+	wantRange := Location{Filename: "f.css", Start: want[1], End: want[4]}
+	if got := l.Range(1, 4); got != wantRange {
+		t.Errorf("Range(1, 4) = %+v, want %+v", got, wantRange)
+	}
 
-	// upstream offsets 1..4 after a one code unit BOM are 3..6 here
-	bom := NewOffsetToLocation("\ufeffa\nb", 0, 1, 1)
-	for i, want := range []Position{{3, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, 2, 2}} {
-		if got := bom.GetLocation(3+i, ""); got.Position != want {
-			t.Errorf("GetLocation(%d) = %+v, want %+v", 3+i, got.Position, want)
+	// upstream offsets 1..4 after a one code unit BOM are 3..6 here; the
+	// BOM itself is on line 0, column 0, which upstream leaves unset
+	bom := &OffsetToLocation{Source: "\ufeffa\nb"}
+	for offset, want := range []Position{{0, 0, 0}, {1, 0, 0}, {2, 0, 0}, {3, 1, 1}, {4, 1, 2}, {5, 2, 1}, {6, 2, 2}} {
+		if got := bom.Position(offset); got != want {
+			t.Errorf("Position(%d) = %+v, want %+v", offset, got, want)
 		}
 	}
 }
 
-func TestAdoptBuffer(t *testing.T) {
-	small := adoptBuffer[int](nil, 10)
-	if len(small) != minSize {
-		t.Errorf("adoptBuffer(nil, 10) len = %d, want %d", len(small), minSize)
+// Offsets out of range are clamped to the source, and the zero value
+// converts offsets in an empty source.
+func TestOffsetToLocationClamp(t *testing.T) {
+	l := &OffsetToLocation{Source: "ab\nc", StartOffset: 7}
+	for _, tt := range []struct {
+		offset int
+		want   Position
+	}{
+		{-5, Position{7, 1, 1}},
+		{100, Position{11, 2, 2}},
+	} {
+		if got := l.Position(tt.offset); got != tt.want {
+			t.Errorf("Position(%d) = %+v, want %+v", tt.offset, got, tt.want)
+		}
 	}
-	if got := adoptBuffer(small, minSize); &got[0] != &small[0] {
-		t.Errorf("adoptBuffer(buffer, len(buffer)) did not reuse the buffer")
-	}
-	grown := adoptBuffer(small, minSize+1)
-	if want := minSize + 1 + 1024; len(grown) != want {
-		t.Errorf("adoptBuffer(buffer, %d) len = %d, want %d", minSize+1, len(grown), want)
+
+	var zero OffsetToLocation
+	if got, want := zero.Range(-1, 1), (Location{Start: Position{0, 1, 1}, End: Position{0, 1, 1}}); got != want {
+		t.Errorf("zero OffsetToLocation Range(-1, 1) = %+v, want %+v", got, want)
 	}
 }
 

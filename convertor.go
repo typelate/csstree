@@ -196,9 +196,9 @@ func (r *PlainObjectReader) Location(object map[string]any) *Location {
 		return nil
 	case map[string]any:
 		loc := &Location{
-			Source: r.String(value, "source"),
-			Start:  r.position(value, "start"),
-			End:    r.position(value, "end"),
+			Filename: r.String(value, "source"),
+			Start:    r.position(value, "start"),
+			End:      r.position(value, "end"),
 		}
 		if r.err != nil {
 			return nil

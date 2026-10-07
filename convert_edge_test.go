@@ -22,7 +22,7 @@ func TestFromPlainObjectFields(t *testing.T) {
 		if err != nil {
 			t.Fatalf("FromPlainObject(object): %v", err)
 		}
-		if loc := node.Location(); loc == nil || loc.Source != "s" || loc.End.Offset != 1 || loc.End.Column != 2 {
+		if loc := node.Location(); loc == nil || loc.Filename != "s" || loc.End.Offset != 1 || loc.End.Column != 2 {
 			t.Errorf("Location() = %+v", loc)
 		}
 	})

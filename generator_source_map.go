@@ -75,7 +75,7 @@ func generateSourceMap(handlers GenerateHandlers, sourceMap *SourceMapGenerator)
 
 				sourceMappingActive = true
 				addMapping(SourceMapping{
-					Source:    loc.Source,
+					Source:    loc.Filename,
 					Original:  &original,
 					Generated: generated,
 				})

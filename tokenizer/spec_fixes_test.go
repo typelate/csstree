@@ -173,9 +173,9 @@ func TestIsBOMSpecFixes(t *testing.T) {
 // OffsetToLocation counts U+FFFE at the start as a character, not a BOM.
 func TestOffsetToLocationFFFE(t *testing.T) {
 	const source = "\ufffea"
-	got := NewOffsetToLocation(source, 0, 1, 1).GetLocation(len(source), "")
-	if want := (Position{Offset: 4, Line: 1, Column: 5}); got.Position != want {
-		t.Errorf("GetLocation(%d) = %+v, want %+v", len(source), got.Position, want)
+	got := (&OffsetToLocation{Source: source}).Position(len(source))
+	if want := (Position{Offset: 4, Line: 1, Column: 5}); got != want {
+		t.Errorf("Position(%d) = %+v, want %+v", len(source), got, want)
 	}
 }
 

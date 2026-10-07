@@ -66,7 +66,7 @@ func TestExports(t *testing.T) {
 				tokenizer.NameStartCategory,
 				tokenizer.NonPrintableCategory,
 				tokenizer.Number,
-				tokenizer.NewOffsetToLocation,
+				(*tokenizer.OffsetToLocation).Position,
 				tokenizer.Percentage,
 				tokenizer.RightCurlyBracket,
 				tokenizer.RightParenthesis,

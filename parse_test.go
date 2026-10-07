@@ -493,9 +493,9 @@ func TestParse(t *testing.T) {
 			}
 			loc := func(start, end int) *Location {
 				return &Location{
-					Source: "test.css",
-					Start:  offsetToPos(start),
-					End:    offsetToPos(end),
+					Filename: "test.css",
+					Start:    offsetToPos(start),
+					End:      offsetToPos(end),
 				}
 			}
 
@@ -575,7 +575,7 @@ func TestParse(t *testing.T) {
 
 		t.Run("as function with API", func(t *testing.T) {
 			const filename = "test.css"
-			offsetToLocation := tokenizer.NewOffsetToLocation(source, 0, 1, 1)
+			offsetToLocation := &tokenizer.OffsetToLocation{Source: source, Filename: filename}
 			tokenStream := tokenizer.NewTokenStream(source)
 			type apiToken struct {
 				Index                  int
@@ -640,8 +640,8 @@ func TestParse(t *testing.T) {
 					End:                    token.End,
 					Value:                  source[token.Start:token.End],
 					Substring:              source[token.Start:token.End],
-					Location:               offsetToLocation.GetLocation(token.Start, filename),
-					RangeLocation:          offsetToLocation.GetLocationRange(token.Start, token.End, filename),
+					Location:               tokenizer.SourcePosition{Filename: filename, Position: offsetToLocation.Position(token.Start)},
+					RangeLocation:          new(offsetToLocation.Range(token.Start, token.End)),
 				})
 			}
 			if !reflect.DeepEqual(actual, want) {

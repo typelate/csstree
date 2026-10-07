@@ -260,8 +260,8 @@ func TestSyntaxMatchErrorLocation(t *testing.T) {
 		start := tokenizerPosition{matchErr.Loc.Start.Offset, matchErr.Loc.Start.Line, matchErr.Loc.Start.Column}
 		end := tokenizerPosition{matchErr.Loc.End.Offset, matchErr.Loc.End.Line, matchErr.Loc.End.Column}
 		fields := tokenizerPosition{matchErr.Offset, matchErr.Line, matchErr.Column}
-		if start != test.start || end != test.end || fields != test.start || matchErr.Loc.Source != "<unknown>" {
-			t.Errorf("MatchProperty(color, %q) mismatch at %v-%v (fields %v, source %q), want %v-%v", test.value, start, end, fields, matchErr.Loc.Source, test.start, test.end)
+		if start != test.start || end != test.end || fields != test.start || matchErr.Loc.Filename != "<unknown>" {
+			t.Errorf("MatchProperty(color, %q) mismatch at %v-%v (fields %v, source %q), want %v-%v", test.value, start, end, fields, matchErr.Loc.Filename, test.start, test.end)
 		}
 	}
 }
