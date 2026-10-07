@@ -132,8 +132,9 @@ func TestLexerUnicodeLowerCase(t *testing.T) {
 		{kind: "property", name: "width", value: "1\u0130n", iterations: 29},
 		{kind: "type", name: "length", value: "1\u0130N", iterations: 3},
 		{kind: "syntax", name: "<attr-unit>", value: "\u0130n", iterations: 5},
-		// U+212A KELVIN SIGN lowercases to an ASCII k in both
-		{kind: "type", name: "frequency", value: "1\u212Ahz", matched: true, iterations: 3},
+		// U+212A KELVIN SIGN lowercases to an ASCII k in JavaScript, but
+		// units are ASCII case-insensitive (the port follows the spec)
+		{kind: "type", name: "frequency", value: "1\u212Ahz", iterations: 3},
 	})
 }
 
@@ -268,15 +269,17 @@ func TestLexerSpecEdgeCases(t *testing.T) {
 		{kind: "syntax", name: "<number [0,1]>", value: "-0", matched: true, iterations: 5},
 
 		// Values 4 §4.2 <custom-ident> excludes the CSS-wide keywords and
-		// default in any ASCII case; escapes are compared unprocessed, so
-		// \69nherit (inherit) is taken, which the spec rejects
+		// default in any ASCII case, compared by their value: upstream
+		// compares the source text, so takes \69nherit (inherit); the port
+		// follows the spec
 		{kind: "type", name: "custom-ident", value: "DEFAULT", iterations: 3},
 		{kind: "type", name: "custom-ident", value: "Revert-Layer", iterations: 3},
-		{kind: "type", name: "custom-ident", value: "\\69nherit", matched: true, iterations: 3},
-		{kind: "type", name: "custom-ident", value: "\\64 efault", matched: true, iterations: 3},
-		// keywords are compared unprocessed too: r\ed is not red
+		{kind: "type", name: "custom-ident", value: "\\69nherit", iterations: 3},
+		{kind: "type", name: "custom-ident", value: "\\64 efault", iterations: 3},
+		// keywords are compared by their value too: \72 ed is red, r\ed is
+		// r followed by U+00ED
 		{kind: "property", name: "color", value: "r\\ed", iterations: 38},
-		{kind: "property", name: "color", value: "\\72 ed", iterations: 38},
+		{kind: "property", name: "color", value: "\\72 ed", matched: true, iterations: 22},
 		// Values 4 §4.2 <dashed-ident>, CSS Variables <custom-property-name>
 		{kind: "type", name: "dashed-ident", value: "--", matched: true, iterations: 3},
 		{kind: "type", name: "dashed-ident", value: "-a", iterations: 3},

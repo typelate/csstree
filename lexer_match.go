@@ -469,6 +469,12 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 					state = next
 					break
 				}
+
+				// the value with escapes decoded, see tokenNameIs
+				if next, ok := enumLookup(state.enumMap, decodedNames(token)); ok {
+					state = next
+					break
+				}
 			}
 
 			state = mismatchState
@@ -547,7 +553,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 					keywordName = keywordHack.ReplaceAllString(keywordName, "")
 				}
 
-				if areStringsEqualCaseInsensitive(keywordName, name) {
+				if areStringsEqualCaseInsensitive(keywordName, name) || tokenNameIs(token, name) {
 					addTokenToMatch()
 					state = matchState
 					break
@@ -557,7 +563,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			state = mismatchState
 
 		case "AtKeyword", "Function":
-			if token != nil && areStringsEqualCaseInsensitive(token.value, state.name) {
+			if token != nil && (areStringsEqualCaseInsensitive(token.value, state.name) || tokenNameIs(token, state.name)) {
 				addTokenToMatch()
 				state = matchState
 				break

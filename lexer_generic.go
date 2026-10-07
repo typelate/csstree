@@ -164,7 +164,14 @@ func charCodeAt(str string, index int) int {
 	return 0
 }
 
+// eqStr reports whether the name actual (an identifier or a function
+// name, escapes decoded) is an ASCII case-insensitive match for the
+// lowercase expected.
 func eqStr(actual, expected string) bool {
+	if strings.Contains(actual, `\`) {
+		actual = DecodeIdent(actual)
+	}
+
 	return tokenizer.CmpStr(actual, 0, len(actual), expected)
 }
 
@@ -434,7 +441,9 @@ func customIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitio
 		return 0
 	}
 
-	name := toLowerCase(token.value)
+	// the identifier's value: escapes decoded, compared ASCII
+	// case-insensitively
+	name := tokenValue(token)
 
 	// The CSS-wide keywords are not valid <custom-ident>s
 	if eqStrAny(name, cssWideKeywords()) {
@@ -463,8 +472,10 @@ func dashedIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitio
 		return 0
 	}
 
-	// ... must start with two dashes (U+002D HYPHEN-MINUS)
-	if charCodeAt(token.value, 0) != 0x002D || charCodeAt(token.value, 1) != 0x002D {
+	// ... must start with two dashes (U+002D HYPHEN-MINUS), in its value
+	// (escapes decoded)
+	value := tokenValue(token)
+	if charCodeAt(value, 0) != 0x002D || charCodeAt(value, 1) != 0x002D {
 		return 0
 	}
 
@@ -482,7 +493,7 @@ func customPropertyName(token *matchToken, getNextToken func(offset int) *matchT
 	}
 
 	// ... except -- itself, which is reserved for future use by CSS
-	if token.value == "--" {
+	if tokenValue(token) == "--" {
 		return 0
 	}
 
@@ -644,17 +655,12 @@ func dimension(units []string) genericFunc {
 
 		// check unit
 		if unitSet != nil {
-			// check for IE postfix hack, i.e. 123px\0 or 123px\9
-			reverseSolidusOffset := strings.IndexByte(token.value[min(numberEnd, len(token.value)):], '\\')
-			if reverseSolidusOffset != -1 {
-				reverseSolidusOffset += numberEnd
-			}
-			unit := token.value[min(numberEnd, len(token.value)):]
-			if reverseSolidusOffset != -1 && isPostfixIeHack(token.value, reverseSolidusOffset) {
-				unit = token.value[numberEnd:reverseSolidusOffset]
-			}
+			// the unit without the IE postfix hack, i.e. 123px\0 or
+			// 123px\9, and with escapes decoded, compared ASCII
+			// case-insensitively
+			unit := dimensionUnit(token.value, numberEnd)
 
-			if !unitSet[toLowerCase(unit)] {
+			if !unitSet[asciiLowerCase(unit)] {
 				return 0
 			}
 		}
@@ -893,7 +899,7 @@ func createAttrUnit(units map[string][]string) genericFunc {
 			return 1
 		}
 
-		if token.typ == tokenizer.Ident && unitSet[toLowerCase(token.value)] {
+		if token.typ == tokenizer.Ident && unitSet[asciiLowerCase(tokenValue(token))] {
 			return 1
 		}
 

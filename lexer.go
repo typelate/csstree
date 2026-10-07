@@ -207,7 +207,7 @@ func sortedKeys[V any](m map[string]V) []string {
 
 func valueHasVar(tokens []matchToken) bool {
 	for i := 0; i < len(tokens); i++ {
-		if toLowerCase(tokens[i].value) == "var(" {
+		if toLowerCase(tokens[i].value) == "var(" || tokenNameIs(&tokens[i], "var(") {
 			return true
 		}
 	}
