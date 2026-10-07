@@ -254,11 +254,11 @@ func TestLexerSpecEdgeCases(t *testing.T) {
 		{kind: "syntax", name: "<length>#", value: "1px,", iterations: 14},
 		{kind: "syntax", name: "<length>#", value: "1px,,2px", iterations: 20, mismatchOffset: 4},
 
-		// Values 4 §2.2.1 bracketed range notation; ranges with units are
-		// not checked (upstream FIXME), so <angle [0deg,360deg]> takes
-		// 400deg and -1deg, which the spec rejects
-		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "400deg", matched: true, iterations: 5},
-		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "-1deg", matched: true, iterations: 5},
+		// Values 4 §5.1 bracketed range notation; upstream does not check
+		// ranges with units (a FIXME), so <angle [0deg,360deg]> takes
+		// 400deg and -1deg; the port follows the spec
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "400deg", iterations: 5},
+		{kind: "syntax", name: "<angle [0deg,360deg]>", value: "-1deg", iterations: 5},
 		{kind: "syntax", name: "<length [0,∞]>", value: "-1px", iterations: 5},
 		{kind: "syntax", name: "<length [0,∞]>", value: "calc(-1px)", matched: true, iterations: 5},
 		{kind: "syntax", name: "<integer [1,∞]>", value: "0", iterations: 5},

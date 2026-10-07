@@ -71,18 +71,22 @@
         ]
     },
     "a range with units": {
-        "comment": "currently only parse & generate is supported for values with a unit, not a range validation",
+        "comment": "the Go port validates ranges with units (upstream only parses and generates them)",
         "syntax": "<angle [-90deg,90deg]>",
         "valid": [
-            "-180deg",
             "-90deg",
             "-45deg",
             "0deg",
             "45deg",
             "90deg",
-            "180deg"
+            "-0.25turn",
+            "100grad"
         ],
         "invalid": [
+            "-180deg",
+            "180deg",
+            "0.26turn",
+            "-101grad"
         ]
     },
     "should be independant": {

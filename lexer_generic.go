@@ -328,6 +328,14 @@ func isJSDecimalLiteral(str string) bool {
 // outOfRange reports whether the number at the start of value is outside
 // opts. numEnd < 0 is upstream's omitted numEnd.
 func outOfRange(opts *definitionsyntax.Range, value string, numEnd int) bool {
+	return outOfRangeUnit(opts, value, numEnd, "")
+}
+
+// outOfRangeUnit reports whether the number at the start of value, of the
+// lowercase unit ("" for a number), is outside opts. Upstream skips the
+// bounds with a unit (a FIXME: a type conversion is not implemented);
+// compareToBound compares them as CSS Values 4 §5.1 says.
+func outOfRangeUnit(opts *definitionsyntax.Range, value string, numEnd int, unit string) bool {
 	if opts != nil {
 		numStr := value
 		if numEnd >= 0 && numEnd != len(value) {
@@ -339,16 +347,16 @@ func outOfRange(opts *definitionsyntax.Range, value string, numEnd int) bool {
 			return true
 		}
 
-		// FIXME: when opts.min is a string it's a dimension, skip a range validation
-		// for now since it requires a type covertation which is not implmented yet
-		if opts.Min != nil && num < opts.Min.Value && opts.Min.Unit == "" {
-			return true
+		if opts.Min != nil {
+			if order, ok := compareToBound(num, unit, opts.Min); ok && order < 0 {
+				return true
+			}
 		}
 
-		// FIXME: when opts.max is a string it's a dimension, skip a range validation
-		// for now since it requires a type covertation which is not implmented yet
-		if opts.Max != nil && num > opts.Max.Value && opts.Max.Unit == "" {
-			return true
+		if opts.Max != nil {
+			if order, ok := compareToBound(num, unit, opts.Max); ok && order > 0 {
+				return true
+			}
 		}
 	}
 
@@ -666,7 +674,7 @@ func dimension(units []string) genericFunc {
 		}
 
 		// check range if specified
-		if outOfRange(opts, token.value, numberEnd) {
+		if outOfRangeUnit(opts, token.value, numberEnd, asciiLowerCase(dimensionUnit(token.value, numberEnd))) {
 			return 0
 		}
 
@@ -687,7 +695,7 @@ func percentage(token *matchToken, _ func(offset int) *matchToken, opts *definit
 	}
 
 	// check range if specified
-	if outOfRange(opts, token.value, len(token.value)-1) {
+	if outOfRangeUnit(opts, token.value, len(token.value)-1, "%") {
 		return 0
 	}
 
@@ -711,7 +719,8 @@ func zero(next genericFunc) genericFunc {
 
 	return func(token *matchToken, getNextToken func(offset int) *matchToken, opts *definitionsyntax.Range) int {
 		if token != nil && token.typ == tokenizer.Number {
-			if jsNumber(token.value) == 0 {
+			// a zero is out of a range such as [1px,∞]
+			if jsNumber(token.value) == 0 && !outOfRange(opts, "0", -1) {
 				return 1
 			}
 		}
