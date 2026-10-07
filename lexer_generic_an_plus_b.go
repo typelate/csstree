@@ -7,247 +7,261 @@ import (
 	"github.com/typelate/csstree/tokenizer"
 )
 
-const (
-	anPlusBPlusSign     = 0x002B // U+002B PLUS SIGN (+)
-	anPlusBHyphenMinus  = 0x002D // U+002D HYPHEN-MINUS (-)
-	anPlusBN            = 0x006E // U+006E LATIN SMALL LETTER N (n)
-	anPlusBDisallowSign = true
-	anPlusBAllowSign    = false
-)
-
-func isDelimToken(token *matchToken, code int) bool {
-	return token != nil && token.typ == tokenizer.Delim && tokenizer.CharCodeAt(token.value, 0) == code
+// isDelimToken reports whether token is the <delim-token> delim.
+func isDelimToken(token *matchToken, delim rune) bool {
+	return token != nil && token.typ == tokenizer.Delim && token.value == string(delim)
 }
 
-func skipSC(token *matchToken, offset int, getNextToken func(offset int) *matchToken) int {
-	for token != nil && (token.typ == tokenizer.WhiteSpace || token.typ == tokenizer.Comment) {
+// skipSC returns the index of the first token from offset that is not
+// whitespace or a comment, len(tokens) when there is none.
+func skipSC(tokens []matchToken, offset int) int {
+	for offset < len(tokens) && (tokens[offset].typ == tokenizer.WhiteSpace || tokens[offset].typ == tokenizer.Comment) {
 		offset++
-		token = getNextToken(offset)
 	}
 
 	return offset
 }
 
-func checkAnPlusBInteger(token *matchToken, valueOffset int, disallowSign bool, offset int) int {
-	if token == nil {
+// isSign reports whether c is + or -.
+func isSign(c int) bool {
+	return c == '+' || c == '-'
+}
+
+// isSignlessInteger reports whether s is decimal digits only; "" is.
+func isSignlessInteger(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if !tokenizer.IsDigit(int(s[i])) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// isSignedInteger reports whether s is decimal digits with an optional
+// sign.
+func isSignedInteger(s string) bool {
+	if s != "" && isSign(int(s[0])) {
+		s = s[1:]
+	}
+
+	return isSignlessInteger(s)
+}
+
+// signlessIntegerAfter returns how many tokens An+B takes when it ends with
+// a <signless-integer> after the first offset tokens, whitespace and
+// comments: up to and including the integer, 0 when there is none.
+func signlessIntegerAfter(tokens []matchToken, offset int) int {
+	offset = skipSC(tokens, offset)
+	if offset == len(tokens) || !isSignlessInteger(tokens[offset].value) {
+		// Integer is expected
 		return 0
-	}
-
-	code := tokenizer.CharCodeAt(token.value, valueOffset)
-
-	if code == anPlusBPlusSign || code == anPlusBHyphenMinus {
-		if disallowSign {
-			// Number sign is not allowed
-			return 0
-		}
-		valueOffset++
-	}
-
-	for ; valueOffset < len(token.value); valueOffset++ {
-		if !tokenizer.IsDigit(tokenizer.CharCodeAt(token.value, valueOffset)) {
-			// Integer is expected
-			return 0
-		}
 	}
 
 	return offset + 1
 }
 
-// ... <signed-integer>
-// ... ['+' | '-'] <signless-integer>
-func consumeAnPlusBB(token *matchToken, offset_ int, getNextToken func(offset int) *matchToken) int {
-	sign := false
-	offset := skipSC(token, offset_, getNextToken)
-
-	token = getNextToken(offset)
-
-	if token == nil {
-		return offset_
+// withB returns how many tokens An+B takes when its An takes the first
+// offset tokens, followed by an optional B after whitespace and comments:
+//
+//	... <signed-integer>
+//	... ['+' | '-'] <signless-integer>
+//
+// It returns 0 when B is not well formed.
+func withB(tokens []matchToken, offset int) int {
+	next := skipSC(tokens, offset)
+	if next == len(tokens) {
+		return offset
 	}
 
-	if token.typ != tokenizer.Number {
-		if isDelimToken(token, anPlusBPlusSign) || isDelimToken(token, anPlusBHyphenMinus) {
-			sign = true
-			offset++
-			offset = skipSC(getNextToken(offset), offset, getNextToken)
-			token = getNextToken(offset)
+	token := &tokens[next]
 
-			if token == nil || token.typ != tokenizer.Number {
-				return 0
-			}
-		} else {
-			return offset_
-		}
-	}
-
-	if !sign {
-		code := tokenizer.CharCodeAt(token.value, 0)
-		if code != anPlusBPlusSign && code != anPlusBHyphenMinus {
+	// ... <signed-integer>
+	if token.typ == tokenizer.Number {
+		if !isSign(tokenizer.CharCodeAt(token.value, 0)) {
 			// Number sign is expected
 			return 0
 		}
+		if !isSignedInteger(token.value[1:]) {
+			// Integer is expected
+			return 0
+		}
+		return next + 1
 	}
 
-	checkOffset := 1
-	if sign {
-		checkOffset = 0
+	// ... ['+' | '-'] <signless-integer>
+	if !isDelimToken(token, '+') && !isDelimToken(token, '-') {
+		return offset
 	}
 
-	return checkAnPlusBInteger(token, checkOffset, sign, offset)
+	next = skipSC(tokens, next+1)
+	if next == len(tokens) || tokens[next].typ != tokenizer.Number || !isSignlessInteger(tokens[next].value) {
+		return 0
+	}
+
+	return next + 1
 }
 
 // An+B microsyntax https://www.w3.org/TR/css-syntax-3/#anb
 func anPlusB(tokens []matchToken, _ *definitionsyntax.Range) int {
-	getNextToken := func(offset int) *matchToken { return tokenAt(tokens, offset) }
-	token := tokenAt(tokens, 0)
-	offset := 0
-
-	if token == nil {
+	if len(tokens) == 0 {
 		return 0
 	}
 
+	token := &tokens[0]
+	switch {
 	// <integer>
-	if token.typ == tokenizer.Number {
-		return checkAnPlusBInteger(token, 0, anPlusBAllowSign, offset) // b
-	} else if token.typ == tokenizer.Ident && tokenizer.CharCodeAt(token.value, 0) == anPlusBHyphenMinus {
-		// -n
-		// -n <signed-integer>
-		// -n ['+' | '-'] <signless-integer>
-		// -n- <signless-integer>
-		// <dashndashdigit-ident>
-
-		// expect 1st char is N
-		if !tokenizer.CmpChar(token.value, 1, anPlusBN) {
+	case token.typ == tokenizer.Number:
+		if !isSignedInteger(token.value) {
 			return 0
 		}
+		return 1 // b
 
-		switch len(token.value) {
-		// -n
-		// -n <signed-integer>
-		// -n ['+' | '-'] <signless-integer>
-		case 2:
-			offset++
-			return consumeAnPlusBB(getNextToken(offset), offset, getNextToken)
+	case token.typ == tokenizer.Ident && tokenizer.CharCodeAt(token.value, 0) == '-':
+		return dashNIdent(tokens)
 
-		// -n- <signless-integer>
-		case 3:
-			if tokenizer.CharCodeAt(token.value, 2) != anPlusBHyphenMinus {
-				return 0
-			}
+	case token.typ == tokenizer.Ident:
+		return nIdent(tokens, 0)
 
-			offset++
-			offset = skipSC(getNextToken(offset), offset, getNextToken)
-			token = getNextToken(offset)
+	// just ignore a plus
+	case isDelimToken(token, '+') && isIdentToken(tokenAt(tokens, 1)):
+		return nIdent(tokens, 1)
 
-			return checkAnPlusBInteger(token, 0, anPlusBDisallowSign, offset)
-
-		// <dashndashdigit-ident>
-		default:
-			if tokenizer.CharCodeAt(token.value, 2) != anPlusBHyphenMinus {
-				return 0
-			}
-
-			return checkAnPlusBInteger(token, 3, anPlusBDisallowSign, offset)
-		}
-	} else if token.typ == tokenizer.Ident || (isDelimToken(token, anPlusBPlusSign) && isIdentToken(getNextToken(offset+1))) {
-		// '+'? n
-		// '+'? n <signed-integer>
-		// '+'? n ['+' | '-'] <signless-integer>
-		// '+'? n- <signless-integer>
-		// '+'? <ndashdigit-ident>
-
-		// just ignore a plus
-		if token.typ != tokenizer.Ident {
-			offset++
-			token = getNextToken(offset)
-		}
-
-		if token == nil || !tokenizer.CmpChar(token.value, 0, anPlusBN) {
-			return 0
-		}
-
-		switch len(token.value) {
-		// '+'? n
-		// '+'? n <signed-integer>
-		// '+'? n ['+' | '-'] <signless-integer>
-		case 1:
-			offset++
-			return consumeAnPlusBB(getNextToken(offset), offset, getNextToken)
-
-		// '+'? n- <signless-integer>
-		case 2:
-			if tokenizer.CharCodeAt(token.value, 1) != anPlusBHyphenMinus {
-				return 0
-			}
-
-			offset++
-			offset = skipSC(getNextToken(offset), offset, getNextToken)
-			token = getNextToken(offset)
-
-			return checkAnPlusBInteger(token, 0, anPlusBDisallowSign, offset)
-
-		// '+'? <ndashdigit-ident>
-		default:
-			if tokenizer.CharCodeAt(token.value, 1) != anPlusBHyphenMinus {
-				return 0
-			}
-
-			return checkAnPlusBInteger(token, 2, anPlusBDisallowSign, offset)
-		}
-	} else if token.typ == tokenizer.Dimension {
-		// <ndashdigit-dimension>
-		// <ndash-dimension> <signless-integer>
-		// <n-dimension>
-		// <n-dimension> <signed-integer>
-		// <n-dimension> ['+' | '-'] <signless-integer>
-		code := tokenizer.CharCodeAt(token.value, 0)
-		sign := 0
-		if code == anPlusBPlusSign || code == anPlusBHyphenMinus {
-			sign = 1
-		}
-		i := sign
-
-		for ; i < len(token.value); i++ {
-			if !tokenizer.IsDigit(tokenizer.CharCodeAt(token.value, i)) {
-				break
-			}
-		}
-
-		if i == sign {
-			// Integer is expected
-			return 0
-		}
-
-		if !tokenizer.CmpChar(token.value, i, anPlusBN) {
-			return 0
-		}
-
-		// <n-dimension>
-		// <n-dimension> <signed-integer>
-		// <n-dimension> ['+' | '-'] <signless-integer>
-		if i+1 == len(token.value) {
-			offset++
-			return consumeAnPlusBB(getNextToken(offset), offset, getNextToken)
-		} else {
-			if tokenizer.CharCodeAt(token.value, i+1) != anPlusBHyphenMinus {
-				return 0
-			}
-
-			// <ndash-dimension> <signless-integer>
-			if i+2 == len(token.value) {
-				offset++
-				offset = skipSC(getNextToken(offset), offset, getNextToken)
-				token = getNextToken(offset)
-
-				return checkAnPlusBInteger(token, 0, anPlusBDisallowSign, offset)
-			} else {
-				// <ndashdigit-dimension>
-				return checkAnPlusBInteger(token, i+2, anPlusBDisallowSign, offset)
-			}
-		}
+	case token.typ == tokenizer.Dimension:
+		return nDimension(tokens)
 	}
 
 	return 0
+}
+
+// dashNIdent matches An+B starting with an ident starting with -:
+//
+//	-n
+//	-n <signed-integer>
+//	-n ['+' | '-'] <signless-integer>
+//	-n- <signless-integer>
+//	<dashndashdigit-ident>
+func dashNIdent(tokens []matchToken) int {
+	value := tokens[0].value
+
+	// expect 1st char is N
+	if !tokenizer.CmpChar(value, 1, 'n') {
+		return 0
+	}
+
+	// -n
+	// -n <signed-integer>
+	// -n ['+' | '-'] <signless-integer>
+	if len(value) == 2 {
+		return withB(tokens, 1)
+	}
+
+	if tokenizer.CharCodeAt(value, 2) != '-' {
+		return 0
+	}
+
+	// -n- <signless-integer>
+	if len(value) == 3 {
+		return signlessIntegerAfter(tokens, 1)
+	}
+
+	// <dashndashdigit-ident>
+	if !isSignlessInteger(value[3:]) {
+		return 0
+	}
+
+	return 1
+}
+
+// nIdent matches An+B whose n ident is tokens[offset], after an optional
+// '+':
+//
+//	'+'? n
+//	'+'? n <signed-integer>
+//	'+'? n ['+' | '-'] <signless-integer>
+//	'+'? n- <signless-integer>
+//	'+'? <ndashdigit-ident>
+func nIdent(tokens []matchToken, offset int) int {
+	value := tokens[offset].value
+
+	if !tokenizer.CmpChar(value, 0, 'n') {
+		return 0
+	}
+
+	// '+'? n
+	// '+'? n <signed-integer>
+	// '+'? n ['+' | '-'] <signless-integer>
+	if len(value) == 1 {
+		return withB(tokens, offset+1)
+	}
+
+	if tokenizer.CharCodeAt(value, 1) != '-' {
+		return 0
+	}
+
+	// '+'? n- <signless-integer>
+	if len(value) == 2 {
+		return signlessIntegerAfter(tokens, offset+1)
+	}
+
+	// '+'? <ndashdigit-ident>
+	if !isSignlessInteger(value[2:]) {
+		return 0
+	}
+
+	return offset + 1
+}
+
+// nDimension matches An+B starting with a dimension:
+//
+//	<ndashdigit-dimension>
+//	<ndash-dimension> <signless-integer>
+//	<n-dimension>
+//	<n-dimension> <signed-integer>
+//	<n-dimension> ['+' | '-'] <signless-integer>
+func nDimension(tokens []matchToken) int {
+	value := tokens[0].value
+
+	digitsStart := 0
+	if isSign(tokenizer.CharCodeAt(value, 0)) {
+		digitsStart = 1
+	}
+	i := digitsStart
+	for i < len(value) && tokenizer.IsDigit(int(value[i])) {
+		i++
+	}
+
+	if i == digitsStart {
+		// Integer is expected
+		return 0
+	}
+
+	if !tokenizer.CmpChar(value, i, 'n') {
+		return 0
+	}
+
+	// <n-dimension>
+	// <n-dimension> <signed-integer>
+	// <n-dimension> ['+' | '-'] <signless-integer>
+	if i+1 == len(value) {
+		return withB(tokens, 1)
+	}
+
+	if tokenizer.CharCodeAt(value, i+1) != '-' {
+		return 0
+	}
+
+	// <ndash-dimension> <signless-integer>
+	if i+2 == len(value) {
+		return signlessIntegerAfter(tokens, 1)
+	}
+
+	// <ndashdigit-dimension>
+	if !isSignlessInteger(value[i+2:]) {
+		return 0
+	}
+
+	return 1
 }
 
 // isIdentToken is upstream's getNextToken(offset + 1).type === Ident, which
