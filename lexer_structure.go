@@ -254,28 +254,23 @@ func processStructure(name string, nodeType NodeConfig) (*nodeStructure, error) 
 
 func getStructureFromConfig(config *Config) (map[string]*nodeStructure, error) {
 	structure := make(map[string]*nodeStructure)
+	if config == nil {
+		return structure, nil
+	}
 
-	if config != nil && config.Node != nil {
-		names := make([]string, 0, len(config.Node))
-		for name := range config.Node {
-			names = append(names, name)
+	for _, name := range sortedKeys(config.Node) {
+		nodeType := config.Node[name]
+		if nodeType.Structure == nil {
+			// upstream "Missed `structure` field in `name` node type
+			// definition"
+			return nil, &MissingStructureError{NodeType: name}
 		}
-		slices.Sort(names)
 
-		for _, name := range names {
-			nodeType := config.Node[name]
-
-			if nodeType.Structure != nil {
-				processed, err := processStructure(name, nodeType)
-				if err != nil {
-					return nil, err
-				}
-				structure[name] = processed
-			} else {
-				//lint:ignore ST1005 upstream message
-				return nil, fmt.Errorf("Missed `structure` field in `%s` node type definition", name)
-			}
+		processed, err := processStructure(name, nodeType)
+		if err != nil {
+			return nil, err
 		}
+		structure[name] = processed
 	}
 
 	return structure, nil
