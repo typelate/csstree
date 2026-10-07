@@ -10,9 +10,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -158,49 +158,73 @@ func forEachASTFileTest(t *testing.T, file astFixtureFile, errors bool, factory 
 	}
 }
 
-// loadASTFixtures reads every scope directory of testdata/ast (or only the
-// given scopes).
-func loadASTFixtures(t *testing.T, scopes []string) []astFixtureFile {
+// astFixtures reads the fixture files of every scope directory of
+// testdata/ast once. The tests share the result, so they must not change it.
+var astFixtures = sync.OnceValues(readASTFixtures)
+
+// loadASTFixtures returns the fixture files of every scope directory of
+// testdata/ast (or only of the given scopes, in the order given).
+func loadASTFixtures(t testing.TB, scopes []string) []astFixtureFile {
 	t.Helper()
 
+	files, err := astFixtures()
+	if err != nil {
+		t.Fatalf("reading AST fixtures: %v", err)
+	}
 	if scopes == nil {
-		entries, err := os.ReadDir(astFixtureDir)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, entry := range entries {
-			scopes = append(scopes, entry.Name())
-		}
+		return files
 	}
 
 	var result []astFixtureFile
 	for _, scope := range scopes {
-		result = readASTTestDir(t, filepath.Join(astFixtureDir, scope), result, scope)
+		for _, file := range files {
+			if file.Scope == scope {
+				result = append(result, file)
+			}
+		}
 	}
 	return result
 }
 
-func readASTTestDir(t *testing.T, dir string, result []astFixtureFile, scope string) []astFixtureFile {
-	t.Helper()
+func readASTFixtures() ([]astFixtureFile, error) {
+	entries, err := os.ReadDir(astFixtureDir)
+	if err != nil {
+		return nil, err
+	}
 
+	var result []astFixtureFile
+	for _, entry := range entries {
+		scope := entry.Name()
+		result, err = readASTTestDir(filepath.Join(astFixtureDir, scope), result, scope)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func readASTTestDir(dir string, result []astFixtureFile, scope string) ([]astFixtureFile, error) {
 	info, err := os.Stat(dir)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	if !info.IsDir() {
-		return result
+		return result, nil
 	}
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 
 	for _, entry := range entries {
 		filename := filepath.Join(dir, entry.Name())
 
 		if entry.IsDir() {
-			result = readASTTestDir(t, filename, result, scope)
+			result, err = readASTTestDir(filename, result, scope)
+			if err != nil {
+				return nil, err
+			}
 			continue
 		}
 
@@ -208,54 +232,65 @@ func readASTTestDir(t *testing.T, dir string, result []astFixtureFile, scope str
 			continue
 		}
 
-		data, err := os.ReadFile(filename)
+		file, err := readASTFixtureFile(filename, scope)
 		if err != nil {
-			t.Fatal(err)
+			return nil, err
 		}
-
-		keys, values, err := decodeOrderedObject(data)
-		if err != nil {
-			t.Fatalf("%s: %v", filename, err)
-		}
-
-		file := astFixtureFile{
-			Filename: filename,
-			Scope:    scope,
-		}
-		displayName := path.Join(strings.TrimPrefix(filepath.ToSlash(dir), "testdata/ast/"), entry.Name())
-
-		processTest := func(raw json.RawMessage, storeKey string) {
-			test, isError, err := processASTTest(raw, scope)
-			if err != nil {
-				t.Fatalf("%s %s: %v", filename, storeKey, err)
-			}
-			test.Name = displayName + " " + storeKey
-			if isError {
-				file.Errors = append(file.Errors, test)
-			} else {
-				file.Tests = append(file.Tests, test)
-			}
-		}
-
-		for i, key := range keys {
-			value := bytes.TrimSpace(values[i])
-			if len(value) > 0 && value[0] == '[' {
-				var list []json.RawMessage
-				if err := json.Unmarshal(value, &list); err != nil {
-					t.Fatalf("%s %s: %v", filename, key, err)
-				}
-				for idx, raw := range list {
-					processTest(raw, fmt.Sprintf("%s#%d", key, idx+1))
-				}
-			} else {
-				processTest(value, key)
-			}
-		}
-
 		result = append(result, file)
 	}
 
-	return result
+	return result, nil
+}
+
+func readASTFixtureFile(filename, scope string) (astFixtureFile, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return astFixtureFile{}, err
+	}
+
+	keys, values, err := decodeOrderedObject(data)
+	if err != nil {
+		return astFixtureFile{}, fmt.Errorf("%s: %w", filename, err)
+	}
+
+	file := astFixtureFile{
+		Filename: filename,
+		Scope:    scope,
+	}
+	displayName := strings.TrimPrefix(filepath.ToSlash(filename), "testdata/ast/")
+
+	processTest := func(raw json.RawMessage, storeKey string) error {
+		test, isError, err := processASTTest(raw, scope)
+		if err != nil {
+			return fmt.Errorf("%s %s: %w", filename, storeKey, err)
+		}
+		test.Name = displayName + " " + storeKey
+		if isError {
+			file.Errors = append(file.Errors, test)
+		} else {
+			file.Tests = append(file.Tests, test)
+		}
+		return nil
+	}
+
+	for i, key := range keys {
+		value := bytes.TrimSpace(values[i])
+		if len(value) > 0 && value[0] == '[' {
+			var list []json.RawMessage
+			if err := json.Unmarshal(value, &list); err != nil {
+				return astFixtureFile{}, fmt.Errorf("%s %s: %w", filename, key, err)
+			}
+			for idx, raw := range list {
+				if err := processTest(raw, fmt.Sprintf("%s#%d", key, idx+1)); err != nil {
+					return astFixtureFile{}, err
+				}
+			}
+		} else if err := processTest(value, key); err != nil {
+			return astFixtureFile{}, err
+		}
+	}
+
+	return file, nil
 }
 
 func processASTTest(raw json.RawMessage, scope string) (astFixtureTest, bool, error) {
