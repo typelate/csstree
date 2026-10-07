@@ -5,64 +5,14 @@ package csstree
 import "github.com/typelate/csstree/tokenizer"
 
 // Nth is the argument of :nth-child() and similar pseudo-classes.
+//
+//csstree:node
 type Nth struct {
 	Loc *Location
 	// Nth is an *AnPlusB or an *Identifier (odd, even).
-	Nth Node
+	Nth Node `css:"nth,AnPlusB|Identifier"`
 	// Selector is the "of" selector list, or nil.
-	Selector *SelectorList
-}
-
-func (n *Nth) Type() string        { return "Nth" }
-func (n *Nth) Location() *Location { return n.Loc }
-
-func (n *Nth) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"nth", n.Nth},
-		jsonField{"selector", n.Selector},
-	)
-}
-
-func nthNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Nth",
-		Structure: []StructureField{
-			{Name: "nth", Types: []FieldType{nodeField("AnPlusB"), nodeField("Identifier")}},
-			{Name: "selector", Types: []FieldType{nodeField("SelectorList"), nullField()}},
-		},
-		Generate:        generateNth,
-		Walk:            walkNth,
-		Clone:           cloneNth,
-		FromPlainObject: fromPlainObjectNth,
-	}
-}
-
-func walkNth(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
-	n := node.(*Nth)
-	if reverse {
-		return n.Selector != nil && walkNode(n.Selector) ||
-			n.Nth != nil && walkNode(n.Nth)
-	}
-	return n.Nth != nil && walkNode(n.Nth) ||
-		n.Selector != nil && walkNode(n.Selector)
-}
-
-func cloneNth(node Node, clone func(Node) Node) Node {
-	c := *node.(*Nth)
-	c.Loc = cloneLocation(c.Loc)
-	c.Nth = clone(c.Nth)
-	if c.Selector != nil {
-		c.Selector = cloneAs(c.Selector, clone)
-	}
-	return &c
-}
-
-func fromPlainObjectNth(r *PlainObjectReader, object map[string]any) Node {
-	return &Nth{
-		Loc:      r.Location(object),
-		Nth:      r.Node(object, "nth"),
-		Selector: PlainObjectNode[*SelectorList](r, object, "selector"),
-	}
+	Selector *SelectorList `css:"selector,SelectorList|null"`
 }
 
 // Nth parses An+B [of <selector-list>]?.

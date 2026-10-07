@@ -39,6 +39,62 @@ func fromPlainObjectAnPlusB(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
+func (n *Atrule) Type() string        { return "Atrule" }
+func (n *Atrule) Location() *Location { return n.Loc }
+
+func (n *Atrule) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+		jsonField{"prelude", n.Prelude},
+		jsonField{"block", n.Block},
+	)
+}
+
+func atruleNodeType() NodeConfig {
+	return NodeConfig{
+		Name:        "Atrule",
+		WalkContext: "atrule",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{stringField()}},
+			{Name: "prelude", Types: []FieldType{nodeField("AtrulePrelude"), nodeField("Raw"), nullField()}},
+			{Name: "block", Types: []FieldType{nodeField("Block"), nullField()}},
+		},
+		Generate:        generateAtrule,
+		Walk:            walkAtrule,
+		Clone:           cloneAtrule,
+		FromPlainObject: fromPlainObjectAtrule,
+	}
+}
+
+func walkAtrule(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Atrule)
+	if reverse {
+		return n.Block != nil && walkNode(n.Block) ||
+			n.Prelude != nil && walkNode(n.Prelude)
+	}
+	return n.Prelude != nil && walkNode(n.Prelude) ||
+		n.Block != nil && walkNode(n.Block)
+}
+
+func cloneAtrule(node Node, clone func(Node) Node) Node {
+	c := *node.(*Atrule)
+	c.Loc = cloneLocation(c.Loc)
+	c.Prelude = clone(c.Prelude)
+	if c.Block != nil {
+		c.Block = cloneAs(c.Block, clone)
+	}
+	return &c
+}
+
+func fromPlainObjectAtrule(r *PlainObjectReader, object map[string]any) Node {
+	return &Atrule{
+		Loc:     r.Location(object),
+		Name:    r.String(object, "name"),
+		Prelude: r.Node(object, "prelude"),
+		Block:   PlainObjectNode[*Block](r, object, "block"),
+	}
+}
+
 func (n *AtrulePrelude) Type() string        { return "AtrulePrelude" }
 func (n *AtrulePrelude) Location() *Location { return n.Loc }
 
@@ -78,6 +134,64 @@ func fromPlainObjectAtrulePrelude(r *PlainObjectReader, object map[string]any) N
 	return &AtrulePrelude{
 		Loc:      r.Location(object),
 		Children: r.List(object, "children"),
+	}
+}
+
+func (n *AttributeSelector) Type() string        { return "AttributeSelector" }
+func (n *AttributeSelector) Location() *Location { return n.Loc }
+
+func (n *AttributeSelector) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"name", n.Name},
+		jsonField{"matcher", nullableString(n.Matcher)},
+		jsonField{"value", n.Value},
+		jsonField{"flags", nullableString(n.Flags)},
+	)
+}
+
+func attributeSelectorNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "AttributeSelector",
+		Structure: []StructureField{
+			{Name: "name", Types: []FieldType{nodeField("Identifier")}},
+			{Name: "matcher", Types: []FieldType{stringField(), nullField()}},
+			{Name: "value", Types: []FieldType{nodeField("String"), nodeField("Identifier"), nullField()}},
+			{Name: "flags", Types: []FieldType{stringField(), nullField()}},
+		},
+		Generate:        generateAttributeSelector,
+		Walk:            walkAttributeSelector,
+		Clone:           cloneAttributeSelector,
+		FromPlainObject: fromPlainObjectAttributeSelector,
+	}
+}
+
+func walkAttributeSelector(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*AttributeSelector)
+	if reverse {
+		return n.Value != nil && walkNode(n.Value) ||
+			n.Name != nil && walkNode(n.Name)
+	}
+	return n.Name != nil && walkNode(n.Name) ||
+		n.Value != nil && walkNode(n.Value)
+}
+
+func cloneAttributeSelector(node Node, clone func(Node) Node) Node {
+	c := *node.(*AttributeSelector)
+	c.Loc = cloneLocation(c.Loc)
+	if c.Name != nil {
+		c.Name = cloneAs(c.Name, clone)
+	}
+	c.Value = clone(c.Value)
+	return &c
+}
+
+func fromPlainObjectAttributeSelector(r *PlainObjectReader, object map[string]any) Node {
+	return &AttributeSelector{
+		Loc:     r.Location(object),
+		Name:    PlainObjectNode[*Identifier](r, object, "name"),
+		Matcher: r.String(object, "matcher"),
+		Value:   r.Node(object, "value"),
+		Flags:   r.String(object, "flags"),
 	}
 }
 
@@ -446,6 +560,165 @@ func fromPlainObjectDimension(r *PlainObjectReader, object map[string]any) Node 
 	}
 }
 
+func (n *Feature) Type() string        { return "Feature" }
+func (n *Feature) Location() *Location { return n.Loc }
+
+func (n *Feature) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"kind", n.Kind},
+		jsonField{"name", n.Name},
+		jsonField{"value", n.Value},
+	)
+}
+
+func featureNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Feature",
+		Structure: []StructureField{
+			{Name: "kind", Types: []FieldType{stringField()}},
+			{Name: "name", Types: []FieldType{stringField()}},
+			{Name: "value", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function"), nullField()}},
+		},
+		Generate:        generateFeature,
+		Walk:            walkFeature,
+		Clone:           cloneFeature,
+		FromPlainObject: fromPlainObjectFeature,
+	}
+}
+
+func walkFeature(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Feature)
+	return n.Value != nil && walkNode(n.Value)
+}
+
+func cloneFeature(node Node, clone func(Node) Node) Node {
+	c := *node.(*Feature)
+	c.Loc = cloneLocation(c.Loc)
+	c.Value = clone(c.Value)
+	return &c
+}
+
+func fromPlainObjectFeature(r *PlainObjectReader, object map[string]any) Node {
+	return &Feature{
+		Loc:   r.Location(object),
+		Kind:  r.String(object, "kind"),
+		Name:  r.String(object, "name"),
+		Value: r.Node(object, "value"),
+	}
+}
+
+func (n *FeatureFunction) Type() string        { return "FeatureFunction" }
+func (n *FeatureFunction) Location() *Location { return n.Loc }
+
+func (n *FeatureFunction) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"kind", n.Kind},
+		jsonField{"feature", n.Feature},
+		jsonField{"value", n.Value},
+	)
+}
+
+func featureFunctionNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "FeatureFunction",
+		Structure: []StructureField{
+			{Name: "kind", Types: []FieldType{stringField()}},
+			{Name: "feature", Types: []FieldType{stringField()}},
+			{Name: "value", Types: []FieldType{nodeField("Declaration"), nodeField("Selector")}},
+		},
+		Generate:        generateFeatureFunction,
+		Walk:            walkFeatureFunction,
+		Clone:           cloneFeatureFunction,
+		FromPlainObject: fromPlainObjectFeatureFunction,
+	}
+}
+
+func walkFeatureFunction(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*FeatureFunction)
+	return n.Value != nil && walkNode(n.Value)
+}
+
+func cloneFeatureFunction(node Node, clone func(Node) Node) Node {
+	c := *node.(*FeatureFunction)
+	c.Loc = cloneLocation(c.Loc)
+	c.Value = clone(c.Value)
+	return &c
+}
+
+func fromPlainObjectFeatureFunction(r *PlainObjectReader, object map[string]any) Node {
+	return &FeatureFunction{
+		Loc:     r.Location(object),
+		Kind:    r.String(object, "kind"),
+		Feature: r.String(object, "feature"),
+		Value:   r.Node(object, "value"),
+	}
+}
+
+func (n *FeatureRange) Type() string        { return "FeatureRange" }
+func (n *FeatureRange) Location() *Location { return n.Loc }
+
+func (n *FeatureRange) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"kind", n.Kind},
+		jsonField{"left", n.Left},
+		jsonField{"leftComparison", n.LeftComparison},
+		jsonField{"middle", n.Middle},
+		jsonField{"rightComparison", nullableString(n.RightComparison)},
+		jsonField{"right", n.Right},
+	)
+}
+
+func featureRangeNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "FeatureRange",
+		Structure: []StructureField{
+			{Name: "kind", Types: []FieldType{stringField()}},
+			{Name: "left", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function")}},
+			{Name: "leftComparison", Types: []FieldType{stringField()}},
+			{Name: "middle", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function")}},
+			{Name: "rightComparison", Types: []FieldType{stringField(), nullField()}},
+			{Name: "right", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function"), nullField()}},
+		},
+		Generate:        generateFeatureRange,
+		Walk:            walkFeatureRange,
+		Clone:           cloneFeatureRange,
+		FromPlainObject: fromPlainObjectFeatureRange,
+	}
+}
+
+func walkFeatureRange(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*FeatureRange)
+	if reverse {
+		return n.Right != nil && walkNode(n.Right) ||
+			n.Middle != nil && walkNode(n.Middle) ||
+			n.Left != nil && walkNode(n.Left)
+	}
+	return n.Left != nil && walkNode(n.Left) ||
+		n.Middle != nil && walkNode(n.Middle) ||
+		n.Right != nil && walkNode(n.Right)
+}
+
+func cloneFeatureRange(node Node, clone func(Node) Node) Node {
+	c := *node.(*FeatureRange)
+	c.Loc = cloneLocation(c.Loc)
+	c.Left = clone(c.Left)
+	c.Middle = clone(c.Middle)
+	c.Right = clone(c.Right)
+	return &c
+}
+
+func fromPlainObjectFeatureRange(r *PlainObjectReader, object map[string]any) Node {
+	return &FeatureRange{
+		Loc:             r.Location(object),
+		Kind:            r.String(object, "kind"),
+		Left:            r.Node(object, "left"),
+		LeftComparison:  r.String(object, "leftComparison"),
+		Middle:          r.Node(object, "middle"),
+		RightComparison: r.String(object, "rightComparison"),
+		Right:           r.Node(object, "right"),
+	}
+}
+
 func (n *Function) Type() string        { return "Function" }
 func (n *Function) Location() *Location { return n.Loc }
 
@@ -715,6 +988,55 @@ func fromPlainObjectLayerList(r *PlainObjectReader, object map[string]any) Node 
 	}
 }
 
+func (n *MediaQuery) Type() string        { return "MediaQuery" }
+func (n *MediaQuery) Location() *Location { return n.Loc }
+
+func (n *MediaQuery) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"modifier", nullableString(n.Modifier)},
+		jsonField{"mediaType", nullableString(n.MediaType)},
+		jsonField{"condition", n.Condition},
+	)
+}
+
+func mediaQueryNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "MediaQuery",
+		Structure: []StructureField{
+			{Name: "modifier", Types: []FieldType{stringField(), nullField()}},
+			{Name: "mediaType", Types: []FieldType{stringField(), nullField()}},
+			{Name: "condition", Types: []FieldType{nodeField("Condition"), nullField()}},
+		},
+		Generate:        generateMediaQuery,
+		Walk:            walkMediaQuery,
+		Clone:           cloneMediaQuery,
+		FromPlainObject: fromPlainObjectMediaQuery,
+	}
+}
+
+func walkMediaQuery(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*MediaQuery)
+	return n.Condition != nil && walkNode(n.Condition)
+}
+
+func cloneMediaQuery(node Node, clone func(Node) Node) Node {
+	c := *node.(*MediaQuery)
+	c.Loc = cloneLocation(c.Loc)
+	if c.Condition != nil {
+		c.Condition = cloneAs(c.Condition, clone)
+	}
+	return &c
+}
+
+func fromPlainObjectMediaQuery(r *PlainObjectReader, object map[string]any) Node {
+	return &MediaQuery{
+		Loc:       r.Location(object),
+		Modifier:  r.String(object, "modifier"),
+		MediaType: r.String(object, "mediaType"),
+		Condition: PlainObjectNode[*Condition](r, object, "condition"),
+	}
+}
+
 func (n *MediaQueryList) Type() string        { return "MediaQueryList" }
 func (n *MediaQueryList) Location() *Location { return n.Loc }
 
@@ -782,6 +1104,58 @@ func cloneNestingSelector(node Node, _ func(Node) Node) Node {
 func fromPlainObjectNestingSelector(r *PlainObjectReader, object map[string]any) Node {
 	return &NestingSelector{
 		Loc: r.Location(object),
+	}
+}
+
+func (n *Nth) Type() string        { return "Nth" }
+func (n *Nth) Location() *Location { return n.Loc }
+
+func (n *Nth) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"nth", n.Nth},
+		jsonField{"selector", n.Selector},
+	)
+}
+
+func nthNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Nth",
+		Structure: []StructureField{
+			{Name: "nth", Types: []FieldType{nodeField("AnPlusB"), nodeField("Identifier")}},
+			{Name: "selector", Types: []FieldType{nodeField("SelectorList"), nullField()}},
+		},
+		Generate:        generateNth,
+		Walk:            walkNth,
+		Clone:           cloneNth,
+		FromPlainObject: fromPlainObjectNth,
+	}
+}
+
+func walkNth(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Nth)
+	if reverse {
+		return n.Selector != nil && walkNode(n.Selector) ||
+			n.Nth != nil && walkNode(n.Nth)
+	}
+	return n.Nth != nil && walkNode(n.Nth) ||
+		n.Selector != nil && walkNode(n.Selector)
+}
+
+func cloneNth(node Node, clone func(Node) Node) Node {
+	c := *node.(*Nth)
+	c.Loc = cloneLocation(c.Loc)
+	c.Nth = clone(c.Nth)
+	if c.Selector != nil {
+		c.Selector = cloneAs(c.Selector, clone)
+	}
+	return &c
+}
+
+func fromPlainObjectNth(r *PlainObjectReader, object map[string]any) Node {
+	return &Nth{
+		Loc:      r.Location(object),
+		Nth:      r.Node(object, "nth"),
+		Selector: PlainObjectNode[*SelectorList](r, object, "selector"),
 	}
 }
 
@@ -1018,6 +1392,56 @@ func fromPlainObjectPseudoElementSelector(r *PlainObjectReader, object map[strin
 	}
 }
 
+func (n *Ratio) Type() string        { return "Ratio" }
+func (n *Ratio) Location() *Location { return n.Loc }
+
+func (n *Ratio) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"left", n.Left},
+		jsonField{"right", n.Right},
+	)
+}
+
+func ratioNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Ratio",
+		Structure: []StructureField{
+			{Name: "left", Types: []FieldType{nodeField("Number"), nodeField("Function")}},
+			{Name: "right", Types: []FieldType{nodeField("Number"), nodeField("Function"), nullField()}},
+		},
+		Generate:        generateRatio,
+		Walk:            walkRatio,
+		Clone:           cloneRatio,
+		FromPlainObject: fromPlainObjectRatio,
+	}
+}
+
+func walkRatio(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Ratio)
+	if reverse {
+		return n.Right != nil && walkNode(n.Right) ||
+			n.Left != nil && walkNode(n.Left)
+	}
+	return n.Left != nil && walkNode(n.Left) ||
+		n.Right != nil && walkNode(n.Right)
+}
+
+func cloneRatio(node Node, clone func(Node) Node) Node {
+	c := *node.(*Ratio)
+	c.Loc = cloneLocation(c.Loc)
+	c.Left = clone(c.Left)
+	c.Right = clone(c.Right)
+	return &c
+}
+
+func fromPlainObjectRatio(r *PlainObjectReader, object map[string]any) Node {
+	return &Ratio{
+		Loc:   r.Location(object),
+		Left:  r.Node(object, "left"),
+		Right: r.Node(object, "right"),
+	}
+}
+
 func (n *Raw) Type() string        { return "Raw" }
 func (n *Raw) Location() *Location { return n.Loc }
 
@@ -1102,6 +1526,56 @@ func fromPlainObjectRule(r *PlainObjectReader, object map[string]any) Node {
 		Loc:     r.Location(object),
 		Prelude: r.Node(object, "prelude"),
 		Block:   PlainObjectNode[*Block](r, object, "block"),
+	}
+}
+
+func (n *Scope) Type() string        { return "Scope" }
+func (n *Scope) Location() *Location { return n.Loc }
+
+func (n *Scope) MarshalJSON() ([]byte, error) {
+	return marshalNode(n,
+		jsonField{"root", n.Root},
+		jsonField{"limit", n.Limit},
+	)
+}
+
+func scopeNodeType() NodeConfig {
+	return NodeConfig{
+		Name: "Scope",
+		Structure: []StructureField{
+			{Name: "root", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw"), nullField()}},
+			{Name: "limit", Types: []FieldType{nodeField("SelectorList"), nodeField("Raw"), nullField()}},
+		},
+		Generate:        generateScope,
+		Walk:            walkScope,
+		Clone:           cloneScope,
+		FromPlainObject: fromPlainObjectScope,
+	}
+}
+
+func walkScope(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
+	n := node.(*Scope)
+	if reverse {
+		return n.Limit != nil && walkNode(n.Limit) ||
+			n.Root != nil && walkNode(n.Root)
+	}
+	return n.Root != nil && walkNode(n.Root) ||
+		n.Limit != nil && walkNode(n.Limit)
+}
+
+func cloneScope(node Node, clone func(Node) Node) Node {
+	c := *node.(*Scope)
+	c.Loc = cloneLocation(c.Loc)
+	c.Root = clone(c.Root)
+	c.Limit = clone(c.Limit)
+	return &c
+}
+
+func fromPlainObjectScope(r *PlainObjectReader, object map[string]any) Node {
+	return &Scope{
+		Loc:   r.Location(object),
+		Root:  r.Node(object, "root"),
+		Limit: r.Node(object, "limit"),
 	}
 }
 

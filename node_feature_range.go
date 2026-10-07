@@ -8,82 +8,19 @@ const lessThanSign = 0x003C // U+003C LESS-THAN SIGN (<)
 
 // FeatureRange is a range feature of a media or container condition, e.g.
 // (400px < width <= 700px).
+//
+//csstree:node
 type FeatureRange struct {
 	Loc  *Location
-	Kind string
+	Kind string `css:"kind,string"`
 	// Left, Middle and Right are an *Identifier, a *Number, a *Dimension, a
 	// *Ratio or a *Function; Right may be nil.
-	Left           Node
-	LeftComparison string
-	Middle         Node
+	Left           Node   `css:"left,Identifier|Number|Dimension|Ratio|Function"`
+	LeftComparison string `css:"leftComparison,string"`
+	Middle         Node   `css:"middle,Identifier|Number|Dimension|Ratio|Function"`
 	// RightComparison is "" (upstream null) when Right is nil.
-	RightComparison string
-	Right           Node
-}
-
-func (n *FeatureRange) Type() string        { return "FeatureRange" }
-func (n *FeatureRange) Location() *Location { return n.Loc }
-
-func (n *FeatureRange) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"kind", n.Kind},
-		jsonField{"left", n.Left},
-		jsonField{"leftComparison", n.LeftComparison},
-		jsonField{"middle", n.Middle},
-		jsonField{"rightComparison", nullableString(n.RightComparison)},
-		jsonField{"right", n.Right},
-	)
-}
-
-func featureRangeNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "FeatureRange",
-		Structure: []StructureField{
-			{Name: "kind", Types: []FieldType{stringField()}},
-			{Name: "left", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function")}},
-			{Name: "leftComparison", Types: []FieldType{stringField()}},
-			{Name: "middle", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function")}},
-			{Name: "rightComparison", Types: []FieldType{stringField(), nullField()}},
-			{Name: "right", Types: []FieldType{nodeField("Identifier"), nodeField("Number"), nodeField("Dimension"), nodeField("Ratio"), nodeField("Function"), nullField()}},
-		},
-		Generate:        generateFeatureRange,
-		Walk:            walkFeatureRange,
-		Clone:           cloneFeatureRange,
-		FromPlainObject: fromPlainObjectFeatureRange,
-	}
-}
-
-func walkFeatureRange(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
-	n := node.(*FeatureRange)
-	if reverse {
-		return n.Right != nil && walkNode(n.Right) ||
-			n.Middle != nil && walkNode(n.Middle) ||
-			n.Left != nil && walkNode(n.Left)
-	}
-	return n.Left != nil && walkNode(n.Left) ||
-		n.Middle != nil && walkNode(n.Middle) ||
-		n.Right != nil && walkNode(n.Right)
-}
-
-func cloneFeatureRange(node Node, clone func(Node) Node) Node {
-	c := *node.(*FeatureRange)
-	c.Loc = cloneLocation(c.Loc)
-	c.Left = clone(c.Left)
-	c.Middle = clone(c.Middle)
-	c.Right = clone(c.Right)
-	return &c
-}
-
-func fromPlainObjectFeatureRange(r *PlainObjectReader, object map[string]any) Node {
-	return &FeatureRange{
-		Loc:             r.Location(object),
-		Kind:            r.String(object, "kind"),
-		Left:            r.Node(object, "left"),
-		LeftComparison:  r.String(object, "leftComparison"),
-		Middle:          r.Node(object, "middle"),
-		RightComparison: r.String(object, "rightComparison"),
-		Right:           r.Node(object, "right"),
-	}
+	RightComparison string `css:"rightComparison,string|null"`
+	Right           Node   `css:"right,Identifier|Number|Dimension|Ratio|Function|null"`
 }
 
 func readTerm(p *Parser) Node {

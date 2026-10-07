@@ -31,69 +31,15 @@ func isDeclarationBlockAtrule(p *Parser) bool {
 }
 
 // Atrule is an at-rule such as @media or @import.
+//
+//csstree:node walkContext=atrule
 type Atrule struct {
 	Loc  *Location
-	Name string
+	Name string `css:"name,string"`
 	// Prelude is an *AtrulePrelude, a *Raw or nil.
-	Prelude Node
+	Prelude Node `css:"prelude,AtrulePrelude|Raw|null"`
 	// Block is nil for an at-rule ending with a semicolon.
-	Block *Block
-}
-
-func (n *Atrule) Type() string        { return "Atrule" }
-func (n *Atrule) Location() *Location { return n.Loc }
-
-func (n *Atrule) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"name", n.Name},
-		jsonField{"prelude", n.Prelude},
-		jsonField{"block", n.Block},
-	)
-}
-
-func atruleNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "Atrule",
-		WalkContext: "atrule",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{stringField()}},
-			{Name: "prelude", Types: []FieldType{nodeField("AtrulePrelude"), nodeField("Raw"), nullField()}},
-			{Name: "block", Types: []FieldType{nodeField("Block"), nullField()}},
-		},
-		Generate:        generateAtrule,
-		Walk:            walkAtrule,
-		Clone:           cloneAtrule,
-		FromPlainObject: fromPlainObjectAtrule,
-	}
-}
-
-func walkAtrule(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
-	n := node.(*Atrule)
-	if reverse {
-		return n.Block != nil && walkNode(n.Block) ||
-			n.Prelude != nil && walkNode(n.Prelude)
-	}
-	return n.Prelude != nil && walkNode(n.Prelude) ||
-		n.Block != nil && walkNode(n.Block)
-}
-
-func cloneAtrule(node Node, clone func(Node) Node) Node {
-	c := *node.(*Atrule)
-	c.Loc = cloneLocation(c.Loc)
-	c.Prelude = clone(c.Prelude)
-	if c.Block != nil {
-		c.Block = cloneAs(c.Block, clone)
-	}
-	return &c
-}
-
-func fromPlainObjectAtrule(r *PlainObjectReader, object map[string]any) Node {
-	return &Atrule{
-		Loc:     r.Location(object),
-		Name:    r.String(object, "name"),
-		Prelude: r.Node(object, "prelude"),
-		Block:   PlainObjectNode[*Block](r, object, "block"),
-	}
+	Block *Block `css:"block,Block|null"`
 }
 
 // Atrule parses an at-rule; isDeclaration reports that it is nested in a

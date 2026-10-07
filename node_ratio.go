@@ -32,62 +32,14 @@ func consumeTerm(p *Parser) Node {
 }
 
 // Ratio is <number [0,∞]> [ / <number [0,∞]> ]?
+//
+//csstree:node
 type Ratio struct {
 	Loc *Location
 	// Left is a *Number or a *Function.
-	Left Node
+	Left Node `css:"left,Number|Function"`
 	// Right is a *Number, a *Function or nil.
-	Right Node
-}
-
-func (n *Ratio) Type() string        { return "Ratio" }
-func (n *Ratio) Location() *Location { return n.Loc }
-
-func (n *Ratio) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"left", n.Left},
-		jsonField{"right", n.Right},
-	)
-}
-
-func ratioNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "Ratio",
-		Structure: []StructureField{
-			{Name: "left", Types: []FieldType{nodeField("Number"), nodeField("Function")}},
-			{Name: "right", Types: []FieldType{nodeField("Number"), nodeField("Function"), nullField()}},
-		},
-		Generate:        generateRatio,
-		Walk:            walkRatio,
-		Clone:           cloneRatio,
-		FromPlainObject: fromPlainObjectRatio,
-	}
-}
-
-func walkRatio(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
-	n := node.(*Ratio)
-	if reverse {
-		return n.Right != nil && walkNode(n.Right) ||
-			n.Left != nil && walkNode(n.Left)
-	}
-	return n.Left != nil && walkNode(n.Left) ||
-		n.Right != nil && walkNode(n.Right)
-}
-
-func cloneRatio(node Node, clone func(Node) Node) Node {
-	c := *node.(*Ratio)
-	c.Loc = cloneLocation(c.Loc)
-	c.Left = clone(c.Left)
-	c.Right = clone(c.Right)
-	return &c
-}
-
-func fromPlainObjectRatio(r *PlainObjectReader, object map[string]any) Node {
-	return &Ratio{
-		Loc:   r.Location(object),
-		Left:  r.Node(object, "left"),
-		Right: r.Node(object, "right"),
-	}
+	Right Node `css:"right,Number|Function|null"`
 }
 
 // Ratio parses <number [0,∞]> [ / <number [0,∞]> ]?

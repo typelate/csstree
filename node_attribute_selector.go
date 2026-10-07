@@ -80,73 +80,17 @@ func isAttributeModifier(p *Parser) bool {
 //
 //	'[' <wq-name> ']'
 //	'[' <wq-name> <attr-matcher> [ <string-token> | <ident-token> ] <attr-modifier>? ']'
+//
+//csstree:node
 type AttributeSelector struct {
 	Loc  *Location
-	Name *Identifier
+	Name *Identifier `css:"name,Identifier"`
 	// Matcher is the operator ("=", "~=", ...); "" is upstream null.
-	Matcher string
+	Matcher string `css:"matcher,string|null"`
 	// Value is a *String, an *Identifier or nil.
-	Value Node
+	Value Node `css:"value,String|Identifier|null"`
 	// Flags is the modifier; "" is upstream null.
-	Flags string
-}
-
-func (n *AttributeSelector) Type() string        { return "AttributeSelector" }
-func (n *AttributeSelector) Location() *Location { return n.Loc }
-
-func (n *AttributeSelector) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"name", n.Name},
-		jsonField{"matcher", nullableString(n.Matcher)},
-		jsonField{"value", n.Value},
-		jsonField{"flags", nullableString(n.Flags)},
-	)
-}
-
-func attributeSelectorNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "AttributeSelector",
-		Structure: []StructureField{
-			{Name: "name", Types: []FieldType{nodeField("Identifier")}},
-			{Name: "matcher", Types: []FieldType{stringField(), nullField()}},
-			{Name: "value", Types: []FieldType{nodeField("String"), nodeField("Identifier"), nullField()}},
-			{Name: "flags", Types: []FieldType{stringField(), nullField()}},
-		},
-		Generate:        generateAttributeSelector,
-		Walk:            walkAttributeSelector,
-		Clone:           cloneAttributeSelector,
-		FromPlainObject: fromPlainObjectAttributeSelector,
-	}
-}
-
-func walkAttributeSelector(node Node, reverse bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
-	n := node.(*AttributeSelector)
-	if reverse {
-		return n.Value != nil && walkNode(n.Value) ||
-			n.Name != nil && walkNode(n.Name)
-	}
-	return n.Name != nil && walkNode(n.Name) ||
-		n.Value != nil && walkNode(n.Value)
-}
-
-func cloneAttributeSelector(node Node, clone func(Node) Node) Node {
-	c := *node.(*AttributeSelector)
-	c.Loc = cloneLocation(c.Loc)
-	if c.Name != nil {
-		c.Name = cloneAs(c.Name, clone)
-	}
-	c.Value = clone(c.Value)
-	return &c
-}
-
-func fromPlainObjectAttributeSelector(r *PlainObjectReader, object map[string]any) Node {
-	return &AttributeSelector{
-		Loc:     r.Location(object),
-		Name:    PlainObjectNode[*Identifier](r, object, "name"),
-		Matcher: r.String(object, "matcher"),
-		Value:   r.Node(object, "value"),
-		Flags:   r.String(object, "flags"),
-	}
+	Flags string `css:"flags,string|null"`
 }
 
 // AttributeSelector parses an attribute selector.

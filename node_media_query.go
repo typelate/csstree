@@ -7,62 +7,15 @@ import (
 )
 
 // MediaQuery is a media query.
+//
+//csstree:node
 type MediaQuery struct {
 	Loc *Location
 	// Modifier is "not" or "only"; "" is upstream null.
-	Modifier string
+	Modifier string `css:"modifier,string|null"`
 	// MediaType is the media type; "" is upstream null.
-	MediaType string
-	Condition *Condition
-}
-
-func (n *MediaQuery) Type() string        { return "MediaQuery" }
-func (n *MediaQuery) Location() *Location { return n.Loc }
-
-func (n *MediaQuery) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"modifier", nullableString(n.Modifier)},
-		jsonField{"mediaType", nullableString(n.MediaType)},
-		jsonField{"condition", n.Condition},
-	)
-}
-
-func mediaQueryNodeType() NodeConfig {
-	return NodeConfig{
-		Name: "MediaQuery",
-		Structure: []StructureField{
-			{Name: "modifier", Types: []FieldType{stringField(), nullField()}},
-			{Name: "mediaType", Types: []FieldType{stringField(), nullField()}},
-			{Name: "condition", Types: []FieldType{nodeField("Condition"), nullField()}},
-		},
-		Generate:        generateMediaQuery,
-		Walk:            walkMediaQuery,
-		Clone:           cloneMediaQuery,
-		FromPlainObject: fromPlainObjectMediaQuery,
-	}
-}
-
-func walkMediaQuery(node Node, _ bool, walkNode func(Node) bool, _ func(*List[Node]) bool) bool {
-	n := node.(*MediaQuery)
-	return n.Condition != nil && walkNode(n.Condition)
-}
-
-func cloneMediaQuery(node Node, clone func(Node) Node) Node {
-	c := *node.(*MediaQuery)
-	c.Loc = cloneLocation(c.Loc)
-	if c.Condition != nil {
-		c.Condition = cloneAs(c.Condition, clone)
-	}
-	return &c
-}
-
-func fromPlainObjectMediaQuery(r *PlainObjectReader, object map[string]any) Node {
-	return &MediaQuery{
-		Loc:       r.Location(object),
-		Modifier:  r.String(object, "modifier"),
-		MediaType: r.String(object, "mediaType"),
-		Condition: PlainObjectNode[*Condition](r, object, "condition"),
-	}
+	MediaType string     `css:"mediaType,string|null"`
+	Condition *Condition `css:"condition,Condition|null"`
 }
 
 // MediaQuery parses a media query.
