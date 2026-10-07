@@ -20,7 +20,7 @@ const eofCode = 0
 // digit
 // A code point between U+0030 DIGIT ZERO (0) and U+0039 DIGIT NINE (9).
 func IsDigit(code int) bool {
-	return code >= 0x0030 && code <= 0x0039
+	return '0' <= code && code <= '9'
 }
 
 // IsHexDigit reports whether code is a hex digit.
@@ -30,8 +30,8 @@ func IsDigit(code int) bool {
 // or a code point between U+0061 LATIN SMALL LETTER A (a) and U+0066 LATIN SMALL LETTER F (f).
 func IsHexDigit(code int) bool {
 	return IsDigit(code) || // 0 .. 9
-		(code >= 0x0041 && code <= 0x0046) || // A .. F
-		(code >= 0x0061 && code <= 0x0066) // a .. f
+		('A' <= code && code <= 'F') ||
+		('a' <= code && code <= 'f')
 }
 
 // isUppercaseLetter reports whether code is an uppercase letter.
@@ -39,7 +39,7 @@ func IsHexDigit(code int) bool {
 // uppercase letter
 // A code point between U+0041 LATIN CAPITAL LETTER A (A) and U+005A LATIN CAPITAL LETTER Z (Z).
 func isUppercaseLetter(code int) bool {
-	return code >= 0x0041 && code <= 0x005A
+	return 'A' <= code && code <= 'Z'
 }
 
 // isLowercaseLetter reports whether code is a lowercase letter.
@@ -47,7 +47,7 @@ func isUppercaseLetter(code int) bool {
 // lowercase letter
 // A code point between U+0061 LATIN SMALL LETTER A (a) and U+007A LATIN SMALL LETTER Z (z).
 func isLowercaseLetter(code int) bool {
-	return code >= 0x0061 && code <= 0x007A
+	return 'a' <= code && code <= 'z'
 }
 
 // isLetter reports whether code is a letter.
@@ -68,7 +68,7 @@ func isLetter(code int) bool {
 // in some CSS being parsed incorrectly, even though it works in the browser. Therefore, this function adheres
 // to the previous, broader definition of non-ASCII characters.
 func isNonASCII(code int) bool {
-	return code >= 0x0080
+	return code >= 0x80
 }
 
 // isNameStart reports whether code is a name-start code point.
@@ -76,7 +76,7 @@ func isNonASCII(code int) bool {
 // name-start code point
 // A letter, a non-ASCII code point, or U+005F LOW LINE (_).
 func isNameStart(code int) bool {
-	return isLetter(code) || isNonASCII(code) || code == 0x005F
+	return isLetter(code) || isNonASCII(code) || code == '_'
 }
 
 // IsName reports whether code is a name code point.
@@ -84,7 +84,7 @@ func isNameStart(code int) bool {
 // name code point
 // A name-start code point, a digit, or U+002D HYPHEN-MINUS (-).
 func IsName(code int) bool {
-	return isNameStart(code) || IsDigit(code) || code == 0x002D
+	return isNameStart(code) || IsDigit(code) || code == '-'
 }
 
 // isNonPrintable reports whether code is a non-printable code point.
@@ -93,10 +93,10 @@ func IsName(code int) bool {
 // A code point between U+0000 NULL and U+0008 BACKSPACE, or U+000B LINE TABULATION,
 // or a code point between U+000E SHIFT OUT and U+001F INFORMATION SEPARATOR ONE, or U+007F DELETE.
 func isNonPrintable(code int) bool {
-	return (code >= 0x0000 && code <= 0x0008) ||
-		(code == 0x000B) ||
-		(code >= 0x000E && code <= 0x001F) ||
-		(code == 0x007F)
+	return (0x00 <= code && code <= 0x08) ||
+		code == '\v' ||
+		(0x0E <= code && code <= 0x1F) ||
+		code == 0x7F
 }
 
 // isNewline reports whether code is a newline.
@@ -104,9 +104,9 @@ func isNonPrintable(code int) bool {
 // newline
 // U+000A LINE FEED. Note that U+000D CARRIAGE RETURN and U+000C FORM FEED are not included in this definition,
 // as they are converted to U+000A LINE FEED during preprocessing.
-// TODO: we doesn't do a preprocessing, so check a code point for U+000D CARRIAGE RETURN and U+000C FORM FEED
+// The tokenizer does not preprocess its input, so CR and FF are newlines too.
 func isNewline(code int) bool {
-	return code == 0x000A || code == 0x000D || code == 0x000C
+	return code == '\n' || code == '\r' || code == '\f'
 }
 
 // IsWhiteSpace reports whether code is whitespace.
@@ -114,7 +114,7 @@ func isNewline(code int) bool {
 // whitespace
 // A newline, U+0009 CHARACTER TABULATION, or U+0020 SPACE.
 func IsWhiteSpace(code int) bool {
-	return isNewline(code) || code == 0x0020 || code == 0x0009
+	return isNewline(code) || code == ' ' || code == '\t'
 }
 
 // IsValidEscape reports whether two code points are a valid escape.
@@ -122,7 +122,7 @@ func IsWhiteSpace(code int) bool {
 // § 4.3.8. Check if two code points are a valid escape
 func IsValidEscape(first, second int) bool {
 	// If the first code point is not U+005C REVERSE SOLIDUS (\), return false.
-	if first != 0x005C {
+	if first != '\\' {
 		return false
 	}
 
@@ -142,11 +142,11 @@ func IsIdentifierStart(first, second, third int) bool {
 	// Look at the first code point:
 
 	// U+002D HYPHEN-MINUS
-	if first == 0x002D {
+	if first == '-' {
 		// If the second code point is a name-start code point or a U+002D HYPHEN-MINUS,
 		// or the second and third code points are a valid escape, return true. Otherwise, return false.
 		return isNameStart(second) ||
-			second == 0x002D ||
+			second == '-' ||
 			IsValidEscape(second, third)
 	}
 
@@ -157,7 +157,7 @@ func IsIdentifierStart(first, second, third int) bool {
 	}
 
 	// U+005C REVERSE SOLIDUS (\)
-	if first == 0x005C {
+	if first == '\\' {
 		// If the first and second code points are a valid escape, return true. Otherwise, return false.
 		return IsValidEscape(first, second)
 	}
@@ -175,16 +175,16 @@ func isNumberStart(first, second, third int) bool {
 
 	// U+002B PLUS SIGN (+)
 	// U+002D HYPHEN-MINUS (-)
-	if first == 0x002B || first == 0x002D {
+	if first == '+' || first == '-' {
 		// If the second code point is a digit, return true.
 		// Otherwise, if the second code point is a U+002E FULL STOP (.)
 		// and the third code point is a digit, return true.
 		// Otherwise, return false.
-		return IsDigit(second) || second == 0x002E && IsDigit(third)
+		return IsDigit(second) || second == '.' && IsDigit(third)
 	}
 
 	// U+002E FULL STOP (.)
-	if first == 0x002E {
+	if first == '.' {
 		// If the second code point is a digit, return true. Otherwise, return false.
 		return IsDigit(second)
 	}
@@ -218,7 +218,8 @@ func bomLen(source string) int {
 }
 
 // Fast code category
-// Only ASCII code points has a special meaning, that's why we define a maps for 0..127 codes only
+// Only ASCII code points have a special meaning, so the table covers 0..127
+// only; the category values are above that range.
 const (
 	eofCategory          = 0x80
 	whiteSpaceCategory   = 0x82

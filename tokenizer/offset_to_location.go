@@ -59,12 +59,6 @@ type lineColumn struct {
 	line, column int
 }
 
-const (
-	lf = '\n' // upstream N
-	ff = '\f' // upstream F
-	cr = '\r' // upstream R
-)
-
 func (l *OffsetToLocation) computeLinesAndColumns() {
 	source := l.Source
 	startOffset := bomLen(source)
@@ -78,8 +72,8 @@ func (l *OffsetToLocation) computeLinesAndColumns() {
 		lines = append(lines, lineColumn{line, column})
 		column++
 
-		if code == lf || code == cr || code == ff {
-			if code == cr && i+1 < len(source) && source[i+1] == lf {
+		if code == '\n' || code == '\r' || code == '\f' {
+			if code == '\r' && i+1 < len(source) && source[i+1] == '\n' {
 				i++
 				lines = append(lines, lineColumn{line, column})
 			}

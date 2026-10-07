@@ -104,7 +104,7 @@ func CmpChar(testStr string, offset, referenceCode int) bool {
 
 	// code.toLowerCase() for A..Z
 	if isUppercaseLetter(code) {
-		code = code | 32
+		code |= 0x20
 	}
 
 	return code == referenceCode
@@ -127,7 +127,7 @@ func CmpStr(testStr string, start, end int, referenceStr string) bool {
 
 		// testCode.toLowerCase() for A..Z
 		if isUppercaseLetter(testCode) {
-			testCode = testCode | 32
+			testCode |= 0x20
 		}
 
 		if testCode != referenceCode {
@@ -252,8 +252,8 @@ func ConsumeNumber(source string, offset int) int {
 
 	// 2. If the next input code point is U+002B PLUS SIGN (+) or U+002D HYPHEN-MINUS (-),
 	// consume it and append it to repr.
-	if code == 0x002B || code == 0x002D {
-		offset += 1
+	if code == '+' || code == '-' {
+		offset++
 		code = CharCodeAt(source, offset)
 	}
 
@@ -264,13 +264,13 @@ func ConsumeNumber(source string, offset int) int {
 	}
 
 	// 4. If the next 2 input code points are U+002E FULL STOP (.) followed by a digit, then:
-	if code == 0x002E && IsDigit(CharCodeAt(source, offset+1)) {
+	if code == '.' && IsDigit(CharCodeAt(source, offset+1)) {
 		// 4.1 Consume them.
 		// 4.2 Append them to repr.
 		offset += 2
 
 		// 4.3 Set type to "number".
-		// TODO
+		// (the type flag is not stored)
 
 		// 4.4 While the next input code point is a digit, consume it and append it to repr.
 
@@ -279,12 +279,12 @@ func ConsumeNumber(source string, offset int) int {
 
 	// 5. If the next 2 or 3 input code points are U+0045 LATIN CAPITAL LETTER E (E)
 	// or U+0065 LATIN SMALL LETTER E (e), ... , followed by a digit, then:
-	if CmpChar(source, offset, 101 /* e */) {
+	if CmpChar(source, offset, 'e') {
 		sign := 0
 		code = CharCodeAt(source, offset+1)
 
 		// ... optionally followed by U+002D HYPHEN-MINUS (-) or U+002B PLUS SIGN (+) ...
-		if code == 0x002D || code == 0x002B {
+		if code == '-' || code == '+' {
 			sign = 1
 			code = CharCodeAt(source, offset+2)
 		}
@@ -295,7 +295,7 @@ func ConsumeNumber(source string, offset int) int {
 			// 5.2 Append them to repr.
 
 			// 5.3 Set type to "number".
-			// TODO
+			// (the type flag is not stored)
 
 			// 5.4 While the next input code point is a digit, consume it and append it to repr.
 			offset = findDecimalNumberEnd(source, offset+1+sign+1)
@@ -318,7 +318,7 @@ func consumeBadURLRemnants(source string, offset int) int {
 
 		// U+0029 RIGHT PARENTHESIS ())
 		// EOF
-		if code == 0x0029 {
+		if code == ')' {
 			// Return.
 			offset++
 			break
