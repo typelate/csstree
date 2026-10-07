@@ -46,6 +46,18 @@ func defaultRecognizer(p *Parser, context *SequenceContext) Node {
 	case tokenizer.URL:
 		return p.URL()
 
+	case tokenizer.Semicolon:
+		// a ; inside (), [] or a function is a component value of the
+		// block; elsewhere it ends the sequence
+		if inParenthesesOrBrackets(p) {
+			start := p.TokenStart
+			p.Next()
+			return &Raw{
+				Loc:   p.GetLocation(start, p.TokenStart),
+				Value: ";",
+			}
+		}
+
 	case tokenizer.Ident:
 		// check for unicode range, it should start with u+ or U+
 		if p.CmpChar(p.TokenStart, latinSmallLetterU) &&
@@ -73,4 +85,19 @@ func defaultRecognizer(p *Parser, context *SequenceContext) Node {
 	}
 
 	return nil
+}
+
+// inParenthesesOrBrackets reports whether the current token is inside a
+// (), [] or function block that is closed. Balance holds the index of the
+// closing token of the enclosing block for a token inside a closed block.
+func inParenthesesOrBrackets(p *Parser) bool {
+	closer := p.Balance[p.TokenIndex]
+	if closer <= p.TokenIndex || closer >= p.TokenCount {
+		return false
+	}
+	switch p.GetTokenType(closer) {
+	case tokenizer.RightParenthesis, tokenizer.RightSquareBracket:
+		return true
+	}
+	return false
 }

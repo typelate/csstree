@@ -282,3 +282,60 @@ func TestSpecGenerateReverseSolidusNewline(t *testing.T) {
 		})
 	}
 }
+
+// CSS Syntax 3: a declaration value is a list of component values, so a ;
+// inside (), [] or a function is part of the value. The ; is a Raw node.
+// https://drafts.csswg.org/css-syntax-3/#consume-list-of-components
+func TestSpecSemicolonInValueBlock(t *testing.T) {
+	runSpecParseTests(t, []specParseTest{
+		{
+			source:   "x:(;)",
+			context:  "declaration",
+			json:     `{"important":false,"property":"x","type":"Declaration","value":{"children":[{"children":[{"type":"Raw","value":";"}],"type":"Parentheses"}],"type":"Value"}}`,
+			generate: "x:(;)",
+		},
+		{
+			source:   "x:f(;)",
+			context:  "declaration",
+			json:     `{"important":false,"property":"x","type":"Declaration","value":{"children":[{"children":[{"type":"Raw","value":";"}],"name":"f","type":"Function"}],"type":"Value"}}`,
+			generate: "x:f(;)",
+		},
+		{
+			source:   "x:[;]",
+			context:  "declaration",
+			json:     `{"important":false,"property":"x","type":"Declaration","value":{"children":[{"children":[{"type":"Raw","value":";"}],"type":"Brackets"}],"type":"Value"}}`,
+			generate: "x:[;]",
+		},
+		{
+			source:   "x:f(a ; b;;)",
+			context:  "declaration",
+			json:     `{"important":false,"property":"x","type":"Declaration","value":{"children":[{"children":[{"name":"a","type":"Identifier"},{"type":"Raw","value":";"},{"name":"b","type":"Identifier"},{"type":"Raw","value":";"},{"type":"Raw","value":";"}],"name":"f","type":"Function"}],"type":"Value"}}`,
+			generate: "x:f(a;b;;)",
+		},
+		{
+			// the var() fallback is a <declaration-value>, which has no
+			// top-level ; (https://drafts.csswg.org/css-variables-2/#using-variables),
+			// so the value falls back to Raw as upstream's does
+			source:   "x:var(--y,;)",
+			context:  "declaration",
+			json:     `{"important":false,"property":"x","type":"Declaration","value":{"type":"Raw","value":"var(--y,;)"}}`,
+			generate: "x:var(--y,;)",
+			errors:   `")" is expected`,
+		},
+		{
+			source:   "a{x:(;);y:[a;b] f(;)}",
+			types:    "StyleSheet Rule SelectorList Selector TypeSelector Block Declaration Value Parentheses Raw Declaration Value Brackets Identifier Raw Identifier Function Raw",
+			generate: "a{x:(;);y:[a;b]f(;)}",
+		},
+		{
+			source:   "a{--x:(;);--y:f(;)}",
+			types:    "StyleSheet Rule SelectorList Selector TypeSelector Block Declaration Raw Declaration Raw",
+			generate: "a{--x:(;);--y:f(;)}",
+		},
+		{
+			source:   "@x (;) [a;b];",
+			types:    "StyleSheet Atrule AtrulePrelude Parentheses Raw Brackets Identifier Raw Identifier",
+			generate: "@x (;)[a;b];",
+		},
+	})
+}
