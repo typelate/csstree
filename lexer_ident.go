@@ -31,6 +31,26 @@ func asciiLowerCase(s string) string {
 	return s
 }
 
+// asciiEqualFold reports whether s, with its ASCII letters lowercased, is
+// lower, which is lowercase: the spec's ASCII case-insensitive match.
+// strings.EqualFold is not: it folds Unicode too, so U+212A KELVIN SIGN
+// would match k.
+func asciiEqualFold(s, lower string) bool {
+	if len(s) != len(lower) {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if 'A' <= c && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+		if c != lower[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // isNameToken reports whether token is a token with a name: an ident,
 // function or at-keyword token.
 func isNameToken(token *matchToken) bool {

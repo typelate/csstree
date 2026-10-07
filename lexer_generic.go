@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"math/big"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -456,12 +457,12 @@ func customIdent(token *matchToken, _ func(offset int) *matchToken, _ *definitio
 	name := tokenValue(token)
 
 	// The CSS-wide keywords are not valid <custom-ident>s
-	if eqStrAny(name, cssWideKeywords()) {
+	if slices.ContainsFunc(cssWideKeywords(), func(keyword string) bool { return asciiEqualFold(name, keyword) }) {
 		return 0
 	}
 
 	// The default keyword is reserved and is also not a valid <custom-ident>
-	if eqStr(name, "default") {
+	if asciiEqualFold(name, "default") {
 		return 0
 	}
 

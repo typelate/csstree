@@ -105,6 +105,9 @@ func TestSpecEscapedKeywords(t *testing.T) {
 		{"type", "custom-ident", `unse\74`, false},
 		{"type", "custom-ident", `\66oo`, true},
 		{"type", "custom-ident", `inherit\9`, true},
+		// an escaped backslash is part of the value: \\initial is \initial
+		{"type", "custom-ident", `\\initial`, true},
+		{"type", "custom-ident", `\\default`, true},
 		// <dashed-ident> and <custom-property-name> check the decoded value
 		{"type", "dashed-ident", `\2d-foo`, true},
 		{"type", "dashed-ident", `-\2d foo`, true},
