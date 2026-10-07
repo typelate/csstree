@@ -3,14 +3,12 @@
 package csstree
 
 import (
-	"errors"
 	"math"
-	"math/big"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/typelate/csstree/definitionsyntax"
+	"github.com/typelate/csstree/internal/jsnum"
 	"github.com/typelate/csstree/tokenizer"
 )
 
@@ -188,136 +186,6 @@ func isPostfixIeHack(str string, offset int) bool {
 		tokenizer.IsDigit(tokenizer.CharCodeAt(str, offset+1))
 }
 
-// jsNumber converts str to a number as JavaScript's Number(str) does: it
-// trims whitespace, reads "" as 0, accepts decimal literals with an
-// optional sign and exponent, Infinity, and 0x/0o/0b integers, and returns
-// NaN for anything else. strconv.ParseFloat alone would also accept
-// "inf", "nan", hexadecimal floats and underscores.
-func jsNumber(str string) float64 {
-	str = strings.TrimFunc(str, isJSWhiteSpace)
-
-	if str == "" {
-		return 0
-	}
-
-	switch str {
-	case "Infinity", "+Infinity":
-		return math.Inf(1)
-	case "-Infinity":
-		return math.Inf(-1)
-	}
-
-	if len(str) > 2 && str[0] == '0' {
-		base := 0
-		switch str[1] {
-		case 'x', 'X':
-			base = 16
-		case 'o', 'O':
-			base = 8
-		case 'b', 'B':
-			base = 2
-		}
-		if base != 0 {
-			digits := str[2:]
-			for i := 0; i < len(digits); i++ {
-				if !isDigitOfBase(digits[i], base) {
-					return math.NaN()
-				}
-			}
-			// the exact integer rounded once to the nearest float64, as
-			// JavaScript rounds the value of the literal
-			value, ok := new(big.Int).SetString(digits, base)
-			if !ok {
-				return math.NaN()
-			}
-			f, _ := new(big.Float).SetInt(value).Float64()
-			return f
-		}
-	}
-
-	if !isJSDecimalLiteral(str) {
-		return math.NaN()
-	}
-
-	value, err := strconv.ParseFloat(str, 64)
-	if err != nil && !errors.Is(err, strconv.ErrRange) {
-		return math.NaN()
-	}
-
-	// out of range values are ±Inf or ±0, as in JavaScript
-	return value
-}
-
-func isJSWhiteSpace(r rune) bool {
-	switch r {
-	case '\t', '\n', '\v', '\f', '\r', ' ', 0x00A0, 0x1680, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF:
-		return true
-	}
-	return r >= 0x2000 && r <= 0x200A
-}
-
-func digitValue(c byte) int {
-	switch {
-	case c >= '0' && c <= '9':
-		return int(c - '0')
-	case c >= 'a' && c <= 'z':
-		return int(c-'a') + 10
-	case c >= 'A' && c <= 'Z':
-		return int(c-'A') + 10
-	}
-	return 99
-}
-
-func isDigitOfBase(c byte, base int) bool {
-	return digitValue(c) < base
-}
-
-// isJSDecimalLiteral reports whether str is a StrDecimalLiteral with an
-// optional sign: digits with an optional fraction, or a fraction alone,
-// then an optional exponent.
-func isJSDecimalLiteral(str string) bool {
-	i := 0
-	if i < len(str) && (str[i] == '+' || str[i] == '-') {
-		i++
-	}
-
-	intDigits := 0
-	for i < len(str) && str[i] >= '0' && str[i] <= '9' {
-		i++
-		intDigits++
-	}
-
-	fracDigits := 0
-	if i < len(str) && str[i] == '.' {
-		i++
-		for i < len(str) && str[i] >= '0' && str[i] <= '9' {
-			i++
-			fracDigits++
-		}
-	}
-
-	if intDigits == 0 && fracDigits == 0 {
-		return false
-	}
-
-	if i < len(str) && (str[i] == 'e' || str[i] == 'E') {
-		i++
-		if i < len(str) && (str[i] == '+' || str[i] == '-') {
-			i++
-		}
-		expDigits := 0
-		for i < len(str) && str[i] >= '0' && str[i] <= '9' {
-			i++
-			expDigits++
-		}
-		if expDigits == 0 {
-			return false
-		}
-	}
-
-	return i == len(str)
-}
-
 // outOfRange reports whether the number at the start of value is outside
 // opts. numEnd < 0 is upstream's omitted numEnd.
 func outOfRange(opts *definitionsyntax.Range, value string, numEnd int) bool {
@@ -334,7 +202,7 @@ func outOfRangeUnit(opts *definitionsyntax.Range, value string, numEnd int, unit
 		if numEnd >= 0 && numEnd != len(value) {
 			numStr = value[:numEnd]
 		}
-		num := jsNumber(numStr)
+		num := jsnum.Parse(numStr)
 
 		if math.IsNaN(num) {
 			return true
@@ -712,7 +580,7 @@ func zero(next genericFunc) genericFunc {
 	return func(token *matchToken, getNextToken func(offset int) *matchToken, opts *definitionsyntax.Range) int {
 		if token != nil && token.typ == tokenizer.Number {
 			// a zero is out of a range such as [1px,∞]
-			if jsNumber(token.value) == 0 && !outOfRange(opts, "0", -1) {
+			if jsnum.Parse(token.value) == 0 && !outOfRange(opts, "0", -1) {
 				return 1
 			}
 		}

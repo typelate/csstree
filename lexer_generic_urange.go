@@ -275,7 +275,11 @@ func hexDigitsPrefix(s string) int {
 func parseHex(digits string) int64 {
 	var value int64
 	for i := 0; i < len(digits); i++ {
-		value = value<<4 | int64(digitValue(digits[i]))
+		digit := int64(digits[i] - '0')
+		if c := digits[i] | 0x20; c >= 'a' { // a letter, lowercased
+			digit = int64(c-'a') + 10
+		}
+		value = value<<4 | digit
 	}
 	return value
 }

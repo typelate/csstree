@@ -2,8 +2,6 @@ package csstree
 
 import (
 	"errors"
-	"math"
-	"strings"
 	"testing"
 )
 
@@ -181,46 +179,6 @@ func TestFindFragmentsEmptyMatch(t *testing.T) {
 	fragments, err = lexer.FindValueFragments("-webkit-box-reflect", value, "Type", "length")
 	if err != nil || len(fragments) != 0 {
 		t.Errorf("FindValueFragments(-webkit-box-reflect, empty, <length>) = %v, %v, want none", fragments, err)
-	}
-}
-
-// TestJSNumberEdges checks more of jsNumber against Node.js's Number():
-// integers too large for 64 bits, separators and whitespace.
-func TestJSNumberEdges(t *testing.T) {
-	for _, test := range []struct {
-		input string
-		want  float64
-	}{
-		{"0x10000000000000000", 18446744073709552000},
-		{"0xFFFFFFFFFFFFFFFFFF", 4.722366482869645e+21},
-		{"0xfffffffffffffffff", 295147905179352830000},
-		{"0b" + strings.Repeat("1", 70), 1.1805916207174113e+21},
-		{"0o" + strings.Repeat("7", 30), 1.2379400392853803e+27},
-		// rounded once, not digit by digit: 2^69 + 3·2^15 is nearer to
-		// 2^69 + 2^17 than to 2^69
-		{"0x200000000000018000", 590295810358705782784},
-		{"0b1" + strings.Repeat("0", 52) + "11" + strings.Repeat("0", 20), 1.8889465931478585e+22},
-		{"0XaB", 171},
-		{"0B11", 3},
-		{"0O17", 15},
-		{"0x_1", math.NaN()},
-		{"0x1_0", math.NaN()},
-		{"0b102", math.NaN()},
-		{"0o8", math.NaN()},
-		{"+0x1", math.NaN()},
-		{"00x1", math.NaN()},
-		{"0b", math.NaN()},
-		{"\u00a01\u2028", 1},
-		{"\ufeff2", 2},
-		{"\u20093", 3},
-		{"-1e-400", math.Copysign(0, -1)},
-	} {
-		got := jsNumber(test.input)
-		same := got == test.want && math.Signbit(got) == math.Signbit(test.want) ||
-			math.IsNaN(got) && math.IsNaN(test.want)
-		if !same {
-			t.Errorf("jsNumber(%q) = %v, want %v", test.input, got, test.want)
-		}
 	}
 }
 
