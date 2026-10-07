@@ -86,19 +86,6 @@
             "flags": null
         }
     },
-    "attrib.2 with flags": {
-        "source": "[b i]",
-        "ast": {
-            "type": "AttributeSelector",
-            "name": {
-                "type": "Identifier",
-                "name": "b"
-            },
-            "matcher": null,
-            "value": null,
-            "flags": "i"
-        }
-    },
     "attrib.s.0": {
         "source": "[  a  =  b  ]",
         "generate": "[a=b]",
@@ -501,6 +488,21 @@
         }
     },
     "error": [
+        {
+            "source": "[b i] {}",
+            "offset": "   ^",
+            "error": "Attribute selector (=, ~=, ^=, $=, *=, |=) is expected"
+        },
+        {
+            "source": "[a=b c] {}",
+            "offset": "     ^",
+            "error": "Attribute selector modifier (i or s) is expected"
+        },
+        {
+            "source": "[a='b' ii] {}",
+            "offset": "       ^",
+            "error": "Attribute selector modifier (i or s) is expected"
+        },
         {
             "source": "[a|] {}",
             "offset": "   ^",

@@ -68,6 +68,14 @@ func getOperator(p *Parser) string {
 	return p.SubstrToCursor(start)
 }
 
+// isAttributeModifier reports whether the current ident token is i or s
+// (ASCII case-insensitive).
+// https://drafts.csswg.org/selectors-4/#attribute-case
+func isAttributeModifier(p *Parser) bool {
+	return p.TokenEnd-p.TokenStart == 1 &&
+		(p.CmpChar(p.TokenStart, 'i') || p.CmpChar(p.TokenStart, 's'))
+}
+
 // AttributeSelector is an attribute selector:
 //
 //	'[' <wq-name> ']'
@@ -155,23 +163,25 @@ func (p *Parser) AttributeSelector() *AttributeSelector {
 	p.SkipSC()
 
 	if p.TokenType != tokenizer.RightSquareBracket {
-		// avoid case `[name i]`
-		if p.TokenType != tokenizer.Ident {
-			matcher = getOperator(p)
+		// a modifier follows a matcher and a value: [name i] is not an
+		// attribute selector
+		matcher = getOperator(p)
 
-			p.SkipSC()
+		p.SkipSC()
 
-			if p.TokenType == tokenizer.String {
-				value = p.String()
-			} else {
-				value = p.Identifier()
-			}
-
-			p.SkipSC()
+		if p.TokenType == tokenizer.String {
+			value = p.String()
+		} else {
+			value = p.Identifier()
 		}
 
-		// attribute flags
+		p.SkipSC()
+
+		// attribute modifier: i | s
 		if p.TokenType == tokenizer.Ident {
+			if !isAttributeModifier(p) {
+				p.Error("Attribute selector modifier (i or s) is expected", -1)
+			}
 			flags = p.Consume(tokenizer.Ident)
 
 			p.SkipSC()

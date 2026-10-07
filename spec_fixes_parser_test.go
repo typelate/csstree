@@ -154,3 +154,57 @@ func TestSpecColumnCombinator(t *testing.T) {
 		},
 	})
 }
+
+// Selectors 4 attribute selector modifiers:
+// https://drafts.csswg.org/selectors-4/#attribute-case
+//
+//	<attr-modifier> = i | s
+//
+// and the modifier follows a matcher and a value.
+func TestSpecAttributeSelectorFlags(t *testing.T) {
+	runSpecParseTests(t, []specParseTest{
+		{
+			source:   "[a=b i]",
+			context:  "selector",
+			json:     `{"children":[{"flags":"i","matcher":"=","name":{"name":"a","type":"Identifier"},"type":"AttributeSelector","value":{"name":"b","type":"Identifier"}}],"type":"Selector"}`,
+			generate: "[a=b i]",
+		},
+		{
+			source:   "[a=b s]",
+			context:  "selector",
+			json:     `{"children":[{"flags":"s","matcher":"=","name":{"name":"a","type":"Identifier"},"type":"AttributeSelector","value":{"name":"b","type":"Identifier"}}],"type":"Selector"}`,
+			generate: "[a=b s]",
+		},
+		{
+			source:   `[a="b"I]`,
+			context:  "selector",
+			json:     `{"children":[{"flags":"I","matcher":"=","name":{"name":"a","type":"Identifier"},"type":"AttributeSelector","value":{"type":"String","value":"b"}}],"type":"Selector"}`,
+			generate: `[a="b"I]`,
+		},
+		{
+			source:   "[a=b S]",
+			context:  "selector",
+			types:    "Selector AttributeSelector Identifier Identifier",
+			generate: "[a=b S]",
+		},
+		{
+			source:   "[a=b c]{}",
+			types:    "StyleSheet Rule Raw Block",
+			generate: "[a=b c]{}",
+			errors:   `Attribute selector modifier (i or s) is expected`,
+		},
+		{
+			source:   "[a=b ii]{}",
+			types:    "StyleSheet Rule Raw Block",
+			generate: "[a=b ii]{}",
+			errors:   `Attribute selector modifier (i or s) is expected`,
+		},
+		{
+			// a modifier needs a matcher and a value
+			source:   "[a i]{}",
+			types:    "StyleSheet Rule Raw Block",
+			generate: "[a i]{}",
+			errors:   `Attribute selector (=, ~=, ^=, $=, *=, |=) is expected`,
+		},
+	})
+}
