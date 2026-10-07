@@ -64,13 +64,13 @@ func (p *Parser) AtrulePrelude(name string) *AtrulePrelude {
 
 	p.SkipSC()
 
-	if atrule, ok := p.Config.Atrule[name]; ok &&
+	if atrule, ok := p.config.Atrule[name]; ok &&
 		atrule.Prelude != nil {
 		// custom consumer
 		children = atrule.Prelude(p)
 	} else {
 		// default consumer
-		children = p.ReadSequence(p.Config.Scope["AtrulePrelude"])
+		children = p.ReadSequence(p.ScopeRecognizer("AtrulePrelude"))
 	}
 
 	p.SkipSC()

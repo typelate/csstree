@@ -78,7 +78,7 @@ func (p *Parser) GeneralEnclosed(kind string) *GeneralEnclosed {
 	p.ParseWithFallback(
 		func() Node {
 			startValueToken := p.TokenIndex
-			children = p.ReadSequence(p.Config.Scope["Value"])
+			children = p.ReadSequence(p.ScopeRecognizer("Value"))
 
 			if !p.EOF &&
 				!p.IsBalanceEdge(startValueToken) {

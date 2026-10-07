@@ -59,7 +59,7 @@ func fromPlainObjectSelector(r *PlainObjectReader, object map[string]any) Node {
 
 // Selector parses a selector with the Selector scope.
 func (p *Parser) Selector() *Selector {
-	children := p.ReadSequence(p.Config.Scope["Selector"])
+	children := p.ReadSequence(p.ScopeRecognizer("Selector"))
 
 	// nothing were consumed
 	if children.IsEmpty() {

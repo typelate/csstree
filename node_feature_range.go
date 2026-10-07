@@ -106,7 +106,7 @@ func readTerm(p *Parser) Node {
 	case tokenizer.Function:
 		return p.ParseWithFallback(
 			func() Node {
-				res := p.Function(p.ReadSequence, p.Config.Scope["Value"])
+				res := p.Function(p.ReadSequence, p.ScopeRecognizer("Value"))
 
 				p.SkipSC()
 

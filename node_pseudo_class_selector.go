@@ -74,7 +74,7 @@ func (p *Parser) PseudoClassSelector() *PseudoClassSelector {
 
 		if p.LookupNonWSType(0) == tokenizer.RightParenthesis {
 			children = new(List[Node])
-		} else if pseudo, ok := p.Config.Pseudo[nameLowerCase]; ok {
+		} else if pseudo, ok := p.config.Pseudo[nameLowerCase]; ok {
 			p.SkipSC()
 			children = pseudo(p)
 			p.SkipSC()

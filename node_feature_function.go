@@ -65,7 +65,7 @@ func fromPlainObjectFeatureFunction(r *PlainObjectReader, object map[string]any)
 }
 
 func getFeatureParser(p *Parser, kind, name string) FeatureParser {
-	featuresOfKind := p.Config.Features[kind]
+	featuresOfKind := p.config.Features[kind]
 	parser := featuresOfKind[name]
 
 	if parser == nil {

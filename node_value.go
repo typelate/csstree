@@ -52,7 +52,7 @@ func fromPlainObjectValue(r *PlainObjectReader, object map[string]any) Node {
 // Value parses a value with the Value scope.
 func (p *Parser) Value() *Value {
 	start := p.TokenStart
-	children := p.ReadSequence(p.Config.Scope["Value"])
+	children := p.ReadSequence(p.ScopeRecognizer("Value"))
 
 	return &Value{
 		Loc:      p.Location(start, p.TokenStart),

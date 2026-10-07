@@ -115,6 +115,20 @@ func TestMix(t *testing.T) {
 		}
 	})
 
+	t.Run("a syntax copies its config", func(t *testing.T) {
+		config := mix(nil, DefaultSyntax().config)
+		syntax, err := NewSyntax(config)
+		if err != nil {
+			t.Fatalf("NewSyntax(config): %v", err)
+		}
+		config.Scope["Value"].Node = nil
+		config.Features["supports"]["selector"] = nil
+
+		if _, err := syntax.Parse("@supports selector(a){} a{b:c}", ParseOptions{}); err != nil {
+			t.Errorf("Parse() after changing the config: %v", err)
+		}
+	})
+
 	t.Run("fork without structure fails", func(t *testing.T) {
 		_, err := Fork(&Config{Node: map[string]NodeConfig{"Foo": {}}})
 		if want := "Missed `structure` field in `Foo` node type definition"; err == nil || !strings.Contains(err.Error(), want) {

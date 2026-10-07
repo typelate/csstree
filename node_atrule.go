@@ -127,7 +127,7 @@ func (p *Parser) Atrule(isDeclaration bool) *Atrule {
 		p.Next()
 
 	case tokenizer.LeftCurlyBracket:
-		if atrule, ok := p.Config.Atrule[nameLowerCase]; ok &&
+		if atrule, ok := p.config.Atrule[nameLowerCase]; ok &&
 			atrule.Block != nil {
 			block = atrule.Block(p, isDeclaration)
 		} else {

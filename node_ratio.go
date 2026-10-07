@@ -22,7 +22,7 @@ func consumeTerm(p *Parser) Node {
 		return p.Number()
 
 	case tokenizer.Function:
-		return p.Function(p.ReadSequence, p.Config.Scope["Value"])
+		return p.Function(p.ReadSequence, p.ScopeRecognizer("Value"))
 
 	default:
 		p.Fail("Number of function is expected")

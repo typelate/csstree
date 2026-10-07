@@ -4,7 +4,6 @@
 package csstree
 
 import (
-	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -184,9 +183,10 @@ type parseAbort struct {
 type Parser struct {
 	*tokenizer.TokenStream
 
-	// Config is the syntax configuration (upstream this.scope, this.atrule,
-	// this.pseudo, this.features: p.Config.Scope["Value"], ...).
-	Config *Config
+	// config holds the parser keys of the syntax configuration (upstream
+	// this.scope, this.atrule, this.pseudo, this.features), shared by the
+	// concurrent parses of the syntax and only read.
+	config *Config
 
 	ParseAtrulePrelude  bool
 	ParseRulePrelude    bool
@@ -200,17 +200,17 @@ type Parser struct {
 	locationMap       *tokenizer.OffsetToLocation
 }
 
-// processConfig copies the maps of config so a parse function is not
-// affected by later changes to the Config it was built from.
+// processConfig returns a deep copy of the parser keys of config (as mix
+// copies them: new maps and new recognizers), so that a parse function is
+// not affected by later changes to the Config it was built from.
 func processConfig(config *Config) *Config {
-	parseConfig := &Config{
-		Contexts: maps.Clone(config.Contexts),
-		Features: maps.Clone(config.Features),
-		Scope:    maps.Clone(config.Scope),
-		Atrule:   maps.Clone(config.Atrule),
-		Pseudo:   maps.Clone(config.Pseudo),
-		Node:     maps.Clone(config.Node),
-	}
+	parseConfig := mix(nil, &Config{
+		Contexts: config.Contexts,
+		Features: config.Features,
+		Scope:    config.Scope,
+		Atrule:   config.Atrule,
+		Pseudo:   config.Pseudo,
+	})
 	if parseConfig.Contexts == nil {
 		parseConfig.Contexts = make(map[ParseContext]ContextParser)
 	}
@@ -233,7 +233,7 @@ func createParser(config *Config) parseFunc {
 	return func(source string, options ParseOptions) (ast Node, err error) {
 		parser := &Parser{
 			TokenStream:        new(tokenizer.TokenStream),
-			Config:             parseConfig,
+			config:             parseConfig,
 			ParseAtrulePrelude: true,
 			ParseRulePrelude:   true,
 			ParseValue:         true,
@@ -285,7 +285,7 @@ func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error
 		context = ContextDefault
 	}
 
-	contextParser, ok := p.Config.Contexts[context]
+	contextParser, ok := p.config.Contexts[context]
 	if !ok || contextParser == nil {
 		return nil, &UnknownContextError{Context: context}
 	}
@@ -327,6 +327,14 @@ func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error
 	}
 
 	return ast, nil
+}
+
+// ScopeRecognizer returns the recognizer of the scope name ("AtrulePrelude",
+// "Selector", "Value" or one an extension added), or nil, for ReadSequence
+// and Function. The recognizer belongs to the syntax and is shared by
+// concurrent parses: it must not be changed (change scopes with Fork).
+func (p *Parser) ScopeRecognizer(name string) *Recognizer {
+	return p.config.Scope[name]
 }
 
 // The ConsumeUntil* methods are tokenizer.StopFunc values for Raw and

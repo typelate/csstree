@@ -93,7 +93,7 @@ func (p *Parser) Feature(kind string) *Feature {
 		case tokenizer.Function:
 			value = p.ParseWithFallback(
 				func() Node {
-					res := p.Function(p.ReadSequence, p.Config.Scope["Value"])
+					res := p.Function(p.ReadSequence, p.ScopeRecognizer("Value"))
 
 					p.SkipSC()
 
