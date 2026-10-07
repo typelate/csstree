@@ -23,14 +23,14 @@ func TestLexerMatch(t *testing.T) {
 	t.Run("should match by type", func(t *testing.T) {
 		value := mustParse(t, "fn(1, 2, 3)", ParseOptions{Context: "value"})
 		fn := value.(*Value).Children.First()
-		syntax := customSyntax.Lexer().GetType("fn")
+		syntax := customSyntax.Lexer().Type("fn")
 		match := outcome(customSyntax.Lexer().MatchDescriptor(syntax, fn))
 
 		assertMatchNoError(t, `MatchDescriptor(<fn>, fn(1, 2, 3))`, match)
 	})
 
 	t.Run("should take a string as a value", func(t *testing.T) {
-		syntax := customSyntax.Lexer().GetType("fn")
+		syntax := customSyntax.Lexer().Type("fn")
 		match := outcome(customSyntax.Lexer().MatchDescriptorString(syntax, "fn(1, 2, 3)"))
 
 		assertMatchNoError(t, `MatchDescriptorString(<fn>, "fn(1, 2, 3)")`, match)

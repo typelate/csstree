@@ -82,52 +82,79 @@ func TestLexerAccessors(t *testing.T) {
 		}
 	})
 
-	t.Run("GetAtrulePrelude", func(t *testing.T) {
+	t.Run("AtrulePrelude", func(t *testing.T) {
 		for _, test := range []struct {
-			name     string
-			fallback bool
-			want     bool
+			name string
+			want bool
 		}{
-			{"media", true, true},
-			{"font-face", true, false},
-			{"nope", true, false},
-			{"-webkit-media", true, true},
-			{"-webkit-media", false, false},
+			{"media", true},
+			{"MEDIA", true},
+			{"font-face", false},
+			{"nope", false},
+			{"-webkit-media", true},
 		} {
-			prelude := lexer.GetAtrulePrelude(test.name, test.fallback)
+			prelude := lexer.AtrulePrelude(test.name)
 			if got := prelude != nil; got != test.want {
-				t.Errorf("GetAtrulePrelude(%q, %v) = %v, want a prelude: %v", test.name, test.fallback, prelude, test.want)
+				t.Errorf("AtrulePrelude(%q) = %v, want a prelude: %v", test.name, prelude, test.want)
 			}
 			if prelude != nil && (prelude.Kind() != KindAtrulePrelude || prelude.Name() != "media") {
-				t.Errorf("GetAtrulePrelude(%q, %v) = %s %s, want AtrulePrelude media", test.name, test.fallback, prelude.Kind(), prelude.Name())
+				t.Errorf("AtrulePrelude(%q) = %s %s, want AtrulePrelude media", test.name, prelude.Kind(), prelude.Name())
 			}
 		}
 	})
 
+	t.Run("Property and Atrule", func(t *testing.T) {
+		for _, test := range []struct {
+			name, want string
+		}{
+			{"color", "color"},
+			{"COLOR", "color"},
+			{"-webkit-color", "color"},
+			{"_color", "color"},
+			{"-webkit-box-reflect", "-webkit-box-reflect"},
+			{"nope", ""},
+		} {
+			got := ""
+			if property := lexer.Property(test.name); property != nil {
+				got = property.Name()
+			}
+			if got != test.want {
+				t.Errorf("Property(%q) = %q, want %q", test.name, got, test.want)
+			}
+		}
+		if atrule := lexer.Atrule("-moz-Font-Face"); atrule == nil || atrule.Name() != "font-face" || atrule.Descriptor("src") == nil {
+			t.Errorf("Atrule(-moz-Font-Face) = %v, want font-face with src", atrule)
+		}
+		if atrule := lexer.Atrule("nope"); atrule != nil {
+			t.Errorf("Atrule(nope) = %v, want nil", atrule)
+		}
+	})
+
 	t.Run("Dump", func(t *testing.T) {
-		dump, err := lexer.Dump(false)
+		dump, err := lexer.Dump()
 		if err != nil {
 			t.Fatal(err)
 		}
 		media := dump.Atrules["media"]
 		if media.Prelude != "<media-query-list>" || media.Descriptors != nil {
-			t.Errorf("Dump(false).Atrules[media] = %+v, want prelude <media-query-list> and no descriptors", media)
+			t.Errorf("Dump().Atrules[media] = %+v, want prelude <media-query-list> and no descriptors", media)
 		}
 		fontFace := dump.Atrules["font-face"]
 		if fontFace.Prelude != "" || len(fontFace.Descriptors) != 13 {
-			t.Errorf("Dump(false).Atrules[font-face] = %+v, want no prelude and 13 descriptors", fontFace)
+			t.Errorf("Dump().Atrules[font-face] = %+v, want no prelude and 13 descriptors", fontFace)
 		}
 		if _, ok := dump.Atrules["nest"]; ok {
-			t.Errorf("Dump(false).Atrules has nest, want none")
+			t.Errorf("Dump().Atrules has nest, want none")
 		}
 
-		pretty, err := lexer.Dump(true)
+		// upstream dump(false, true)
+		prelude, err := lexer.AtrulePrelude("import").Syntax()
 		if err != nil {
 			t.Fatal(err)
 		}
 		const wantImport = "[ <string> | <url> ] [ layer | layer( <layer-name> ) ]? [ supports( [ <supports-condition> | <declaration> ] ) ]? <media-query-list>?"
-		if got := pretty.Atrules["import"].Prelude; got != wantImport {
-			t.Errorf("Dump(true).Atrules[import].Prelude = %q, want %q", got, wantImport)
+		if got := definitionsyntax.Generate(prelude, definitionsyntax.GenerateOptions{}); got != wantImport {
+			t.Errorf("Generate(AtrulePrelude(import)) = %q, want %q", got, wantImport)
 		}
 	})
 
@@ -513,15 +540,15 @@ func TestLexerFunctionFragmentsAndTrace(t *testing.T) {
 	}
 
 	wantTranslate := []string{"Property:transform", "Type:transform-list", "Type:transform-function", "Type:translate()"}
-	if got := traceNames(match.GetTrace(translate)); !slices.Equal(got, wantTranslate) {
-		t.Errorf("GetTrace(translate()) = %v, want %v", got, wantTranslate)
+	if got := traceNames(match.Trace(translate)); !slices.Equal(got, wantTranslate) {
+		t.Errorf("Trace(translate()) = %v, want %v", got, wantTranslate)
 	}
 	wantLength := append(slices.Clone(wantTranslate), "Type:length-percentage", "Type:length")
-	if got := traceNames(match.GetTrace(length)); !slices.Equal(got, wantLength) {
-		t.Errorf("GetTrace(1px) = %v, want %v", got, wantLength)
+	if got := traceNames(match.Trace(length)); !slices.Equal(got, wantLength) {
+		t.Errorf("Trace(1px) = %v, want %v", got, wantLength)
 	}
-	if got := match.GetTrace(mustParse(t, "1px", ParseOptions{Context: "value"})); got != nil {
-		t.Errorf("GetTrace(another node) = %v, want nil", got)
+	if got := match.Trace(mustParse(t, "1px", ParseOptions{Context: "value"})); got != nil {
+		t.Errorf("Trace(another node) = %v, want nil", got)
 	}
 
 	for _, test := range []struct {

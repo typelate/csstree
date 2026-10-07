@@ -236,7 +236,7 @@ func TestLexer(t *testing.T) {
 		})
 
 		t.Run("recovery syntax from dump", func(t *testing.T) {
-			dump, err := customLexer.Dump(false)
+			dump, err := customLexer.Dump()
 			if err != nil {
 				t.Fatal(err)
 			}

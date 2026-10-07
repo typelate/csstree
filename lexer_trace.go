@@ -2,11 +2,11 @@
 
 package csstree
 
-// GetTrace returns the syntaxes that matched node, outermost first,
+// Trace returns the syntaxes that matched node, outermost first,
 // keeping the Type, Property and Keyword ones. It returns nil when node is
 // not in the match (upstream null), and an empty slice when it is but no
 // such syntax led to it.
-func (r *MatchResult) GetTrace(node Node) []MatchSyntax {
+func (r *MatchResult) Trace(node Node) []MatchSyntax {
 	shouldPutToTrace := func(syntax MatchSyntax) bool {
 		if syntax == nil {
 			return false
@@ -75,7 +75,7 @@ func (r *MatchResult) IsKeyword(node Node) bool {
 }
 
 func testNode(match *MatchResult, node Node, fn func(MatchSyntax) bool) bool {
-	trace := match.GetTrace(node)
+	trace := match.Trace(node)
 
 	if trace == nil {
 		return false

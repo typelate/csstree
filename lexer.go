@@ -216,7 +216,7 @@ type LexerValidation struct {
 	Properties []string `json:"properties"`
 }
 
-func dumpMapSyntax(names []string, dict map[string]*Descriptor, compact bool) (map[string]string, error) {
+func dumpMapSyntax(names []string, dict map[string]*Descriptor) (map[string]string, error) {
 	result := make(map[string]string)
 
 	for _, name := range names {
@@ -225,14 +225,14 @@ func dumpMapSyntax(names []string, dict map[string]*Descriptor, compact bool) (m
 			return nil, err
 		}
 		if syntax != nil {
-			result[name] = definitionsyntax.Generate(syntax, definitionsyntax.GenerateOptions{Compact: compact})
+			result[name] = definitionsyntax.Generate(syntax, definitionsyntax.GenerateOptions{Compact: true})
 		}
 	}
 
 	return result, nil
 }
 
-func dumpAtruleMapSyntax(names []string, dict map[string]*AtruleSyntax, compact bool) (map[string]AtruleDefinition, error) {
+func dumpAtruleMapSyntax(names []string, dict map[string]*AtruleSyntax) (map[string]AtruleDefinition, error) {
 	result := make(map[string]AtruleDefinition)
 
 	for _, name := range names {
@@ -245,12 +245,12 @@ func dumpAtruleMapSyntax(names []string, dict map[string]*AtruleSyntax, compact 
 				return nil, err
 			}
 			if syntax != nil {
-				definition.Prelude = definitionsyntax.Generate(syntax, definitionsyntax.GenerateOptions{Compact: compact})
+				definition.Prelude = definitionsyntax.Generate(syntax, definitionsyntax.GenerateOptions{Compact: true})
 			}
 		}
 
 		if atrule.descriptors != nil {
-			descriptors, err := dumpMapSyntax(atrule.descriptorNames, atrule.descriptors, compact)
+			descriptors, err := dumpMapSyntax(atrule.descriptorNames, atrule.descriptors)
 			if err != nil {
 				return nil, err
 			}
@@ -688,7 +688,7 @@ func (l *Lexer) setType(name string, descriptor *Descriptor) {
 // CheckAtruleName returns a *SyntaxReferenceError when the at-rule is
 // unknown, else nil.
 func (l *Lexer) CheckAtruleName(atruleName string) error {
-	if l.GetAtrule(atruleName, true) == nil {
+	if l.Atrule(atruleName) == nil {
 		return newSyntaxReferenceError("Unknown at-rule", "@"+atruleName)
 	}
 
@@ -713,7 +713,7 @@ func (l *Lexer) checkAtrulePrelude(atruleName string, prelude matchInput) error 
 		return err
 	}
 
-	atrule := l.GetAtrule(atruleName, true)
+	atrule := l.Atrule(atruleName)
 
 	if atrule.prelude == nil && prelude.truthy() {
 		return &AtruleSyntaxError{Message: "At-rule `@" + atruleName + "` should not contain a prelude"}
@@ -738,7 +738,7 @@ func (l *Lexer) CheckAtruleDescriptorName(atruleName, descriptorName string) err
 		return err
 	}
 
-	atrule := l.GetAtrule(atruleName, true)
+	atrule := l.Atrule(atruleName)
 	descriptor := Keyword(descriptorName)
 
 	if atrule.descriptors == nil {
@@ -756,7 +756,7 @@ func (l *Lexer) CheckAtruleDescriptorName(atruleName, descriptorName string) err
 // CheckPropertyName returns a *SyntaxReferenceError when the property is
 // unknown, else nil.
 func (l *Lexer) CheckPropertyName(propertyName string) error {
-	if l.GetProperty(propertyName, true) == nil {
+	if l.Property(propertyName) == nil {
 		return newSyntaxReferenceError("Unknown property", propertyName)
 	}
 
@@ -780,7 +780,7 @@ func (l *Lexer) matchAtrulePrelude(atruleName string, prelude matchInput) (*Matc
 		return &MatchResult{}, err
 	}
 
-	atrule := l.GetAtrule(atruleName, true)
+	atrule := l.Atrule(atruleName)
 
 	if atrule.prelude == nil {
 		return &MatchResult{}, nil
@@ -808,7 +808,7 @@ func (l *Lexer) matchAtruleDescriptor(atruleName, descriptorName string, value m
 		return &MatchResult{}, err
 	}
 
-	atrule := l.GetAtrule(atruleName, true)
+	atrule := l.Atrule(atruleName)
 	descriptor := Keyword(descriptorName)
 
 	syntax := atrule.descriptors[descriptor.Name]
@@ -851,7 +851,7 @@ func (l *Lexer) matchProperty(propertyName string, value matchInput) (*MatchResu
 		return &MatchResult{}, err
 	}
 
-	return matchSyntax(l, l.GetProperty(propertyName, true), value, true)
+	return matchSyntax(l, l.Property(propertyName), value, true)
 }
 
 // MatchType matches value against the syntax of the type typeName.
@@ -865,7 +865,7 @@ func (l *Lexer) MatchTypeString(typeName, value string) (*MatchResult, error) {
 }
 
 func (l *Lexer) matchType(typeName string, value matchInput) (*MatchResult, error) {
-	typeSyntax := l.GetType(typeName)
+	typeSyntax := l.Type(typeName)
 
 	if typeSyntax == nil {
 		return &MatchResult{}, newSyntaxReferenceError("Unknown type", typeName)
@@ -885,7 +885,7 @@ func (l *Lexer) MatchString(syntax, value string) (*MatchResult, error) {
 	return l.MatchDescriptorString(l.CreateDescriptor(syntax, KindType, "anonymous", ""), value)
 }
 
-// MatchDescriptor matches value against a descriptor, such as one GetType
+// MatchDescriptor matches value against a descriptor, such as one Type
 // returns (upstream match with a descriptor). A nil descriptor is a "Bad
 // syntax" *SyntaxReferenceError.
 func (l *Lexer) MatchDescriptor(syntax *Descriptor, value Node) (*MatchResult, error) {
@@ -963,29 +963,23 @@ func (l *Lexer) FindAllFragments(ast Node, typ, name string) ([]Fragment, error)
 	return result, nil
 }
 
-// GetAtrule returns the syntax of an at-rule, nil when it is unknown. With
-// fallbackBasename (upstream's default), a vendor-prefixed name falls back
-// to the name without the prefix.
-func (l *Lexer) GetAtrule(atruleName string, fallbackBasename bool) *AtruleSyntax {
-	atrule := Keyword(atruleName)
-	var atruleEntry *AtruleSyntax
-	if atrule.Vendor != "" && fallbackBasename {
-		atruleEntry = l.atrules[atrule.Name]
-		if atruleEntry == nil {
-			atruleEntry = l.atrules[atrule.Basename]
-		}
-	} else {
-		atruleEntry = l.atrules[atrule.Name]
+// Atrule returns the syntax of an at-rule, nil when it is unknown. The name
+// is ASCII case-insensitive, and a vendor-prefixed name falls back to the
+// name without the prefix (upstream getAtrule(name, true)).
+func (l *Lexer) Atrule(name string) *AtruleSyntax {
+	keyword := Keyword(name)
+	if atrule := l.atrules[keyword.Name]; atrule != nil {
+		return atrule
 	}
 
-	return atruleEntry
+	return l.atrules[keyword.Basename]
 }
 
-// GetAtrulePrelude returns the prelude syntax of an at-rule, nil when the
-// at-rule is unknown or has no prelude.
-func (l *Lexer) GetAtrulePrelude(atruleName string, fallbackBasename bool) *Descriptor {
-	atrule := l.GetAtrule(atruleName, fallbackBasename)
-
+// AtrulePrelude returns the prelude syntax of an at-rule, nil when the
+// at-rule is unknown or has no prelude. The name is looked up as Atrule
+// does.
+func (l *Lexer) AtrulePrelude(atruleName string) *Descriptor {
+	atrule := l.Atrule(atruleName)
 	if atrule == nil {
 		return nil
 	}
@@ -993,26 +987,21 @@ func (l *Lexer) GetAtrulePrelude(atruleName string, fallbackBasename bool) *Desc
 	return atrule.prelude
 }
 
-// GetProperty returns the syntax of a property, nil when it is unknown.
-// With fallbackBasename (upstream's default), a vendor-prefixed name falls
-// back to the name without the prefix.
-func (l *Lexer) GetProperty(propertyName string, fallbackBasename bool) *Descriptor {
-	property := Property(propertyName)
-	var propertyEntry *Descriptor
-	if property.Vendor != "" && fallbackBasename {
-		propertyEntry = l.properties[property.Name]
-		if propertyEntry == nil {
-			propertyEntry = l.properties[property.Basename]
-		}
-	} else {
-		propertyEntry = l.properties[property.Name]
+// Property returns the syntax of a property, nil when it is unknown. The
+// name is ASCII case-insensitive, may have a hack prefix (such as "_" or
+// "*"), and a vendor-prefixed name falls back to the name without the
+// prefix (upstream getProperty(name, true)).
+func (l *Lexer) Property(name string) *Descriptor {
+	property := Property(name)
+	if descriptor := l.properties[property.Name]; descriptor != nil {
+		return descriptor
 	}
 
-	return propertyEntry
+	return l.properties[property.Basename]
 }
 
-// GetType returns the syntax of a type, nil when it is unknown.
-func (l *Lexer) GetType(name string) *Descriptor {
+// Type returns the syntax of a type, nil when it is unknown.
+func (l *Lexer) Type(name string) *Descriptor {
 	return l.types[name]
 }
 
@@ -1157,19 +1146,20 @@ func (m *brokenMap) brokenNames() []string {
 }
 
 // Dump returns the lexer's configuration with its syntaxes generated as
-// definition syntax text, compact unless pretty (upstream dump(false,
-// pretty)). Generic types, which have no definition syntax, are left out.
-// It fails when a syntax does not parse.
-func (l *Lexer) Dump(pretty bool) (*LexerDump, error) {
-	types, err := dumpMapSyntax(l.typeNames, l.types, !pretty)
+// compact definition syntax text (upstream dump()). Generic types, which
+// have no definition syntax, are left out. It fails when a syntax does not
+// parse. For other text, generate the trees of the descriptors of Types,
+// Properties and Atrules with definitionsyntax.Generate.
+func (l *Lexer) Dump() (*LexerDump, error) {
+	types, err := dumpMapSyntax(l.typeNames, l.types)
 	if err != nil {
 		return nil, err
 	}
-	properties, err := dumpMapSyntax(l.propertyNames, l.properties, !pretty)
+	properties, err := dumpMapSyntax(l.propertyNames, l.properties)
 	if err != nil {
 		return nil, err
 	}
-	atrules, err := dumpAtruleMapSyntax(l.atruleNames, l.atrules, !pretty)
+	atrules, err := dumpAtruleMapSyntax(l.atruleNames, l.atrules)
 	if err != nil {
 		return nil, err
 	}
@@ -1184,10 +1174,10 @@ func (l *Lexer) Dump(pretty bool) (*LexerDump, error) {
 	}, nil
 }
 
-// String returns the JSON of Dump(false) (upstream toString), or the
-// error text when a syntax does not parse.
+// String returns the JSON of Dump (upstream toString), or the error text
+// when a syntax does not parse.
 func (l *Lexer) String() string {
-	dump, err := l.Dump(false)
+	dump, err := l.Dump()
 	if err != nil {
 		return err.Error()
 	}

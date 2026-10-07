@@ -37,7 +37,7 @@ func TestLexerMatchResult(t *testing.T) {
 	t.Run("getTrace()", func(t *testing.T) {
 		testNode, match, mismatch := setup(t)
 
-		got := formatTrace(match.GetTrace(testNode))
+		got := formatTrace(match.Trace(testNode))
 		want := []string{
 			"Property background",
 			"Type final-bg-layer",
@@ -49,16 +49,16 @@ func TestLexerMatchResult(t *testing.T) {
 			"Type number",
 		}
 		if !slices.Equal(got, want) {
-			t.Errorf("GetTrace() = %q, want %q", got, want)
+			t.Errorf("Trace() = %q, want %q", got, want)
 		}
 		// upstream also compares opts: null of each Type
-		for _, syntax := range match.GetTrace(testNode) {
+		for _, syntax := range match.Trace(testNode) {
 			if node, ok := syntax.(*definitionsyntax.Type); ok && node.Opts != nil {
-				t.Errorf("GetTrace() %v has opts, want nil", syntax)
+				t.Errorf("Trace() %v has opts, want nil", syntax)
 			}
 		}
-		if trace := mismatch.GetTrace(testNode); trace != nil {
-			t.Errorf("mismatch.GetTrace() = %v, want nil", trace)
+		if trace := mismatch.Trace(testNode); trace != nil {
+			t.Errorf("mismatch.Trace() = %v, want nil", trace)
 		}
 	})
 
