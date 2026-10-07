@@ -1,6 +1,7 @@
 package csstree
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -14,7 +15,7 @@ func parseCollectingErrors(t *testing.T, source string, options ParseOptions) (N
 	t.Helper()
 	var parseErrors []string
 	options.OnParseError = func(err error, _ Node) error {
-		parseErrors = append(parseErrors, err.Error())
+		parseErrors = append(parseErrors, syntaxErrorMessage(err))
 		return nil
 	}
 	ast, err := Parse(source, options)
@@ -22,6 +23,17 @@ func parseCollectingErrors(t *testing.T, source string, options ParseOptions) (N
 		t.Fatalf("Parse(%q) error: %v", source, err)
 	}
 	return ast, parseErrors
+}
+
+// syntaxErrorMessage returns the Message of err when it is a *SyntaxError
+// (upstream error.message, which Error prefixes with the position), and
+// the text of err otherwise.
+func syntaxErrorMessage(err error) string {
+	var syntaxErr *SyntaxError
+	if errors.As(err, &syntaxErr) {
+		return syntaxErr.Message
+	}
+	return err.Error()
 }
 
 // specParseTest is a source parsed in a context, with the expected plain

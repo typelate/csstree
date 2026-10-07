@@ -35,7 +35,7 @@ func TestParseNameWithDottedCapitalI(t *testing.T) {
 		t.Run(tt.source, func(t *testing.T) {
 			var parseErrors []string
 			ast, err := Parse(tt.source, ParseOptions{OnParseError: func(err error, _ Node) error {
-				parseErrors = append(parseErrors, err.Error())
+				parseErrors = append(parseErrors, syntaxErrorMessage(err))
 				return nil
 			}})
 			if err != nil {
@@ -147,7 +147,7 @@ func TestParseOnParseErrorPanics(t *testing.T) {
 
 	var messages []string
 	if _, err := Parse(source, ParseOptions{OnParseError: func(err error, _ Node) error {
-		messages = append(messages, err.Error())
+		messages = append(messages, syntaxErrorMessage(err))
 		return nil
 	}}); err != nil {
 		t.Fatalf("Parse(%q, ...): %v", source, err)
@@ -181,7 +181,7 @@ func TestParseConditionUnknownKind(t *testing.T) {
 	if len(parseErrors) != 2 || !errors.As(parseErrors[0], &syntaxError) {
 		t.Fatalf("parse errors = %v, want two, the first a *SyntaxError", parseErrors)
 	}
-	if got, want := parseErrors[0].Error(), "Unknown condition kind `unknown`"; got != want {
+	if got, want := syntaxError.Message, "Unknown condition kind `unknown`"; got != want {
 		t.Errorf("parse error = %q, want %q", got, want)
 	}
 }

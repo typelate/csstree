@@ -30,9 +30,10 @@ type SyntaxError struct {
 	baseColumn int
 }
 
-// Error returns Message, the same text as upstream's error.message.
+// Error returns the position and Message, as "line:column: message" (like
+// go/scanner). Message alone is upstream's error.message.
 func (e *SyntaxError) Error() string {
-	return e.Message
+	return strconv.Itoa(e.Line) + ":" + strconv.Itoa(e.Column) + ": " + e.Message
 }
 
 // SourceFragment returns the source lines around the error with a caret
