@@ -48,6 +48,47 @@ See `Example` in [example_test.go](example_test.go) for walking an AST.
   handlers, as upstream's documentation says; upstream ignores `walk.break`
   and `walk.skip` when `visit` is set.
 
+### Where the port follows the specs instead of upstream
+
+Tokenizer (CSS Syntax 3):
+
+- U+0000 and invalid UTF-8 read as U+FFFD; token offsets still index the
+  original bytes, and the `Decode*` functions return U+FFFD.
+- A bad-string ends before the newline that ends it, and bad-url remnants
+  resume right after an escape.
+- Only U+FEFF is skipped as a byte order mark.
+
+Parser and generator:
+
+- Nested style rules don't need `&`: `.a{.b{}}`, `.a{> .b{}}` and
+  `.a{color:red; .b{} color:blue}` give nested rules.
+- Media and container queries accept `=` ranges (`(width = 600px)`); mixed
+  direction ranges and conditions mixing `and`/`or` at one level are errors.
+- The column combinator `||` parses, and attribute modifiers must be `i` or
+  `s`.
+- Only a trailing `!important` leaves a declaration value
+  (`red!important!important` is important with value `red!important`), and a
+  `;` inside `()`, `[]` or a function stays in the value.
+- Parse → generate is a fixed point after a lone `\` or a value that ends
+  inside a string.
+
+Lexer (CSS Values 4):
+
+- Keywords, units and function names compare by their escape-decoded value
+  (`\72 ed` is `red`); `<custom-ident>` rejects escaped CSS-wide keywords.
+- `<number>` takes only number tokens, not `+`, `-` or idents like `e5`.
+- Ranges with units are checked (`<angle [0deg,360deg]>` rejects `400deg`),
+  converting between units of one type; relative lengths are checked by sign.
+- `<urange>` rejects ranges above U+10FFFF or with start after end.
+- Math functions (`calc()`, `min()`, `clamp()`, `round()`, trigonometric and
+  others) are type checked: `width: calc(red)`, `opacity: calc(1px)` and
+  `calc(1px+2px)` no longer match.
+
+Definition syntax:
+
+- `{0}` means exactly zero (`definitionsyntax.Unbounded` marks no upper
+  bound), `{B,A}` with B < A is an error, and range bounds accept U+2212 `−`.
+
 ## License
 
 MIT, like upstream; see [LICENSE](LICENSE). The port is copyright Christopher

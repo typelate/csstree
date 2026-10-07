@@ -162,7 +162,12 @@ func CreateGenerator(config *Config) func(node Node, options GenerateOptions) (s
 
 				h.Emit(h, value, tokenType, false)
 
-				if tokenType == tokenizer.Delim && tokenizer.CharCodeAt(value, 0) == reverseSolidus {
+				// A lone \ must not escape the next char, and a string left open
+				// (a bad-string, or a Raw value ending inside a string) must end at
+				// a newline (CSS Syntax 4.3.5) instead of swallowing what follows.
+				if tokenType == tokenizer.BadString ||
+					tokenType == tokenizer.String && !isClosedString(value) ||
+					tokenType == tokenizer.Delim && tokenizer.CharCodeAt(value, 0) == reverseSolidus {
 					newlineDue = true
 				}
 			},
@@ -222,4 +227,20 @@ func Generate(node Node, options GenerateOptions) (string, error) {
 // FF; https://drafts.csswg.org/css-syntax-3/#newline).
 func startsWithNewline(text string) bool {
 	return text != "" && (text[0] == '\n' || text[0] == '\r' || text[0] == '\f')
+}
+
+// isClosedString reports whether a string token's text ends with the quote
+// it starts with, unescaped. A string token at the end of its input may be
+// left open (CSS Syntax 4.3.5: EOF ends the token without a closing quote).
+func isClosedString(value string) bool {
+	if len(value) < 2 || value[len(value)-1] != value[0] {
+		return false
+	}
+
+	backslashes := 0
+	for i := len(value) - 2; i > 0 && value[i] == '\\'; i-- {
+		backslashes++
+	}
+
+	return backslashes%2 == 0
 }
