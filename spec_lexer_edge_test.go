@@ -225,9 +225,10 @@ func TestJSNumberEdges(t *testing.T) {
 }
 
 // TestLexerSpecEdgeCases matches values from the edge cases of CSS Values
-// and Units 4 and CSS Syntax 3. The expectations are upstream's results;
-// where upstream disagrees with the spec, the comment says what the spec
-// expects (the port keeps upstream's behaviour).
+// and Units 4 and CSS Syntax 3. The expectations are upstream's results,
+// except where a comment says the port follows the spec; elsewhere, where
+// upstream disagrees with the spec, the comment says what the spec expects
+// (the port keeps upstream's behaviour).
 func TestLexerSpecEdgeCases(t *testing.T) {
 	const mismatch = "Mismatch"
 

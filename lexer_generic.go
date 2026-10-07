@@ -661,20 +661,17 @@ func dimension(units []string) genericFunc {
 
 		numberEnd := tokenizer.ConsumeNumber(token.value, 0)
 
-		// check unit
-		if unitSet != nil {
-			// the unit without the IE postfix hack, i.e. 123px\0 or
-			// 123px\9, and with escapes decoded, compared ASCII
-			// case-insensitively
-			unit := dimensionUnit(token.value, numberEnd)
+		// the unit without the IE postfix hack, i.e. 123px\0 or 123px\9,
+		// and with escapes decoded, compared ASCII case-insensitively
+		unit := asciiLowerCase(dimensionUnit(token.value, numberEnd))
 
-			if !unitSet[asciiLowerCase(unit)] {
-				return 0
-			}
+		// check unit
+		if unitSet != nil && !unitSet[unit] {
+			return 0
 		}
 
 		// check range if specified
-		if outOfRangeUnit(opts, token.value, numberEnd, asciiLowerCase(dimensionUnit(token.value, numberEnd))) {
+		if outOfRangeUnit(opts, token.value, numberEnd, unit) {
 			return 0
 		}
 
