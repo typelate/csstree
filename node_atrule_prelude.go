@@ -15,8 +15,9 @@ type AtrulePrelude struct {
 	Children *List[Node] `css:"children,[]"`
 }
 
-// AtrulePrelude parses the prelude of the at-rule name ("" is upstream
-// null) with the at-rule's prelude parser, or the AtrulePrelude scope.
+// AtrulePrelude parses the prelude of the at-rule name with the at-rule's
+// prelude parser, or with the AtrulePrelude scope when the at-rule has none
+// or name is "".
 func (p *Parser) AtrulePrelude(name string) *AtrulePrelude {
 	var children *List[Node]
 

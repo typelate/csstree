@@ -488,11 +488,15 @@ func writeConfig(buf *bytes.Buffer, t nodeType) {
 func writeNodeType(buf *bytes.Buffer, t nodeType) {
 	p := func(format string, args ...any) { fmt.Fprintf(buf, format, args...) }
 
-	p("\nfunc (n *%s) Type() string { return %q }\n", t.goName, t.name)
+	p("\n// Type returns %q.\n", t.name)
+	p("func (n *%s) Type() string { return %q }\n", t.goName, t.name)
+	p("\n// Location returns n.Loc, which is nil when positions are off.\n")
 	p("func (n *%s) Location() *Location { return n.Loc }\n", t.goName)
 
 	// MarshalJSON
-	p("\nfunc (n *%s) MarshalJSON() ([]byte, error) {\n", t.goName)
+	p("\n// MarshalJSON encodes n as a JSON object with \"type\", \"loc\" and\n")
+	p("// the fields of the node type in structure order.\n")
+	p("func (n *%s) MarshalJSON() ([]byte, error) {\n", t.goName)
 	if len(t.fields) == 0 {
 		p("return marshalNode(n)\n}\n")
 	} else {

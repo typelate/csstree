@@ -13,7 +13,7 @@ import "github.com/typelate/csstree/tokenizer"
 type GeneralEnclosed struct {
 	Loc  *Location
 	Kind string `css:"kind,string"`
-	// Function is the function name; "" (upstream null) for ( <any-value> ).
+	// Function is the function name, or "" for ( <any-value> ).
 	Function string      `css:"function,string|null"`
 	Children *List[Node] `css:"children,[]"`
 }

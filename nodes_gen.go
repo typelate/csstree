@@ -511,9 +511,14 @@ func nodeConfigs() map[string]NodeConfig {
 	}
 }
 
-func (n *AnPlusB) Type() string        { return "AnPlusB" }
+// Type returns "AnPlusB".
+func (n *AnPlusB) Type() string { return "AnPlusB" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *AnPlusB) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *AnPlusB) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"a", nullableString(n.A)},
@@ -535,9 +540,14 @@ func fromPlainObjectAnPlusB(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Atrule) Type() string        { return "Atrule" }
+// Type returns "Atrule".
+func (n *Atrule) Type() string { return "Atrule" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Atrule) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Atrule) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -575,9 +585,14 @@ func fromPlainObjectAtrule(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *AtrulePrelude) Type() string        { return "AtrulePrelude" }
+// Type returns "AtrulePrelude".
+func (n *AtrulePrelude) Type() string { return "AtrulePrelude" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *AtrulePrelude) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *AtrulePrelude) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -603,9 +618,14 @@ func fromPlainObjectAtrulePrelude(r *PlainObjectReader, object map[string]any) N
 	}
 }
 
-func (n *AttributeSelector) Type() string        { return "AttributeSelector" }
+// Type returns "AttributeSelector".
+func (n *AttributeSelector) Type() string { return "AttributeSelector" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *AttributeSelector) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *AttributeSelector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -645,9 +665,14 @@ func fromPlainObjectAttributeSelector(r *PlainObjectReader, object map[string]an
 	}
 }
 
-func (n *Block) Type() string        { return "Block" }
+// Type returns "Block".
+func (n *Block) Type() string { return "Block" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Block) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Block) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -673,9 +698,14 @@ func fromPlainObjectBlock(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Brackets) Type() string        { return "Brackets" }
+// Type returns "Brackets".
+func (n *Brackets) Type() string { return "Brackets" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Brackets) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Brackets) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -701,9 +731,14 @@ func fromPlainObjectBrackets(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *CDC) Type() string        { return "CDC" }
+// Type returns "CDC".
+func (n *CDC) Type() string { return "CDC" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *CDC) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *CDC) MarshalJSON() ([]byte, error) {
 	return marshalNode(n)
 }
@@ -720,9 +755,14 @@ func fromPlainObjectCDC(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *CDO) Type() string        { return "CDO" }
+// Type returns "CDO".
+func (n *CDO) Type() string { return "CDO" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *CDO) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *CDO) MarshalJSON() ([]byte, error) {
 	return marshalNode(n)
 }
@@ -739,9 +779,14 @@ func fromPlainObjectCDO(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *ClassSelector) Type() string        { return "ClassSelector" }
+// Type returns "ClassSelector".
+func (n *ClassSelector) Type() string { return "ClassSelector" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *ClassSelector) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *ClassSelector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -761,9 +806,14 @@ func fromPlainObjectClassSelector(r *PlainObjectReader, object map[string]any) N
 	}
 }
 
-func (n *Combinator) Type() string        { return "Combinator" }
+// Type returns "Combinator".
+func (n *Combinator) Type() string { return "Combinator" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Combinator) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Combinator) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -783,9 +833,14 @@ func fromPlainObjectCombinator(r *PlainObjectReader, object map[string]any) Node
 	}
 }
 
-func (n *Comment) Type() string        { return "Comment" }
+// Type returns "Comment".
+func (n *Comment) Type() string { return "Comment" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Comment) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Comment) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
@@ -805,9 +860,14 @@ func fromPlainObjectComment(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Condition) Type() string        { return "Condition" }
+// Type returns "Condition".
+func (n *Condition) Type() string { return "Condition" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Condition) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Condition) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"kind", n.Kind},
@@ -835,9 +895,14 @@ func fromPlainObjectCondition(r *PlainObjectReader, object map[string]any) Node 
 	}
 }
 
-func (n *Declaration) Type() string        { return "Declaration" }
+// Type returns "Declaration".
+func (n *Declaration) Type() string { return "Declaration" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Declaration) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Declaration) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"important", importantJSON(n.Important)},
@@ -867,9 +932,14 @@ func fromPlainObjectDeclaration(r *PlainObjectReader, object map[string]any) Nod
 	}
 }
 
-func (n *DeclarationList) Type() string        { return "DeclarationList" }
+// Type returns "DeclarationList".
+func (n *DeclarationList) Type() string { return "DeclarationList" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *DeclarationList) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *DeclarationList) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -895,9 +965,14 @@ func fromPlainObjectDeclarationList(r *PlainObjectReader, object map[string]any)
 	}
 }
 
-func (n *Dimension) Type() string        { return "Dimension" }
+// Type returns "Dimension".
+func (n *Dimension) Type() string { return "Dimension" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Dimension) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Dimension) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
@@ -919,9 +994,14 @@ func fromPlainObjectDimension(r *PlainObjectReader, object map[string]any) Node 
 	}
 }
 
-func (n *Feature) Type() string        { return "Feature" }
+// Type returns "Feature".
+func (n *Feature) Type() string { return "Feature" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Feature) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Feature) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"kind", n.Kind},
@@ -951,9 +1031,14 @@ func fromPlainObjectFeature(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *FeatureFunction) Type() string        { return "FeatureFunction" }
+// Type returns "FeatureFunction".
+func (n *FeatureFunction) Type() string { return "FeatureFunction" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *FeatureFunction) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *FeatureFunction) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"kind", n.Kind},
@@ -983,9 +1068,14 @@ func fromPlainObjectFeatureFunction(r *PlainObjectReader, object map[string]any)
 	}
 }
 
-func (n *FeatureRange) Type() string        { return "FeatureRange" }
+// Type returns "FeatureRange".
+func (n *FeatureRange) Type() string { return "FeatureRange" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *FeatureRange) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *FeatureRange) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"kind", n.Kind},
@@ -1030,9 +1120,14 @@ func fromPlainObjectFeatureRange(r *PlainObjectReader, object map[string]any) No
 	}
 }
 
-func (n *Function) Type() string        { return "Function" }
+// Type returns "Function".
+func (n *Function) Type() string { return "Function" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Function) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Function) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -1060,9 +1155,14 @@ func fromPlainObjectFunction(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *GeneralEnclosed) Type() string        { return "GeneralEnclosed" }
+// Type returns "GeneralEnclosed".
+func (n *GeneralEnclosed) Type() string { return "GeneralEnclosed" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *GeneralEnclosed) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *GeneralEnclosed) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"kind", n.Kind},
@@ -1092,9 +1192,14 @@ func fromPlainObjectGeneralEnclosed(r *PlainObjectReader, object map[string]any)
 	}
 }
 
-func (n *Hash) Type() string        { return "Hash" }
+// Type returns "Hash".
+func (n *Hash) Type() string { return "Hash" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Hash) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Hash) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
@@ -1114,9 +1219,14 @@ func fromPlainObjectHash(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *IDSelector) Type() string        { return "IdSelector" }
+// Type returns "IdSelector".
+func (n *IDSelector) Type() string { return "IdSelector" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *IDSelector) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *IDSelector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -1136,9 +1246,14 @@ func fromPlainObjectIDSelector(r *PlainObjectReader, object map[string]any) Node
 	}
 }
 
-func (n *Identifier) Type() string        { return "Identifier" }
+// Type returns "Identifier".
+func (n *Identifier) Type() string { return "Identifier" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Identifier) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Identifier) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -1158,9 +1273,14 @@ func fromPlainObjectIdentifier(r *PlainObjectReader, object map[string]any) Node
 	}
 }
 
-func (n *Layer) Type() string        { return "Layer" }
+// Type returns "Layer".
+func (n *Layer) Type() string { return "Layer" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Layer) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Layer) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -1180,9 +1300,14 @@ func fromPlainObjectLayer(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *LayerList) Type() string        { return "LayerList" }
+// Type returns "LayerList".
+func (n *LayerList) Type() string { return "LayerList" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *LayerList) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *LayerList) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -1208,9 +1333,14 @@ func fromPlainObjectLayerList(r *PlainObjectReader, object map[string]any) Node 
 	}
 }
 
-func (n *MediaQuery) Type() string        { return "MediaQuery" }
+// Type returns "MediaQuery".
+func (n *MediaQuery) Type() string { return "MediaQuery" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *MediaQuery) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *MediaQuery) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"modifier", nullableString(n.Modifier)},
@@ -1242,9 +1372,14 @@ func fromPlainObjectMediaQuery(r *PlainObjectReader, object map[string]any) Node
 	}
 }
 
-func (n *MediaQueryList) Type() string        { return "MediaQueryList" }
+// Type returns "MediaQueryList".
+func (n *MediaQueryList) Type() string { return "MediaQueryList" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *MediaQueryList) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *MediaQueryList) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -1270,9 +1405,14 @@ func fromPlainObjectMediaQueryList(r *PlainObjectReader, object map[string]any) 
 	}
 }
 
-func (n *NestingSelector) Type() string        { return "NestingSelector" }
+// Type returns "NestingSelector".
+func (n *NestingSelector) Type() string { return "NestingSelector" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *NestingSelector) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *NestingSelector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n)
 }
@@ -1289,9 +1429,14 @@ func fromPlainObjectNestingSelector(r *PlainObjectReader, object map[string]any)
 	}
 }
 
-func (n *Nth) Type() string        { return "Nth" }
+// Type returns "Nth".
+func (n *Nth) Type() string { return "Nth" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Nth) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Nth) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"nth", n.Nth},
@@ -1327,9 +1472,14 @@ func fromPlainObjectNth(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Number) Type() string        { return "Number" }
+// Type returns "Number".
+func (n *Number) Type() string { return "Number" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Number) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Number) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
@@ -1349,9 +1499,14 @@ func fromPlainObjectNumber(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Operator) Type() string        { return "Operator" }
+// Type returns "Operator".
+func (n *Operator) Type() string { return "Operator" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Operator) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Operator) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
@@ -1371,9 +1526,14 @@ func fromPlainObjectOperator(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Parentheses) Type() string        { return "Parentheses" }
+// Type returns "Parentheses".
+func (n *Parentheses) Type() string { return "Parentheses" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Parentheses) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Parentheses) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -1399,9 +1559,14 @@ func fromPlainObjectParentheses(r *PlainObjectReader, object map[string]any) Nod
 	}
 }
 
-func (n *Percentage) Type() string        { return "Percentage" }
+// Type returns "Percentage".
+func (n *Percentage) Type() string { return "Percentage" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Percentage) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Percentage) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
@@ -1421,9 +1586,14 @@ func fromPlainObjectPercentage(r *PlainObjectReader, object map[string]any) Node
 	}
 }
 
-func (n *PseudoClassSelector) Type() string        { return "PseudoClassSelector" }
+// Type returns "PseudoClassSelector".
+func (n *PseudoClassSelector) Type() string { return "PseudoClassSelector" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *PseudoClassSelector) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *PseudoClassSelector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -1451,9 +1621,14 @@ func fromPlainObjectPseudoClassSelector(r *PlainObjectReader, object map[string]
 	}
 }
 
-func (n *PseudoElementSelector) Type() string        { return "PseudoElementSelector" }
+// Type returns "PseudoElementSelector".
+func (n *PseudoElementSelector) Type() string { return "PseudoElementSelector" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *PseudoElementSelector) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *PseudoElementSelector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -1481,9 +1656,14 @@ func fromPlainObjectPseudoElementSelector(r *PlainObjectReader, object map[strin
 	}
 }
 
-func (n *Ratio) Type() string        { return "Ratio" }
+// Type returns "Ratio".
+func (n *Ratio) Type() string { return "Ratio" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Ratio) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Ratio) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"left", n.Left},
@@ -1517,9 +1697,14 @@ func fromPlainObjectRatio(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Raw) Type() string        { return "Raw" }
+// Type returns "Raw".
+func (n *Raw) Type() string { return "Raw" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Raw) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Raw) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
@@ -1539,9 +1724,14 @@ func fromPlainObjectRaw(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Rule) Type() string        { return "Rule" }
+// Type returns "Rule".
+func (n *Rule) Type() string { return "Rule" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Rule) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Rule) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"prelude", n.Prelude},
@@ -1577,9 +1767,14 @@ func fromPlainObjectRule(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Scope) Type() string        { return "Scope" }
+// Type returns "Scope".
+func (n *Scope) Type() string { return "Scope" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Scope) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Scope) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"root", n.Root},
@@ -1613,9 +1808,14 @@ func fromPlainObjectScope(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Selector) Type() string        { return "Selector" }
+// Type returns "Selector".
+func (n *Selector) Type() string { return "Selector" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Selector) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Selector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -1641,9 +1841,14 @@ func fromPlainObjectSelector(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *SelectorList) Type() string        { return "SelectorList" }
+// Type returns "SelectorList".
+func (n *SelectorList) Type() string { return "SelectorList" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *SelectorList) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *SelectorList) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -1669,9 +1874,14 @@ func fromPlainObjectSelectorList(r *PlainObjectReader, object map[string]any) No
 	}
 }
 
-func (n *String) Type() string        { return "String" }
+// Type returns "String".
+func (n *String) Type() string { return "String" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *String) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *String) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
@@ -1691,9 +1901,14 @@ func fromPlainObjectString(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *StyleSheet) Type() string        { return "StyleSheet" }
+// Type returns "StyleSheet".
+func (n *StyleSheet) Type() string { return "StyleSheet" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *StyleSheet) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *StyleSheet) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -1719,9 +1934,14 @@ func fromPlainObjectStyleSheet(r *PlainObjectReader, object map[string]any) Node
 	}
 }
 
-func (n *SupportsDeclaration) Type() string        { return "SupportsDeclaration" }
+// Type returns "SupportsDeclaration".
+func (n *SupportsDeclaration) Type() string { return "SupportsDeclaration" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *SupportsDeclaration) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *SupportsDeclaration) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"declaration", n.Declaration},
@@ -1749,9 +1969,14 @@ func fromPlainObjectSupportsDeclaration(r *PlainObjectReader, object map[string]
 	}
 }
 
-func (n *TypeSelector) Type() string        { return "TypeSelector" }
+// Type returns "TypeSelector".
+func (n *TypeSelector) Type() string { return "TypeSelector" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *TypeSelector) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *TypeSelector) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"name", n.Name},
@@ -1771,9 +1996,14 @@ func fromPlainObjectTypeSelector(r *PlainObjectReader, object map[string]any) No
 	}
 }
 
-func (n *UnicodeRange) Type() string        { return "UnicodeRange" }
+// Type returns "UnicodeRange".
+func (n *UnicodeRange) Type() string { return "UnicodeRange" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *UnicodeRange) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *UnicodeRange) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
@@ -1793,9 +2023,14 @@ func fromPlainObjectUnicodeRange(r *PlainObjectReader, object map[string]any) No
 	}
 }
 
-func (n *URL) Type() string        { return "Url" }
+// Type returns "Url".
+func (n *URL) Type() string { return "Url" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *URL) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *URL) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},
@@ -1815,9 +2050,14 @@ func fromPlainObjectURL(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *Value) Type() string        { return "Value" }
+// Type returns "Value".
+func (n *Value) Type() string { return "Value" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *Value) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *Value) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"children", n.Children},
@@ -1843,9 +2083,14 @@ func fromPlainObjectValue(r *PlainObjectReader, object map[string]any) Node {
 	}
 }
 
-func (n *WhiteSpace) Type() string        { return "WhiteSpace" }
+// Type returns "WhiteSpace".
+func (n *WhiteSpace) Type() string { return "WhiteSpace" }
+
+// Location returns n.Loc, which is nil when positions are off.
 func (n *WhiteSpace) Location() *Location { return n.Loc }
 
+// MarshalJSON encodes n as a JSON object with "type", "loc" and
+// the fields of the node type in structure order.
 func (n *WhiteSpace) MarshalJSON() ([]byte, error) {
 	return marshalNode(n,
 		jsonField{"value", n.Value},

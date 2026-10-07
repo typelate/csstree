@@ -90,9 +90,9 @@ func lastNonSC(p *Parser, start, end int) int {
 //csstree:node walkContext=declaration
 type Declaration struct {
 	Loc *Location
-	// Important is "" for no !important (upstream false), "important" for
-	// !important (upstream true), or the text after ! when it differs from
-	// "important", e.g. "IMPORTANT" or "ie" (upstream keeps that string).
+	// Important is "" without !important, "important" for !important,
+	// or the text after ! when it is not "important", such as "IMPORTANT"
+	// or "ie". It encodes to JSON as false, true or that text.
 	Important string `css:"important,boolean|string,json=importantJSON,read=plainObjectImportant"`
 	Property  string `css:"property,string"`
 	// Value is a *Value or a *Raw.

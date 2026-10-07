@@ -47,7 +47,7 @@ type C struct {
 	}
 
 	for _, want := range []string{
-		`func (n *A) Type() string        { return "Alpha" }`,
+		`func (n *A) Type() string { return "Alpha" }`,
 		`jsonField{"name", nullableString(n.Name)},`,
 		`jsonField{"important", toJSON(n.Important)},`,
 		`{Name: "important", Types: []FieldType{booleanField(), stringField()}},`,

@@ -18,7 +18,7 @@ type FeatureRange struct {
 	Left           Node   `css:"left,Identifier|Number|Dimension|Ratio|Function"`
 	LeftComparison string `css:"leftComparison,string"`
 	Middle         Node   `css:"middle,Identifier|Number|Dimension|Ratio|Function"`
-	// RightComparison is "" (upstream null) when Right is nil.
+	// RightComparison is "" when Right is nil.
 	RightComparison string `css:"rightComparison,string|null"`
 	Right           Node   `css:"right,Identifier|Number|Dimension|Ratio|Function|null"`
 }

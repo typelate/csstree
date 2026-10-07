@@ -4,7 +4,8 @@ package csstree
 
 import "github.com/typelate/csstree/tokenizer"
 
-// IDSelector is an id selector, '#' ident (upstream IdSelector).
+// IDSelector is an id selector, '#' ident. Its type name is "IdSelector",
+// as upstream names it.
 //
 //csstree:node name=IdSelector
 type IDSelector struct {
@@ -12,7 +13,7 @@ type IDSelector struct {
 	Name string `css:"name,string"`
 }
 
-// IDSelector parses an id selector (upstream IdSelector).
+// IDSelector parses an id selector.
 func (p *Parser) IDSelector() *IDSelector {
 	start := p.TokenStart
 

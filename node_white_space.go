@@ -12,8 +12,9 @@ type WhiteSpace struct {
 	Value string `css:"value,string"`
 }
 
-// WhiteSpace parses a whitespace token. Upstream returns one frozen shared
-// node; the port returns a new node each time.
+// WhiteSpace moves past a whitespace token and returns a new WhiteSpace
+// node with Value " " and no location. (Upstream returns one shared,
+// frozen node.)
 func (p *Parser) WhiteSpace() *WhiteSpace {
 	p.Eat(tokenizer.WhiteSpace)
 	return &WhiteSpace{

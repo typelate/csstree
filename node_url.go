@@ -4,8 +4,8 @@ package csstree
 
 import "github.com/typelate/csstree/tokenizer"
 
-// URL is a url, <url-token> | <function-token> <string> ) (upstream Url);
-// Value is decoded.
+// URL is a url, <url-token> | <function-token> <string> ). Value is
+// decoded. Its type name is "Url", as upstream names it.
 //
 //csstree:node name=Url
 type URL struct {
@@ -13,7 +13,7 @@ type URL struct {
 	Value string `css:"value,string"`
 }
 
-// URL parses <url-token> | <function-token> <string> ) (upstream Url).
+// URL parses <url-token> | <function-token> <string> ).
 func (p *Parser) URL() *URL {
 	start := p.TokenStart
 	var value string

@@ -20,34 +20,39 @@ import (
 // package (StyleSheet, Rule, Selector, ...) or to a node type added by an
 // extension.
 type Node interface {
-	// Type returns upstream node.type, e.g. "Selector".
+	// Type returns the name of the node type, such as "Selector". It is
+	// the "type" key of the node's JSON.
 	Type() string
-	// Location returns upstream node.loc, nil when positions are off.
+	// Location returns the node's range in the source, or nil when the
+	// parse did not record positions (see ParseOptions.Positions).
 	Location() *Location
 }
 
-// Location is a node's range in the source (upstream node.loc).
+// Location is a node's range in the source. Its JSON is the "loc" key of a
+// node.
 type Location = tokenizer.Location
 
 // FieldKind is the kind of one alternative of a node structure field.
 type FieldKind int
 
 const (
-	// FieldString is upstream String: the field holds a string.
+	// FieldString means the field holds a string.
 	FieldString FieldKind = iota + 1
-	// FieldBoolean is upstream Boolean: the field holds a boolean.
+	// FieldBoolean means the field holds a boolean.
 	FieldBoolean
-	// FieldNull is upstream null: the field may be null.
+	// FieldNull means the field may be null (a nil node or list, or an
+	// empty string).
 	FieldNull
-	// FieldNode is a node type name: the field holds a node of type FieldType.Node.
+	// FieldNode means the field holds a node of type FieldType.Node.
 	FieldNode
-	// FieldList is upstream [[...]]: the field holds a list of nodes whose
-	// types are in FieldType.List (any type when empty).
+	// FieldList means the field holds a list of nodes whose types are in
+	// FieldType.List (any type when it is empty).
 	FieldList
 )
 
 // FieldType is one alternative of a node structure field.
 type FieldType struct {
+	// Kind is what the field holds.
 	Kind FieldKind
 	// Node is the node type for FieldNode.
 	Node string
@@ -55,51 +60,64 @@ type FieldType struct {
 	List []string
 }
 
-// StructureField describes one field of a node type (upstream
-// structure[name] = [...types]). Fields are kept in upstream order.
+// StructureField describes one field of a node type: its JSON key and the
+// kinds of value it may hold. The lexer's structure check and the walk
+// order follow the order of the fields in NodeConfig.Structure.
 type StructureField struct {
-	Name  string
+	// Name is the field's JSON key, such as "children".
+	Name string
+	// Types are the kinds of value the field may hold.
 	Types []FieldType
 }
 
-// GenerateFunc writes node to g (upstream generate(node) with this bound to
-// the generator's public API).
+// GenerateFunc writes the CSS of node to g, as tokens, calling g.Node and
+// g.Children for its child nodes.
 type GenerateFunc func(g *Generator, node Node)
 
 // WalkFieldsFunc calls walkNode for each non-nil node field and walkList
 // for each non-nil list field of node, in structure order or, when reverse
 // is set, in reverse structure order. It returns true as soon as walkNode
-// or walkList does (upstream: the type iterator the walker builds from
-// structure by reading node[field.name]).
+// or walkList does, which stops the walk.
 type WalkFieldsFunc func(node Node, reverse bool, walkNode func(Node) bool, walkList func(*List[Node]) bool) bool
 
 // CloneFunc returns a deep copy of node, of the same Go type, copying its
-// child nodes with clone (upstream clone copies any object generically).
+// child nodes with clone.
 type CloneFunc func(node Node, clone func(Node) Node) Node
 
-// FromPlainObjectFunc builds a node from its plain object form (upstream
-// fromPlainObject turns the arrays of a JSON-like AST back into Lists in
-// place). Fields are read with the methods of r, which records the first
-// error.
+// FromPlainObjectFunc builds a node from its plain object form (see
+// ToPlainObject). It reads the fields with the methods of r, which records
+// the first error.
 type FromPlainObjectFunc func(r *PlainObjectReader, object map[string]any) Node
 
-// NodeConfig describes a node type (upstream config.node[name]: the exports
-// of lib/syntax/node/<Name>.js except parse, which is a *Parser method).
+// NodeConfig describes a node type to a syntax: its fields, how to
+// generate it and how to walk, clone and decode it. Its parse function is
+// not part of it; the built-in ones are methods of Parser, and an
+// extension parses its nodes from a scope, context, at-rule or pseudo
+// parser.
 //
-// Walk, Clone and FromPlainObject are Go-only: upstream reads and writes
-// node fields by name, which a typed AST cannot do without reflection, so
-// each node type supplies these functions (generated for the node types of
-// this package). A node type added through
-// Syntax.Fork supplies its own; without them the walker does not descend
-// into its nodes, Clone shares them and FromPlainObject rejects them.
+// The NodeConfigs of the node types of this package are generated from
+// their struct tags. A node type added through Syntax.Fork writes its own;
+// without Walk the walker does not descend into its nodes, without Clone
+// Syntax.Clone shares them and without FromPlainObject
+// Syntax.FromPlainObject rejects them. (Upstream reads node fields by name,
+// so its node definitions need no such functions.)
 type NodeConfig struct {
-	Name        string
-	Structure   []StructureField
+	// Name is the node type, as its Type method returns it.
+	Name string
+	// Structure lists the node's fields. Every node type needs one.
+	Structure []StructureField
+	// WalkContext names the WalkContext field that holds the nearest
+	// enclosing node of this type during a walk, such as "rule"; "" for
+	// none.
 	WalkContext string
-	Generate    GenerateFunc
+	// Generate writes the node's CSS.
+	Generate GenerateFunc
 
-	Walk            WalkFieldsFunc
-	Clone           CloneFunc
+	// Walk visits the node's child nodes and lists.
+	Walk WalkFieldsFunc
+	// Clone copies the node.
+	Clone CloneFunc
+	// FromPlainObject builds the node from its plain object form.
 	FromPlainObject FromPlainObjectFunc
 }
 

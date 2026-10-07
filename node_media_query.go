@@ -11,9 +11,9 @@ import (
 //csstree:node
 type MediaQuery struct {
 	Loc *Location
-	// Modifier is "not" or "only"; "" is upstream null.
+	// Modifier is "not", "only" or "" for none.
 	Modifier string `css:"modifier,string|null"`
-	// MediaType is the media type; "" is upstream null.
+	// MediaType is the media type, or "" for none.
 	MediaType string     `css:"mediaType,string|null"`
 	Condition *Condition `css:"condition,Condition|null"`
 }

@@ -85,11 +85,11 @@ func isAttributeModifier(p *Parser) bool {
 type AttributeSelector struct {
 	Loc  *Location
 	Name *Identifier `css:"name,Identifier"`
-	// Matcher is the operator ("=", "~=", ...); "" is upstream null.
+	// Matcher is the operator ("=", "~=", ...), or "" for none.
 	Matcher string `css:"matcher,string|null"`
 	// Value is a *String, an *Identifier or nil.
 	Value Node `css:"value,String|Identifier|null"`
-	// Flags is the modifier; "" is upstream null.
+	// Flags is the modifier ("i" or "s"), or "" for none.
 	Flags string `css:"flags,string|null"`
 }
 

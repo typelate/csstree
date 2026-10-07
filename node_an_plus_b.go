@@ -110,9 +110,9 @@ func consumeB(p *Parser) string {
 //csstree:node
 type AnPlusB struct {
 	Loc *Location
-	// A is the coefficient of n; "" is upstream null (no n).
+	// A is the coefficient of n, or "" when there is no n.
 	A string `css:"a,string|null"`
-	// B is the constant; "" is upstream null (no constant).
+	// B is the constant, or "" when there is none.
 	B string `css:"b,string|null"`
 }
 
