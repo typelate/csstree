@@ -466,7 +466,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			}
 			// math functions are type checked (Values 4 §10.9)
 			percentSibling := syntaxStack != nil && syntaxStack.percentSibling
-			consumed, handled := matchMathFunction(state.name, percentSibling, token, getNextToken, syntaxes)
+			consumed, handled := matchMathFunction(state.calc, percentSibling, token, getNextToken)
 			if !handled {
 				consumed = state.fn(token, getNextToken, opts)
 			}

@@ -19,125 +19,13 @@ import (
 type genericFunc func(token *matchToken, getNextToken func(offset int) *matchToken, opts *definitionsyntax.Range) int
 
 // genericType is a generic type with its name; createGenericTypes returns
-// them in upstream's object key order.
+// them in upstream's object key order. calc says how the matcher type
+// checks a math function for the type; the zero value leaves math
+// functions to fn.
 type genericType struct {
 	name string
 	fn   genericFunc
-}
-
-// CSS mathematical functions categorized by return type behavior
-// See: https://www.w3.org/TR/css-values-4/#math
-
-// Calculation functions that return different types depending on input
-func calcFunctionNames() []string {
-	return []string{
-		"calc(",
-		"-moz-calc(",
-		"-webkit-calc(",
-	}
-}
-
-// Comparison functions that return different types depending on input
-func comparisonFunctionNames() []string {
-	return []string{
-		"min(",
-		"max(",
-		"clamp(",
-	}
-}
-
-// Functions that return a stepped value, i.e. a value that is rounded to the nearest step
-func steppedValueFunctionNames() []string {
-	return []string{
-		"round(",
-		"mod(",
-		"rem(",
-	}
-}
-
-// Trigonometrical functions that return a <number>
-func trigNumberFunctionNames() []string {
-	return []string{
-		"sin(",
-		"cos(",
-		"tan(",
-	}
-}
-
-// Trigonometrical functions that return a <angle>
-func trigAngleFunctionNames() []string {
-	return []string{
-		"asin(",
-		"acos(",
-		"atan(",
-		"atan2(",
-	}
-}
-
-// Other functions that return a <number>
-func otherNumberFunctionNames() []string {
-	return []string{
-		"pow(",
-		"sqrt(",
-		"log(",
-		"exp(",
-		"sign(",
-	}
-}
-
-// Exponential functions that return a <number> or <dimension> or <percentage>
-func expNumberDimensionPercentageFunctionNames() []string {
-	return []string{
-		"hypot(",
-	}
-}
-
-// Return the same type as the input
-func signFunctionNames() []string {
-	return []string{
-		"abs(",
-	}
-}
-
-func numberFunctionNames() []string {
-	return concatStrings(
-		calcFunctionNames(),
-		comparisonFunctionNames(),
-		steppedValueFunctionNames(),
-		trigNumberFunctionNames(),
-		otherNumberFunctionNames(),
-		expNumberDimensionPercentageFunctionNames(),
-		signFunctionNames(),
-	)
-}
-
-func percentageFunctionNames() []string {
-	return concatStrings(
-		calcFunctionNames(),
-		comparisonFunctionNames(),
-		steppedValueFunctionNames(),
-		expNumberDimensionPercentageFunctionNames(),
-		signFunctionNames(),
-	)
-}
-
-func dimensionFunctionNames() []string {
-	return concatStrings(
-		calcFunctionNames(),
-		comparisonFunctionNames(),
-		steppedValueFunctionNames(),
-		trigAngleFunctionNames(),
-		expNumberDimensionPercentageFunctionNames(),
-		signFunctionNames(),
-	)
-}
-
-func concatStrings(lists ...[]string) []string {
-	var result []string
-	for _, list := range lists {
-		result = append(result, list...)
-	}
-	return result
+	calc calcTarget
 }
 
 // balancePair returns the closing token type for an opening one (upstream
@@ -242,27 +130,6 @@ func popTokenType(stack []tokenizer.TokenType) (tokenizer.TokenType, []tokenizer
 		return 0, stack
 	}
 	return stack[len(stack)-1], stack[:len(stack)-1]
-}
-
-// TODO: implement
-// can be used wherever <length>, <frequency>, <angle>, <time>, <percentage>, <number>, or <integer> values are allowed
-// https://drafts.csswg.org/css-values/#calc-notation
-// mathType is upstream math (renamed: Go code imports package math). The
-// matcher type checks math functions with matchMathFunction before it
-// calls a generic type, so the function branch is only reached directly.
-func mathType(next genericFunc, functionNames []string) genericFunc {
-	return func(token *matchToken, getNextToken func(offset int) *matchToken, opts *definitionsyntax.Range) int {
-		if token == nil {
-			return 0
-		}
-
-		name := tokenValue(token)
-		if token.typ == tokenizer.Function && slices.ContainsFunc(functionNames, func(fn string) bool { return asciiEqualFold(name, fn) }) {
-			return consumeFunction(token, getNextToken)
-		}
-
-		return next(token, getNextToken, opts)
-	}
 }
 
 func tokenType(expectedTokenType tokenizer.TokenType) genericFunc {
@@ -486,39 +353,51 @@ scan:
 //
 
 // dimension returns a generic type for dimension tokens whose unit is in
-// units; nil units (upstream null) accepts any unit.
+// units.
 func dimension(units []string) genericFunc {
-	var unitSet map[string]bool
-	if units != nil {
-		unitSet = make(map[string]bool, len(units))
-		for _, unit := range units {
-			unitSet[unit] = true
-		}
+	unitSet := make(map[string]bool, len(units))
+	for _, unit := range units {
+		unitSet[unit] = true
 	}
 
 	return func(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyntax.Range) int {
-		if token == nil || token.typ != tokenizer.Dimension {
+		unit, ok := dimensionTokenUnit(token, opts)
+		if !ok || !unitSet[unit] {
 			return 0
 		}
-
-		numberEnd := tokenizer.ConsumeNumber(token.value, 0)
-
-		// the unit without the IE postfix hack, i.e. 123px\0 or 123px\9,
-		// and with escapes decoded, compared ASCII case-insensitively
-		unit := asciiLowerCase(dimensionUnit(token.value, numberEnd))
-
-		// check unit
-		if unitSet != nil && !unitSet[unit] {
-			return 0
-		}
-
-		// check range if specified
-		if outOfRangeUnit(opts, token.value, numberEnd, unit) {
-			return 0
-		}
-
 		return 1
 	}
+}
+
+// anyDimension is the generic type of dimension tokens of any unit
+// (upstream dimension(null)).
+func anyDimension(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyntax.Range) int {
+	if _, ok := dimensionTokenUnit(token, opts); !ok {
+		return 0
+	}
+	return 1
+}
+
+// dimensionTokenUnit returns the lowercase unit of a dimension token in
+// the range opts, and false for other tokens and dimensions out of the
+// range.
+func dimensionTokenUnit(token *matchToken, opts *definitionsyntax.Range) (string, bool) {
+	if token == nil || token.typ != tokenizer.Dimension {
+		return "", false
+	}
+
+	numberEnd := tokenizer.ConsumeNumber(token.value, 0)
+
+	// the unit without the IE postfix hack, i.e. 123px\0 or 123px\9,
+	// and with escapes decoded, compared ASCII case-insensitively
+	unit := asciiLowerCase(dimensionUnit(token.value, numberEnd))
+
+	// check range if specified
+	if outOfRangeUnit(opts, token.value, numberEnd, unit) {
+		return "", false
+	}
+
+	return unit, true
 }
 
 // =========================
@@ -549,19 +428,24 @@ func percentage(token *matchToken, _ func(offset int) *matchToken, opts *definit
 // The value <zero> represents a literal number with the value 0. Expressions that merely
 // evaluate to a <number> with the value 0 (for example, calc(0)) do not match <zero>;
 // only literal <number-token>s do.
-func zeroOr(next genericFunc) genericFunc {
-	if next == nil {
-		next = func(*matchToken, func(offset int) *matchToken, *definitionsyntax.Range) int {
-			return 0
-		}
+func zero(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyntax.Range) int {
+	if token == nil || token.typ != tokenizer.Number {
+		return 0
 	}
 
+	// a zero is out of a range such as [1px,∞]
+	if jsnum.Parse(token.value) != 0 || outOfRange(opts, "0", -1) {
+		return 0
+	}
+
+	return 1
+}
+
+// zeroOr returns a generic type that takes a <zero> or what next takes.
+func zeroOr(next genericFunc) genericFunc {
 	return func(token *matchToken, getNextToken func(offset int) *matchToken, opts *definitionsyntax.Range) int {
-		if token != nil && token.typ == tokenizer.Number {
-			// a zero is out of a range such as [1px,∞]
-			if jsnum.Parse(token.value) == 0 && !outOfRange(opts, "0", -1) {
-				return 1
-			}
+		if zero(token, getNextToken, opts) == 1 {
+			return 1
 		}
 
 		return next(token, getNextToken, opts)
@@ -627,105 +511,81 @@ func integer(token *matchToken, _ func(offset int) *matchToken, opts *definition
 // token types
 func tokenTypes() []genericType {
 	return []genericType{
-		{"ident-token", tokenType(tokenizer.Ident)},
-		{"function-token", tokenType(tokenizer.Function)},
-		{"at-keyword-token", tokenType(tokenizer.AtKeyword)},
-		{"hash-token", tokenType(tokenizer.Hash)},
-		{"string-token", tokenType(tokenizer.String)},
-		{"bad-string-token", tokenType(tokenizer.BadString)},
-		{"url-token", tokenType(tokenizer.URL)},
-		{"bad-url-token", tokenType(tokenizer.BadURL)},
-		{"delim-token", tokenType(tokenizer.Delim)},
-		{"number-token", tokenType(tokenizer.Number)},
-		{"percentage-token", tokenType(tokenizer.Percentage)},
-		{"dimension-token", tokenType(tokenizer.Dimension)},
-		{"whitespace-token", tokenType(tokenizer.WhiteSpace)},
-		{"CDO-token", tokenType(tokenizer.CDO)},
-		{"CDC-token", tokenType(tokenizer.CDC)},
-		{"colon-token", tokenType(tokenizer.Colon)},
-		{"semicolon-token", tokenType(tokenizer.Semicolon)},
-		{"comma-token", tokenType(tokenizer.Comma)},
-		{"[-token", tokenType(tokenizer.LeftSquareBracket)},
-		{"]-token", tokenType(tokenizer.RightSquareBracket)},
-		{"(-token", tokenType(tokenizer.LeftParenthesis)},
-		{")-token", tokenType(tokenizer.RightParenthesis)},
-		{"{-token", tokenType(tokenizer.LeftCurlyBracket)},
-		{"}-token", tokenType(tokenizer.RightCurlyBracket)},
+		{name: "ident-token", fn: tokenType(tokenizer.Ident)},
+		{name: "function-token", fn: tokenType(tokenizer.Function)},
+		{name: "at-keyword-token", fn: tokenType(tokenizer.AtKeyword)},
+		{name: "hash-token", fn: tokenType(tokenizer.Hash)},
+		{name: "string-token", fn: tokenType(tokenizer.String)},
+		{name: "bad-string-token", fn: tokenType(tokenizer.BadString)},
+		{name: "url-token", fn: tokenType(tokenizer.URL)},
+		{name: "bad-url-token", fn: tokenType(tokenizer.BadURL)},
+		{name: "delim-token", fn: tokenType(tokenizer.Delim)},
+		{name: "number-token", fn: tokenType(tokenizer.Number)},
+		{name: "percentage-token", fn: tokenType(tokenizer.Percentage)},
+		{name: "dimension-token", fn: tokenType(tokenizer.Dimension)},
+		{name: "whitespace-token", fn: tokenType(tokenizer.WhiteSpace)},
+		{name: "CDO-token", fn: tokenType(tokenizer.CDO)},
+		{name: "CDC-token", fn: tokenType(tokenizer.CDC)},
+		{name: "colon-token", fn: tokenType(tokenizer.Colon)},
+		{name: "semicolon-token", fn: tokenType(tokenizer.Semicolon)},
+		{name: "comma-token", fn: tokenType(tokenizer.Comma)},
+		{name: "[-token", fn: tokenType(tokenizer.LeftSquareBracket)},
+		{name: "]-token", fn: tokenType(tokenizer.RightSquareBracket)},
+		{name: "(-token", fn: tokenType(tokenizer.LeftParenthesis)},
+		{name: ")-token", fn: tokenType(tokenizer.RightParenthesis)},
+		{name: "{-token", fn: tokenType(tokenizer.LeftCurlyBracket)},
+		{name: "}-token", fn: tokenType(tokenizer.RightCurlyBracket)},
 	}
 }
 
-// token production types
-func productionTypes() []genericType {
+// productionTypes returns the token production types, whose numeric types
+// type check math functions with the base types of units.
+func productionTypes(units calcUnits) []genericType {
 	return []genericType{
 		// token type aliases
-		{"string", tokenType(tokenizer.String)},
-		{"ident", tokenType(tokenizer.Ident)},
+		{name: "string", fn: tokenType(tokenizer.String)},
+		{name: "ident", fn: tokenType(tokenizer.Ident)},
 
 		// percentage
-		{"percentage", mathType(percentage, percentageFunctionNames())},
+		{name: "percentage", fn: percentage, calc: percentageCalcTarget(units)},
 
 		// numeric
-		{"zero", zeroOr(nil)},
-		{"number", mathType(number, numberFunctionNames())},
-		{"integer", mathType(integer, numberFunctionNames())},
+		{name: "zero", fn: zero},
+		{name: "number", fn: number, calc: numberCalcTarget(units)},
+		{name: "integer", fn: integer, calc: numberCalcTarget(units)},
 
 		// complex types
-		{"custom-ident", customIdent},
-		{"dashed-ident", dashedIdent},
-		{"custom-property-name", customPropertyName},
-		{"hex-color", hexColor},
-		{"id-selector", idSelector}, // element( <id-selector> )
-		{"an-plus-b", anPlusB},
-		{"urange", urange},
-		{"declaration-value", declarationValue},
-		{"any-value", anyValue},
+		{name: "custom-ident", fn: customIdent},
+		{name: "dashed-ident", fn: dashedIdent},
+		{name: "custom-property-name", fn: customPropertyName},
+		{name: "hex-color", fn: hexColor},
+		{name: "id-selector", fn: idSelector}, // element( <id-selector> )
+		{name: "an-plus-b", fn: anPlusB},
+		{name: "urange", fn: urange},
+		{name: "declaration-value", fn: declarationValue},
+		{name: "any-value", fn: anyValue},
 	}
 }
 
-func unitGroups() []string {
-	return []string{
-		"length",
-		"angle",
-		"time",
-		"frequency",
-		"resolution",
-		"flex",
-		"decibel",
-		"semitones",
+// createDimensionTypes returns the dimension types, which depend on the
+// units of each unit group.
+func createDimensionTypes(units map[string][]string, bases calcUnits) []genericType {
+	types := []genericType{
+		{name: "dimension", fn: anyDimension, calc: dimensionCalcTarget(bases)},
 	}
-}
 
-// dimensions types depend on units set
-func createDimensionTypes(units map[string][]string) []genericType {
-	angle := units["angle"]
-	decibel := units["decibel"]
-	frequency := units["frequency"]
-	flex := units["flex"]
-	length := units["length"]
-	resolution := units["resolution"]
-	semitones := units["semitones"]
-	time := units["time"]
-
-	return []genericType{
-		{"dimension", mathType(dimension(nil), dimensionFunctionNames())},
-		{"angle", mathType(dimension(nonNilStrings(angle)), dimensionFunctionNames())},
-		{"decibel", mathType(dimension(nonNilStrings(decibel)), dimensionFunctionNames())},
-		{"frequency", mathType(dimension(nonNilStrings(frequency)), dimensionFunctionNames())},
-		{"flex", mathType(dimension(nonNilStrings(flex)), dimensionFunctionNames())},
-		{"length", mathType(zeroOr(dimension(nonNilStrings(length))), dimensionFunctionNames())},
-		{"resolution", mathType(dimension(nonNilStrings(resolution)), dimensionFunctionNames())},
-		{"semitones", mathType(dimension(nonNilStrings(semitones)), dimensionFunctionNames())},
-		{"time", mathType(dimension(nonNilStrings(time)), dimensionFunctionNames())},
+	// in upstream's key order
+	for _, group := range []unitGroup{angleUnits, decibelUnits, frequencyUnits, flexUnits, lengthUnits, resolutionUnits, semitonesUnits, timeUnits} {
+		name := group.name()
+		fn := dimension(units[name])
+		if group == lengthUnits {
+			// Values 4 §6: a unitless zero is a <length>
+			fn = zeroOr(fn)
+		}
+		types = append(types, genericType{name: name, fn: fn, calc: unitGroupCalcTarget(group, bases)})
 	}
-}
 
-// nonNilStrings returns units, or an empty slice for nil, so that a unit
-// group without units accepts no unit (dimension(nil) accepts any).
-func nonNilStrings(units []string) []string {
-	if units == nil {
-		return []string{}
-	}
-	return units
+	return types
 }
 
 // The <attr-unit> production matches any identifier that is an ASCII case-insensitive
@@ -733,11 +593,9 @@ func nonNilStrings(units []string) []string {
 func createAttrUnit(units map[string][]string) genericFunc {
 	unitSet := make(map[string]bool)
 
-	for _, group := range unitGroups() {
-		if groupUnits, ok := units[group]; ok && groupUnits != nil {
-			for _, unit := range groupUnits {
-				unitSet[toLowerCase(unit)] = true
-			}
+	for group := range unitGroupCount {
+		for _, unit := range units[group.name()] {
+			unitSet[toLowerCase(unit)] = true
 		}
 	}
 
@@ -759,10 +617,11 @@ func createAttrUnit(units map[string][]string) genericFunc {
 }
 
 func createGenericTypes(units map[string][]string) []genericType {
+	bases := newCalcUnits(units)
 	return slices.Concat(
 		tokenTypes(),
-		productionTypes(),
-		createDimensionTypes(units),
-		[]genericType{{"attr-unit", createAttrUnit(units)}},
+		productionTypes(bases),
+		createDimensionTypes(units, bases),
+		[]genericType{{name: "attr-unit", fn: createAttrUnit(units)}},
 	)
 }

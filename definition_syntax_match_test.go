@@ -108,10 +108,8 @@ func createSyntaxMatchHandler(source string) func() (*matchGraphNode, error) {
 }
 
 // createGenericMatchHandler is createSyntaxMatchHandler for a generic type.
-// The graph names the type, as the lexer's do, for the matcher to type
-// check math functions.
-func createGenericMatchHandler(name string, fn genericFunc) func() (*matchGraphNode, error) {
-	match := buildGenericMatchGraphRoot(fn, &SyntaxRef{Kind: "Type", Name: name})
+func createGenericMatchHandler(generic genericType) func() (*matchGraphNode, error) {
+	match := buildGenericMatchGraphRoot(generic, &SyntaxRef{Kind: "Type", Name: generic.name})
 	return func() (*matchGraphNode, error) {
 		return match, nil
 	}
@@ -202,7 +200,7 @@ func createSyntaxTest(t *testing.T, testName string, test definitionSyntaxMatchT
 		}
 
 		for _, generic := range createGenericTypes(defaultUnits()) {
-			syntaxes.types[generic.name] = createGenericMatchHandler(generic.name, generic.fn)
+			syntaxes.types[generic.name] = createGenericMatchHandler(generic)
 		}
 
 		for name, source := range test.Types {

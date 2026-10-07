@@ -2,19 +2,51 @@
 
 package csstree
 
-// unitGroupNames lists the unit groups in the order upstream's units
-// module exports them (the key order of upstream's lexer.units).
-func unitGroupNames() []string {
-	return []string{
-		"length",
-		"angle",
-		"time",
-		"frequency",
-		"resolution",
-		"flex",
-		"decibel",
-		"semitones",
-	}
+// unitGroup is a group of units, the units of the dimensions of one
+// type. The groups are in the order upstream's units module exports them
+// (the key order of upstream's lexer.units).
+type unitGroup int8
+
+const (
+	lengthUnits unitGroup = iota
+	angleUnits
+	timeUnits
+	frequencyUnits
+	resolutionUnits
+	flexUnits
+	decibelUnits
+	semitonesUnits
+	unitGroupCount
+)
+
+// unitGroupInfo is what a unit group's table entry holds.
+type unitGroupInfo struct {
+	// name is the group's key in the units of a lexer and the name of the
+	// generic type of its dimensions.
+	name string
+	// base is the base type of the group's units in a calculation,
+	// calcNoHint for units that a calculation does not take: CSS Grid 2
+	// §7.2.4 says fr values cannot be represented in calc(), and CSS
+	// Speech defines no math with <decibel> or <semitones>.
+	base calcBase
+}
+
+// info returns the table entry of the unit group g.
+func (g unitGroup) info() unitGroupInfo {
+	return [unitGroupCount]unitGroupInfo{
+		lengthUnits:     {"length", calcLength},
+		angleUnits:      {"angle", calcAngle},
+		timeUnits:       {"time", calcTime},
+		frequencyUnits:  {"frequency", calcFrequency},
+		resolutionUnits: {"resolution", calcResolution},
+		flexUnits:       {"flex", calcNoHint},
+		decibelUnits:    {"decibel", calcNoHint},
+		semitonesUnits:  {"semitones", calcNoHint},
+	}[g]
+}
+
+func (g unitGroup) name() string {
+	return g.info().name
 }
 
 // defaultUnits returns the units of each unit group (upstream

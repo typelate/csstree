@@ -345,9 +345,9 @@ func newLexer(config *Config, syntax *Syntax, structure map[string]*nodeStructur
 		}
 
 		if config.Units != nil {
-			for _, group := range unitGroupNames() {
-				if units, ok := config.Units[group]; ok && units != nil {
-					l.units[group] = units
+			for group := range unitGroupCount {
+				if units, ok := config.Units[group.name()]; ok && units != nil {
+					l.units[group.name()] = units
 				}
 			}
 		}
@@ -361,7 +361,7 @@ func newLexer(config *Config, syntax *Syntax, structure map[string]*nodeStructur
 		if config.Generic != nil && *config.Generic {
 			l.generic = true
 			for _, generic := range createGenericTypes(l.units) {
-				l.addGenericType(generic.name, generic.fn)
+				l.addGenericType(generic)
 			}
 		}
 
@@ -494,7 +494,7 @@ type descriptorSource struct {
 	text    string
 	isText  bool
 	tree    definitionsyntax.Node
-	generic genericFunc
+	generic genericType
 }
 
 func (l *Lexer) createDescriptor(source descriptorSource, typ, name, parent string) *Descriptor {
@@ -509,7 +509,7 @@ func (l *Lexer) createDescriptor(source descriptorSource, typ, name, parent stri
 		Serializable: source.isText || source.tree != nil,
 	}
 
-	if source.generic != nil {
+	if source.generic.fn != nil {
 		descriptor.syntax = func() (definitionsyntax.Node, error) { return nil, nil }
 		match := buildGenericMatchGraphRoot(source.generic, ref)
 		descriptor.match = func() (*matchGraphNode, error) { return match, nil }
@@ -641,8 +641,8 @@ func (l *Lexer) AddType_(name, syntax string) {
 	l.addType(name, l.CreateDescriptor(syntax, "Type", name, ""))
 }
 
-func (l *Lexer) addGenericType(name string, fn genericFunc) {
-	l.addType(name, l.createDescriptor(descriptorSource{generic: fn}, "Type", name, ""))
+func (l *Lexer) addGenericType(generic genericType) {
+	l.addType(generic.name, l.createDescriptor(descriptorSource{generic: generic}, "Type", generic.name, ""))
 }
 
 func (l *Lexer) addType(name string, descriptor *Descriptor) {

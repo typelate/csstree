@@ -164,39 +164,6 @@ func (t calcType) madeConsistentWith(input calcType) (calcType, bool) {
 	return t, true
 }
 
-// calcWant is the production a math function has to resolve to where it
-// is used.
-type calcWant int8
-
-const (
-	calcWantNumber calcWant = iota // <number>, and <integer> (§10.9)
-	calcWantPercentage
-	calcWantDimension // a single base type other than percent
-	calcWantLength
-	calcWantAngle
-	calcWantTime
-	calcWantFrequency
-	calcWantResolution
-)
-
-func (w calcWant) base() calcBase {
-	switch w {
-	case calcWantLength:
-		return calcLength
-	case calcWantAngle:
-		return calcAngle
-	case calcWantTime:
-		return calcTime
-	case calcWantFrequency:
-		return calcFrequency
-	case calcWantResolution:
-		return calcResolution
-	case calcWantPercentage:
-		return calcPercent
-	}
-	return calcNoHint
-}
-
 // isNumber reports whether t has no non-zero entry.
 func (t calcType) isNumber() bool {
 	return t.exp == [calcBaseCount]int{}
@@ -216,76 +183,111 @@ func (t calcType) onlyEntry(base calcBase) bool {
 	return true
 }
 
-// matches is Typed OM "a type matches a CSS production" in the calculation
-// context ctx, the type percentages resolve against (calcPercent when
-// they are allowed but resolve against nothing or a <number>, calcNoHint
-// when they are not allowed).
-func (t calcType) matches(want calcWant, ctx calcBase) bool {
-	switch want {
-	case calcWantNumber:
-		return t.isNumber() && (t.hint == calcNoHint || (ctx != calcNoHint && t.hint == ctx))
+// The matches methods are Typed OM "a type matches a CSS production" in
+// the calculation context ctx, the type percentages resolve against
+// (calcPercent when they are allowed but resolve against nothing or a
+// <number>, calcNoHint when they are not allowed).
 
-	case calcWantPercentage:
-		return t.onlyEntry(calcPercent) && (t.hint == calcNoHint || t.hint == calcPercent)
+// matchesNumber reports whether t matches <number>, and so <integer>
+// (§10.9).
+func (t calcType) matchesNumber(ctx calcBase) bool {
+	return t.isNumber() && (t.hint == calcNoHint || (ctx != calcNoHint && t.hint == ctx))
+}
 
-	case calcWantDimension:
-		if t.hint != calcNoHint {
-			return false
-		}
-		for base := range calcPercent {
-			if t.onlyEntry(base) {
-				return true
-			}
-		}
-		return false
-	}
-
-	base := want.base()
+// matchesBase reports whether t matches the production of the single base
+// type base, such as <length>, or <percentage> for calcPercent.
+func (t calcType) matchesBase(base, ctx calcBase) bool {
 	return t.onlyEntry(base) && (t.hint == calcNoHint || (ctx == base && t.hint == base))
 }
 
-// mathFunctionGeneric returns the production a math function used for
-// the generic type named generic has to resolve to, and the calculation
-// context: percentSibling is set when the type is an alternative of a
-// <percentage> in a "|" group, as in <length-percentage>. ok is false for
-// generic types that do not take math functions at all.
-func mathFunctionGeneric(generic string, percentSibling bool) (want calcWant, ctx calcBase, ok bool) {
-	mixed := func(base calcBase) calcBase {
-		if percentSibling {
-			return base
+// matchesDimension reports whether t matches <dimension>: a single base
+// type other than percent.
+func (t calcType) matchesDimension() bool {
+	if t.hint != calcNoHint {
+		return false
+	}
+	for base := range calcPercent {
+		if t.onlyEntry(base) {
+			return true
 		}
-		return calcNoHint
 	}
-
-	switch generic {
-	case "number", "integer":
-		return calcWantNumber, mixed(calcPercent), true
-	case "percentage":
-		return calcWantPercentage, calcPercent, true
-	case "dimension":
-		return calcWantDimension, calcNoHint, true
-	case "length":
-		return calcWantLength, mixed(calcLength), true
-	case "angle":
-		return calcWantAngle, mixed(calcAngle), true
-	case "time":
-		return calcWantTime, mixed(calcTime), true
-	case "frequency":
-		return calcWantFrequency, mixed(calcFrequency), true
-	case "resolution":
-		return calcWantResolution, calcNoHint, true
-	}
-	return 0, 0, false
+	return false
 }
 
-// isMathGeneric reports whether upstream lets the generic type named
-// generic take math functions (the types built with mathType).
-func isMathGeneric(generic string) bool {
-	switch generic {
-	case "number", "integer", "percentage", "dimension",
-		"length", "angle", "time", "frequency", "resolution",
-		"flex", "decibel", "semitones":
-		return true
+// calcWant is the kind of production a math function has to resolve to
+// where it is used.
+type calcWant int8
+
+const (
+	// calcWantNone is a type that takes no math function: a function is
+	// left to the type's own matching.
+	calcWantNone calcWant = iota
+	// calcWantNothing is a type that upstream lets take math functions
+	// but that no calculation resolves to (see unitGroupInfo.base).
+	calcWantNothing
+	calcWantNumber    // <number>, and <integer> (§10.9)
+	calcWantDimension // <dimension>, a single base type other than percent
+	calcWantBase      // a single base type, calcTarget.base
+)
+
+// calcTarget is how the matcher type checks a math function for a generic
+// type (§10.9): what the function has to resolve to, the type its
+// percentages resolve against, and the base types of the lexer's units.
+// The zero value is a type that takes no math function.
+type calcTarget struct {
+	want calcWant
+	base calcBase // for calcWantBase
+
+	// ctx is the calculation context of the type standing alone, and
+	// percentCtx when a <percentage> is an alternative of it in a "|"
+	// group, as in <length-percentage> (see markPercentSiblings).
+	ctx, percentCtx calcBase
+
+	units calcUnits
+}
+
+// numberCalcTarget is the target of <number> and <integer>: percentages
+// are allowed next to a <percentage>, resolving against a <number>.
+func numberCalcTarget(units calcUnits) calcTarget {
+	return calcTarget{want: calcWantNumber, ctx: calcNoHint, percentCtx: calcPercent, units: units}
+}
+
+// percentageCalcTarget is the target of <percentage>.
+func percentageCalcTarget(units calcUnits) calcTarget {
+	return calcTarget{want: calcWantBase, base: calcPercent, ctx: calcPercent, percentCtx: calcPercent, units: units}
+}
+
+// dimensionCalcTarget is the target of <dimension>, which takes no
+// percentages.
+func dimensionCalcTarget(units calcUnits) calcTarget {
+	return calcTarget{want: calcWantDimension, ctx: calcNoHint, percentCtx: calcNoHint, units: units}
+}
+
+// unitGroupCalcTarget is the target of the generic type of the
+// dimensions of a unit group. Percentages are allowed next to a
+// <percentage>, resolving against the group's base type, except for
+// <resolution>: there is no <resolution-percentage>.
+func unitGroupCalcTarget(group unitGroup, units calcUnits) calcTarget {
+	base := group.info().base
+	switch base {
+	case calcNoHint:
+		return calcTarget{want: calcWantNothing}
+	case calcResolution:
+		return calcTarget{want: calcWantBase, base: base, ctx: calcNoHint, percentCtx: calcNoHint, units: units}
+	}
+	return calcTarget{want: calcWantBase, base: base, ctx: calcNoHint, percentCtx: base, units: units}
+}
+
+// matches reports whether a calculation of type t resolves to the
+// target's production in the calculation context ctx.
+func (c calcTarget) matches(t calcType, ctx calcBase) bool {
+	switch c.want {
+	case calcWantNumber:
+		return t.matchesNumber(ctx)
+	case calcWantDimension:
+		return t.matchesDimension()
+	case calcWantBase:
+		return t.matchesBase(c.base, ctx)
 	}
 	return false
 }
@@ -324,51 +326,51 @@ func isLengthFunctionName(name string) bool {
 	return name == "anchor(" || name == "anchor-size("
 }
 
-// calcUnitSource looks up the base type of a dimension unit; the Lexer
-// implements it with its unit groups.
-type calcUnitSource interface {
-	calcUnitBase(unit string) (calcBase, bool)
-}
+// calcUnits maps the lowercase units of a lexer's unit groups to their
+// base type in a calculation.
+type calcUnits map[string]calcBase
 
-func (l *Lexer) calcUnitBase(unit string) (calcBase, bool) {
-	return calcUnitBaseIn(l.units, unit)
-}
-
-func calcUnitBaseIn(units map[string][]string, unit string) (calcBase, bool) {
-	groups := []struct {
-		name string
-		base calcBase
-	}{
-		{"length", calcLength},
-		{"angle", calcAngle},
-		{"time", calcTime},
-		{"frequency", calcFrequency},
-		{"resolution", calcResolution},
-	}
-
-	if strings.Contains(unit, `\`) {
-		unit = DecodeIdent(unit)
-	}
-	unit = asciiLowerCase(unit)
-	for _, group := range groups {
-		for _, u := range units[group.name] {
-			if u == unit {
-				return group.base, true
+// newCalcUnits returns the base types of units, the units of a lexer's
+// unit groups. A unit in more than one group has the first group's base
+// type; units are compared as given, so an uppercase unit never matches.
+func newCalcUnits(units map[string][]string) calcUnits {
+	bases := make(calcUnits)
+	for group := range unitGroupCount {
+		info := group.info()
+		if info.base == calcNoHint {
+			continue
+		}
+		for _, unit := range units[info.name] {
+			if _, ok := bases[unit]; !ok {
+				bases[unit] = info.base
 			}
 		}
 	}
-	return 0, false
+	return bases
 }
 
-// matchMathFunction matches a math function token for the generic type
-// named generic. handled is false when token is not a math function or
-// the type does not take math functions, leaving the token to the type's
-// own matching. Otherwise it returns how many tokens the function takes, 0
-// when its calculation is invalid or does not resolve to the type
-// (§10.9). A function containing an arbitrary substitution function is
-// not checked and is consumed as upstream does.
-func matchMathFunction(generic string, percentSibling bool, token *matchToken, getNextToken func(offset int) *matchToken, syntaxes matchSyntaxes) (consumed int, handled bool) {
-	if token == nil || token.typ != tokenizer.Function || !isMathGeneric(generic) {
+// base returns the base type of a dimension's unit, as written.
+func (u calcUnits) base(unit string) (calcBase, bool) {
+	if strings.Contains(unit, `\`) {
+		unit = DecodeIdent(unit)
+	}
+	base, ok := u[asciiLowerCase(unit)]
+	return base, ok
+}
+
+// matchMathFunction matches a math function token for a generic type with
+// the calculation target. handled is false when token is not a math
+// function or the type does not take math functions, leaving the token to
+// the type's own matching. Otherwise it returns how many tokens the
+// function takes, 0 when its calculation is invalid or does not resolve
+// to the type (§10.9). A function containing an arbitrary substitution
+// function is not checked and is consumed as upstream does.
+//
+// Upstream wraps the numeric generic types in math(), which consumes a
+// math function without looking at its arguments; the matcher calls
+// matchMathFunction before the type instead.
+func matchMathFunction(target calcTarget, percentSibling bool, token *matchToken, getNextToken func(offset int) *matchToken) (consumed int, handled bool) {
+	if token == nil || token.typ != tokenizer.Function || target.want == calcWantNone {
 		return 0, false
 	}
 	if !isMathFunctionName(tokenName(token)) {
@@ -383,16 +385,19 @@ func matchMathFunction(generic string, percentSibling bool, token *matchToken, g
 		}
 	}
 
-	want, ctx, ok := mathFunctionGeneric(generic, percentSibling)
-	if !ok {
+	if target.want == calcWantNothing {
 		return 0, true
 	}
 
-	units, _ := syntaxes.(calcUnitSource)
-	p := &calcParser{next: getNextToken, ctx: ctx, units: units}
+	ctx := target.ctx
+	if percentSibling {
+		ctx = target.percentCtx
+	}
+	p := &calcParser{next: getNextToken, ctx: ctx, units: target.units}
 	t, ok := p.mathFunction()
-	// a type matching want also resolves to one of the §10.9 productions
-	if !ok || !t.matches(want, ctx) {
+	// a type matching the target also resolves to one of the §10.9
+	// productions
+	if !ok || !target.matches(t, ctx) {
 		return 0, true
 	}
 	return p.pos, true
@@ -405,7 +410,7 @@ type calcParser struct {
 	pos   int
 	depth int
 	ctx   calcBase
-	units calcUnitSource
+	units calcUnits
 }
 
 // skipComments advances pos past comments and returns the token there,
@@ -549,7 +554,7 @@ func (p *calcParser) value() (calcType, bool) {
 
 	case tokenizer.Dimension:
 		unit := t.value[min(tokenizer.ConsumeNumber(t.value, 0), len(t.value)):]
-		base, ok := p.unitBase(unit)
+		base, ok := p.units.base(unit)
 		if !ok {
 			return calcType{}, false
 		}
@@ -590,13 +595,6 @@ func (p *calcParser) value() (calcType, bool) {
 	}
 
 	return calcType{}, false
-}
-
-func (p *calcParser) unitBase(unit string) (calcBase, bool) {
-	if p.units == nil {
-		return calcUnitBaseIn(defaultUnits(), unit)
-	}
-	return p.units.calcUnitBase(unit)
 }
 
 // calcArg is an argument of a math function: a calculation, or a keyword
@@ -733,7 +731,7 @@ func (p *calcParser) mathFunction() (calcType, bool) {
 	case "sin(", "cos(", "tan(":
 		// a <number> or an <angle>, returning a <number>
 		arg, ok := p.singleArgument()
-		if !ok || (!arg.matches(calcWantNumber, p.ctx) && !arg.matches(calcWantAngle, p.ctx)) {
+		if !ok || (!arg.matchesNumber(p.ctx) && !arg.matchesBase(calcAngle, p.ctx)) {
 			return calcType{}, false
 		}
 		return numberCalcType().madeConsistentWith(arg)
@@ -741,7 +739,7 @@ func (p *calcParser) mathFunction() (calcType, bool) {
 	case "asin(", "acos(", "atan(":
 		// a <number>, returning an <angle>
 		arg, ok := p.singleArgument()
-		if !ok || !arg.matches(calcWantNumber, p.ctx) {
+		if !ok || !arg.matchesNumber(p.ctx) {
 			return calcType{}, false
 		}
 		return baseCalcType(calcAngle).madeConsistentWith(arg)
@@ -764,7 +762,7 @@ func (p *calcParser) mathFunction() (calcType, bool) {
 			return calcType{}, false
 		}
 		for _, arg := range args {
-			if !arg.typ.matches(calcWantNumber, p.ctx) {
+			if !arg.typ.matchesNumber(p.ctx) {
 				return calcType{}, false
 			}
 		}
@@ -776,7 +774,7 @@ func (p *calcParser) mathFunction() (calcType, bool) {
 
 	case "sqrt(", "exp(":
 		arg, ok := p.singleArgument()
-		if !ok || !arg.matches(calcWantNumber, p.ctx) {
+		if !ok || !arg.matchesNumber(p.ctx) {
 			return calcType{}, false
 		}
 		return numberCalcType().madeConsistentWith(arg)
@@ -827,32 +825,20 @@ func (p *calcParser) round() (calcType, bool) {
 	}
 
 	a := args[0].typ
-	if strategy == "line-width" && !a.matches(calcWantLength, p.ctx) {
+	if strategy == "line-width" && !a.matchesBase(calcLength, p.ctx) {
 		return calcType{}, false
 	}
 	// B may be omitted when A is a <number> or for line-width
-	if len(args) == 1 && strategy != "line-width" && !a.matches(calcWantNumber, p.ctx) {
+	if len(args) == 1 && strategy != "line-width" && !a.matchesNumber(p.ctx) {
 		return calcType{}, false
 	}
 	return sumOf(args)
 }
 
-// hasPercentSiblingMeaning reports whether a math function for the
-// generic type named name mixes with percentages when a <percentage> is
-// an alternative to it: the <length-percentage>, <angle-percentage>,
-// <time-percentage>, <frequency-percentage> and <number-percentage>
-// pattern.
-func hasPercentSiblingMeaning(name string) bool {
-	switch name {
-	case "length", "angle", "time", "frequency", "number", "integer":
-		return true
-	}
-	return false
-}
-
-// markPercentSiblings marks the numeric Type terms of a "|" group that
-// also has a <percentage> term, so that a math function matched for them
-// resolves percentages against their type (§10.9.1 calculation contexts).
+// markPercentSiblings marks the Type terms of a "|" group that also has a
+// <percentage> term, so that a math function matched for a numeric type
+// among them resolves percentages against that type (§10.9.1 calculation
+// contexts; see calcTarget.percentCtx).
 func markPercentSiblings(group *definitionsyntax.Group, terms []*matchGraphNode) {
 	if group.Combinator != "|" {
 		return
@@ -870,7 +856,7 @@ func markPercentSiblings(group *definitionsyntax.Group, terms []*matchGraphNode)
 	}
 
 	for _, term := range terms {
-		if term.typ == "Type" && hasPercentSiblingMeaning(term.name) {
+		if term.typ == "Type" {
 			term.percentSibling = true
 		}
 	}
