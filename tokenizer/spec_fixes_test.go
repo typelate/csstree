@@ -5,6 +5,7 @@ package tokenizer
 // "upstream:", what csstree produces for the same input.
 
 import (
+	"fmt"
 	"slices"
 	"testing"
 )
@@ -180,9 +181,11 @@ func TestCharCodeAtSpecFixes(t *testing.T) {
 		{"a", -1, 0},
 		{"\xff", 0, 0xff},
 	} {
-		if got := CharCodeAt(tt.source, tt.offset); got != tt.want {
-			t.Errorf("CharCodeAt(%q, %d) = %#x, want %#x", tt.source, tt.offset, got, tt.want)
-		}
+		t.Run(fmt.Sprintf("%q@%d", tt.source, tt.offset), func(t *testing.T) {
+			if got := CharCodeAt(tt.source, tt.offset); got != tt.want {
+				t.Errorf("CharCodeAt(%q, %d) = %#x, want %#x", tt.source, tt.offset, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -216,10 +219,12 @@ func TestCodePointAt(t *testing.T) {
 		{"\xf4\x90\x80\x80", 0, 0xFFFD, 1},
 		{"\xf5", 0, 0xFFFD, 1},
 	} {
-		got, size := CodePointAt(tt.source, tt.offset)
-		if got != tt.want || size != tt.size {
-			t.Errorf("CodePointAt(%q, %d) = %U, %d, want %U, %d", tt.source, tt.offset, got, size, tt.want, tt.size)
-		}
+		t.Run(fmt.Sprintf("%q@%d", tt.source, tt.offset), func(t *testing.T) {
+			got, size := CodePointAt(tt.source, tt.offset)
+			if got != tt.want || size != tt.size {
+				t.Errorf("CodePointAt(%q, %d) = %U, %d, want %U, %d", tt.source, tt.offset, got, size, tt.want, tt.size)
+			}
+		})
 	}
 }
 
@@ -236,9 +241,11 @@ func TestConsumeEscapedSpecFixes(t *testing.T) {
 		{"\\a", 2},
 		{"\\", 2},
 	} {
-		if got := ConsumeEscaped(tt.source, 0); got != tt.want {
-			t.Errorf("ConsumeEscaped(%q, 0) = %d, want %d", tt.source, got, tt.want)
-		}
+		t.Run(tt.source, func(t *testing.T) {
+			if got := ConsumeEscaped(tt.source, 0); got != tt.want {
+				t.Errorf("ConsumeEscaped(%q, 0) = %d, want %d", tt.source, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -253,8 +260,10 @@ func TestDecodeEscapedSpecFixes(t *testing.T) {
 		{"😀", "😀"},
 		{"\uFFFD", "\uFFFD"},
 	} {
-		if got := DecodeEscaped(tt.escaped); got != tt.want {
-			t.Errorf("DecodeEscaped(%q) = %q, want %q", tt.escaped, got, tt.want)
-		}
+		t.Run(tt.escaped, func(t *testing.T) {
+			if got := DecodeEscaped(tt.escaped); got != tt.want {
+				t.Errorf("DecodeEscaped(%q) = %q, want %q", tt.escaped, got, tt.want)
+			}
+		})
 	}
 }

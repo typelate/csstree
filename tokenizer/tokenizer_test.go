@@ -530,9 +530,11 @@ func TestPortDeviations(t *testing.T) {
 			{escaped: "FFFFFFFFFFFF", want: "�"},
 			{escaped: "", want: "�"},
 		} {
-			if got := DecodeEscaped(tt.escaped); got != tt.want {
-				t.Errorf("DecodeEscaped(%q) = %q, want %q", tt.escaped, got, tt.want)
-			}
+			t.Run(tt.escaped, func(t *testing.T) {
+				if got := DecodeEscaped(tt.escaped); got != tt.want {
+					t.Errorf("DecodeEscaped(%q) = %q, want %q", tt.escaped, got, tt.want)
+				}
+			})
 		}
 	})
 }

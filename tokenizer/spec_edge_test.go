@@ -7,6 +7,7 @@ package tokenizer
 // spec_fixes_test.go covers it.
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -103,9 +104,11 @@ func TestTokenStreamDeepNesting(t *testing.T) {
 		{depth, depth - 1},
 		{2*depth - 1, 0},
 	} {
-		if got := ts.GetBlockTokenPairIndex(tt.index); got != tt.want {
-			t.Errorf("GetBlockTokenPairIndex(%d) = %d, want %d", tt.index, got, tt.want)
-		}
+		t.Run(fmt.Sprint(tt.index), func(t *testing.T) {
+			if got := ts.GetBlockTokenPairIndex(tt.index); got != tt.want {
+				t.Errorf("GetBlockTokenPairIndex(%d) = %d, want %d", tt.index, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -150,30 +153,32 @@ func TestCharCodeDefinitions(t *testing.T) {
 		{0x80, false, false, false, false, false, true, true, true, false, false, false, 0x84},
 		{0xff, false, false, false, false, false, true, true, true, false, false, false, 0x84},
 	} {
-		for _, check := range []struct {
-			name string
-			fn   func(int) bool
-			want bool
-		}{
-			{"IsDigit", IsDigit, tt.digit},
-			{"IsHexDigit", IsHexDigit, tt.hex},
-			{"isUppercaseLetter", isUppercaseLetter, tt.upper},
-			{"isLowercaseLetter", isLowercaseLetter, tt.lower},
-			{"isLetter", isLetter, tt.letter},
-			{"isNonASCII", isNonASCII, tt.nonASCII},
-			{"isNameStart", isNameStart, tt.nameStart},
-			{"IsName", IsName, tt.name},
-			{"isNonPrintable", isNonPrintable, tt.nonPrintable},
-			{"isNewline", isNewline, tt.newline},
-			{"IsWhiteSpace", IsWhiteSpace, tt.whiteSpace},
-		} {
-			if got := check.fn(tt.code); got != check.want {
-				t.Errorf("%s(%#x) = %t, want %t", check.name, tt.code, got, check.want)
+		t.Run(fmt.Sprintf("%#x", tt.code), func(t *testing.T) {
+			for _, check := range []struct {
+				name string
+				fn   func(int) bool
+				want bool
+			}{
+				{"IsDigit", IsDigit, tt.digit},
+				{"IsHexDigit", IsHexDigit, tt.hex},
+				{"isUppercaseLetter", isUppercaseLetter, tt.upper},
+				{"isLowercaseLetter", isLowercaseLetter, tt.lower},
+				{"isLetter", isLetter, tt.letter},
+				{"isNonASCII", isNonASCII, tt.nonASCII},
+				{"isNameStart", isNameStart, tt.nameStart},
+				{"IsName", IsName, tt.name},
+				{"isNonPrintable", isNonPrintable, tt.nonPrintable},
+				{"isNewline", isNewline, tt.newline},
+				{"IsWhiteSpace", IsWhiteSpace, tt.whiteSpace},
+			} {
+				if got := check.fn(tt.code); got != check.want {
+					t.Errorf("%s(%#x) = %t, want %t", check.name, tt.code, got, check.want)
+				}
 			}
-		}
-		if got := charCodeCategory(tt.code); got != tt.category {
-			t.Errorf("charCodeCategory(%#x) = %#x, want %#x", tt.code, got, tt.category)
-		}
+			if got := charCodeCategory(tt.code); got != tt.category {
+				t.Errorf("charCodeCategory(%#x) = %#x, want %#x", tt.code, got, tt.category)
+			}
+		})
 	}
 }
 
@@ -202,9 +207,11 @@ func TestIsNumberStart(t *testing.T) {
 		{"+", false},
 		{"", false},
 	} {
-		if got := isNumberStart(codesAt(tt.source)); got != tt.want {
-			t.Errorf("isNumberStart(%q) = %t, want %t", tt.source, got, tt.want)
-		}
+		t.Run(tt.source, func(t *testing.T) {
+			if got := isNumberStart(codesAt(tt.source)); got != tt.want {
+				t.Errorf("isNumberStart(%q) = %t, want %t", tt.source, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -228,9 +235,11 @@ func TestIsIdentifierStart(t *testing.T) {
 		{"1", false},
 		{"", false},
 	} {
-		if got := IsIdentifierStart(codesAt(tt.source)); got != tt.want {
-			t.Errorf("IsIdentifierStart(%q) = %t, want %t", tt.source, got, tt.want)
-		}
+		t.Run(tt.source, func(t *testing.T) {
+			if got := IsIdentifierStart(codesAt(tt.source)); got != tt.want {
+				t.Errorf("IsIdentifierStart(%q) = %t, want %t", tt.source, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -248,9 +257,11 @@ func TestBOMLen(t *testing.T) {
 		{"a", 0},
 		{"", 0},
 	} {
-		if got := bomLen(tt.source); got != tt.want {
-			t.Errorf("bomLen(%q) = %d, want %d", tt.source, got, tt.want)
-		}
+		t.Run(tt.source, func(t *testing.T) {
+			if got := bomLen(tt.source); got != tt.want {
+				t.Errorf("bomLen(%q) = %d, want %d", tt.source, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -261,17 +272,19 @@ func TestNewlineLength(t *testing.T) {
 	}{
 		{"\r\n", 0, 2}, {"\n\n", 0, 1}, {"\r\r", 0, 1}, {"\r", 0, 1}, {"\n", 0, 1}, {"a\r\n", 1, 2}, {"\f\n", 0, 1},
 	} {
-		if got := newlineLength(tt.source, tt.offset); got != tt.want {
-			t.Errorf("newlineLength(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.want)
-		}
+		t.Run(fmt.Sprintf("%q@%d", tt.source, tt.offset), func(t *testing.T) {
+			if got := newlineLength(tt.source, tt.offset); got != tt.want {
+				t.Errorf("newlineLength(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.want)
+			}
+		})
 	}
 }
 
 func TestCmpChar(t *testing.T) {
 	for _, tt := range []struct {
-		source           string
-		offset, refernce int
-		want             bool
+		source            string
+		offset, reference int
+		want              bool
 	}{
 		{"e", 0, 'e', true},
 		{"E", 0, 'e', true},
@@ -282,9 +295,11 @@ func TestCmpChar(t *testing.T) {
 		{"Z", 0, 'z', true},
 		{"", 0, 'e', false},
 	} {
-		if got := CmpChar(tt.source, tt.offset, tt.refernce); got != tt.want {
-			t.Errorf("CmpChar(%q, %d, %q) = %t, want %t", tt.source, tt.offset, rune(tt.refernce), got, tt.want)
-		}
+		t.Run(fmt.Sprintf("%q@%d", tt.source, tt.offset), func(t *testing.T) {
+			if got := CmpChar(tt.source, tt.offset, tt.reference); got != tt.want {
+				t.Errorf("CmpChar(%q, %d, %q) = %t, want %t", tt.source, tt.offset, rune(tt.reference), got, tt.want)
+			}
+		})
 	}
 }
 
@@ -304,9 +319,11 @@ func TestCmpStr(t *testing.T) {
 		{"@[`", "`{@", 0, 3, false},
 		{"", "", 0, 0, true},
 	} {
-		if got := CmpStr(tt.source, tt.start, tt.end, tt.reference); got != tt.want {
-			t.Errorf("CmpStr(%q, %d, %d, %q) = %t, want %t", tt.source, tt.start, tt.end, tt.reference, got, tt.want)
-		}
+		t.Run(fmt.Sprintf("%q[%d:%d]", tt.source, tt.start, tt.end), func(t *testing.T) {
+			if got := CmpStr(tt.source, tt.start, tt.end, tt.reference); got != tt.want {
+				t.Errorf("CmpStr(%q, %d, %d, %q) = %t, want %t", tt.source, tt.start, tt.end, tt.reference, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -317,9 +334,11 @@ func TestFindWhiteSpace(t *testing.T) {
 	}{
 		{" a", 0, 0}, {"  a", 1, 0}, {"a  ", 2, 1}, {"a", 0, 1}, {"", 0, 1}, {"\n\t\r\f a", 4, 0}, {"a b", 1, 1},
 	} {
-		if got := FindWhiteSpaceStart(tt.source, tt.offset); got != tt.want {
-			t.Errorf("FindWhiteSpaceStart(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.want)
-		}
+		t.Run(fmt.Sprintf("start %q@%d", tt.source, tt.offset), func(t *testing.T) {
+			if got := FindWhiteSpaceStart(tt.source, tt.offset); got != tt.want {
+				t.Errorf("FindWhiteSpaceStart(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.want)
+			}
+		})
 	}
 
 	for _, tt := range []struct {
@@ -328,12 +347,14 @@ func TestFindWhiteSpace(t *testing.T) {
 	}{
 		{"  a", 0, 2, 0}, {"a", 0, 0, 0}, {"  ", 0, 2, 0}, {"123a", 0, 0, 3}, {"123", 1, 1, 3}, {"", 0, 0, 0},
 	} {
-		if got := findWhiteSpaceEnd(tt.source, tt.offset); got != tt.wantWS {
-			t.Errorf("findWhiteSpaceEnd(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.wantWS)
-		}
-		if got := findDecimalNumberEnd(tt.source, tt.offset); got != tt.wantDigit {
-			t.Errorf("findDecimalNumberEnd(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.wantDigit)
-		}
+		t.Run(fmt.Sprintf("end %q@%d", tt.source, tt.offset), func(t *testing.T) {
+			if got := findWhiteSpaceEnd(tt.source, tt.offset); got != tt.wantWS {
+				t.Errorf("findWhiteSpaceEnd(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.wantWS)
+			}
+			if got := findDecimalNumberEnd(tt.source, tt.offset); got != tt.wantDigit {
+				t.Errorf("findDecimalNumberEnd(%q, %d) = %d, want %d", tt.source, tt.offset, got, tt.wantDigit)
+			}
+		})
 	}
 }
 
@@ -389,9 +410,11 @@ func TestConsumeHelpers(t *testing.T) {
 		{"consumeBadURLRemnants", consumeBadURLRemnants, "\n\\)b)c", 5},
 		{"consumeBadURLRemnants", consumeBadURLRemnants, "", 0},
 	} {
-		if got := tt.fn(tt.source, 0); got != tt.want {
-			t.Errorf("%s(%q, 0) = %d, want %d", tt.name, tt.source, got, tt.want)
-		}
+		t.Run(fmt.Sprintf("%s(%q)", tt.name, tt.source), func(t *testing.T) {
+			if got := tt.fn(tt.source, 0); got != tt.want {
+				t.Errorf("%s(%q, 0) = %d, want %d", tt.name, tt.source, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -424,9 +447,11 @@ func TestDecodeEscapedSpec(t *testing.T) {
 		{"41 ", "A"},
 		{"41\n", "A"},
 	} {
-		if got := DecodeEscaped(tt.escaped); got != tt.want {
-			t.Errorf("DecodeEscaped(%q) = %q, want %q", tt.escaped, got, tt.want)
-		}
+		t.Run(tt.escaped, func(t *testing.T) {
+			if got := DecodeEscaped(tt.escaped); got != tt.want {
+				t.Errorf("DecodeEscaped(%q) = %q, want %q", tt.escaped, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -446,72 +471,74 @@ func TestTokenStreamLookups(t *testing.T) {
 		isDelimDot        [3]bool      // 0, 1, 2
 		substrToCursor    string
 	}{
-		{index: 0, lookupType: [4]TokenType{0, 1, 13, 21}, lookupTypeNonSC: [3]TokenType{1, 21, 19}, lookupOffset: [4]int{0, 0, 1, 2}, lookupOffsetNonSC: [3]int{0, 2, 4}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: ""},
-		{index: 1, lookupType: [4]TokenType{1, 13, 21, 13}, lookupTypeNonSC: [3]TokenType{21, 19, 1}, lookupOffset: [4]int{0, 1, 2, 3}, lookupOffsetNonSC: [3]int{1, 3, 4}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a"},
-		{index: 2, lookupType: [4]TokenType{13, 21, 13, 19}, lookupTypeNonSC: [3]TokenType{21, 19, 1}, lookupOffset: [4]int{1, 2, 3, 4}, lookupOffsetNonSC: [3]int{0, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a "},
-		{index: 3, lookupType: [4]TokenType{21, 13, 19, 1}, lookupTypeNonSC: [3]TokenType{19, 1, 20}, lookupOffset: [4]int{2, 3, 4, 5}, lookupOffsetNonSC: [3]int{1, 2, 5}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ("},
-		{index: 4, lookupType: [4]TokenType{13, 19, 1, 13}, lookupTypeNonSC: [3]TokenType{19, 1, 20}, lookupOffset: [4]int{3, 4, 5, 6}, lookupOffsetNonSC: [3]int{0, 1, 4}, lookupValueB: [2]bool{false, true}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( "},
-		{index: 5, lookupType: [4]TokenType{19, 1, 13, 25}, lookupTypeNonSC: [3]TokenType{1, 20, 9}, lookupOffset: [4]int{4, 5, 6, 7}, lookupOffsetNonSC: [3]int{0, 3, 5}, lookupValueB: [2]bool{true, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( ["},
-		{index: 6, lookupType: [4]TokenType{1, 13, 25, 20}, lookupTypeNonSC: [3]TokenType{20, 9, 1}, lookupOffset: [4]int{5, 6, 7, 12}, lookupOffsetNonSC: [3]int{2, 4, 5}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b"},
-		{index: 7, lookupType: [4]TokenType{13, 25, 20, 13}, lookupTypeNonSC: [3]TokenType{20, 9, 1}, lookupOffset: [4]int{6, 7, 12, 13}, lookupOffsetNonSC: [3]int{1, 3, 4}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b "},
-		{index: 8, lookupType: [4]TokenType{25, 20, 13, 9}, lookupTypeNonSC: [3]TokenType{20, 9, 1}, lookupOffset: [4]int{7, 12, 13, 14}, lookupOffsetNonSC: [3]int{0, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{true, true, true, true}, isDelimDot: [3]bool{false, false, true}, substrToCursor: "a ( [b /*c*/"},
-		{index: 9, lookupType: [4]TokenType{20, 13, 9, 1}, lookupTypeNonSC: [3]TokenType{9, 1, 9}, lookupOffset: [4]int{12, 13, 14, 15}, lookupOffsetNonSC: [3]int{1, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, true, false}, substrToCursor: "a ( [b /*c*/]"},
-		{index: 10, lookupType: [4]TokenType{13, 9, 1, 9}, lookupTypeNonSC: [3]TokenType{9, 1, 9}, lookupOffset: [4]int{13, 14, 15, 16}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{true, false, false}, substrToCursor: "a ( [b /*c*/] "},
-		{index: 11, lookupType: [4]TokenType{9, 1, 9, 1}, lookupTypeNonSC: [3]TokenType{1, 9, 1}, lookupOffset: [4]int{14, 15, 16, 17}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] ."},
-		{index: 12, lookupType: [4]TokenType{1, 9, 1, 22}, lookupTypeNonSC: [3]TokenType{9, 1, 22}, lookupOffset: [4]int{15, 16, 17, 18}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d"},
-		{index: 13, lookupType: [4]TokenType{9, 1, 22, 13}, lookupTypeNonSC: [3]TokenType{1, 22, 23}, lookupOffset: [4]int{16, 17, 18, 19}, lookupOffsetNonSC: [3]int{0, 1, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|"},
-		{index: 14, lookupType: [4]TokenType{1, 22, 13, 23}, lookupTypeNonSC: [3]TokenType{22, 23, 1}, lookupOffset: [4]int{17, 18, 19, 20}, lookupOffsetNonSC: [3]int{0, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{true, true, true, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e"},
-		{index: 15, lookupType: [4]TokenType{22, 13, 23, 1}, lookupTypeNonSC: [3]TokenType{23, 1, 16}, lookupOffset: [4]int{18, 19, 20, 21}, lookupOffsetNonSC: [3]int{1, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e)"},
-		{index: 16, lookupType: [4]TokenType{13, 23, 1, 16}, lookupTypeNonSC: [3]TokenType{23, 1, 16}, lookupOffset: [4]int{19, 20, 21, 22}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) "},
-		{index: 17, lookupType: [4]TokenType{23, 1, 16, 13}, lookupTypeNonSC: [3]TokenType{1, 16, 2}, lookupOffset: [4]int{20, 21, 22, 23}, lookupOffsetNonSC: [3]int{0, 1, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {"},
-		{index: 18, lookupType: [4]TokenType{1, 16, 13, 2}, lookupTypeNonSC: [3]TokenType{16, 2, 10}, lookupOffset: [4]int{21, 22, 23, 24}, lookupOffsetNonSC: [3]int{0, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x"},
-		{index: 19, lookupType: [4]TokenType{16, 13, 2, 10}, lookupTypeNonSC: [3]TokenType{2, 10, 22}, lookupOffset: [4]int{22, 23, 24, 26}, lookupOffsetNonSC: [3]int{1, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x:"},
-		{index: 20, lookupType: [4]TokenType{13, 2, 10, 22}, lookupTypeNonSC: [3]TokenType{2, 10, 22}, lookupOffset: [4]int{23, 24, 26, 27}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: "},
-		{index: 21, lookupType: [4]TokenType{2, 10, 22, 24}, lookupTypeNonSC: [3]TokenType{10, 22, 24}, lookupOffset: [4]int{24, 26, 27, 28}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f("},
-		{index: 22, lookupType: [4]TokenType{10, 22, 24, 13}, lookupTypeNonSC: [3]TokenType{22, 24, 9}, lookupOffset: [4]int{26, 27, 28, 29}, lookupOffsetNonSC: [3]int{0, 1, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{true, true, true, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1"},
-		{index: 23, lookupType: [4]TokenType{22, 24, 13, 9}, lookupTypeNonSC: [3]TokenType{24, 9, 0}, lookupOffset: [4]int{27, 28, 29, 30}, lookupOffsetNonSC: [3]int{0, 2, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{true, true, true, true}, isDelimDot: [3]bool{false, false, true}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)"},
-		{index: 24, lookupType: [4]TokenType{24, 13, 9, 13}, lookupTypeNonSC: [3]TokenType{9, 0, 0}, lookupOffset: [4]int{28, 29, 30, 31}, lookupOffsetNonSC: [3]int{1, 0, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, true, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)}"},
-		{index: 25, lookupType: [4]TokenType{13, 9, 13, 0}, lookupTypeNonSC: [3]TokenType{9, 0, 0}, lookupOffset: [4]int{29, 30, 31, 32}, lookupOffsetNonSC: [3]int{0, 0, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{true, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)} "},
-		{index: 26, lookupType: [4]TokenType{9, 13, 0, 0}, lookupTypeNonSC: [3]TokenType{0, 0, 0}, lookupOffset: [4]int{30, 31, 32, 32}, lookupOffsetNonSC: [3]int{0, 0, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)} ."},
-		{index: 27, lookupType: [4]TokenType{13, 0, 0, 0}, lookupTypeNonSC: [3]TokenType{0, 0, 0}, lookupOffset: [4]int{31, 32, 32, 32}, lookupOffsetNonSC: [3]int{0, 0, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, true, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)} . "},
+		{index: 0, lookupType: [4]TokenType{EOF, Ident, WhiteSpace, LeftParenthesis}, lookupTypeNonSC: [3]TokenType{Ident, LeftParenthesis, LeftSquareBracket}, lookupOffset: [4]int{0, 0, 1, 2}, lookupOffsetNonSC: [3]int{0, 2, 4}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: ""},
+		{index: 1, lookupType: [4]TokenType{Ident, WhiteSpace, LeftParenthesis, WhiteSpace}, lookupTypeNonSC: [3]TokenType{LeftParenthesis, LeftSquareBracket, Ident}, lookupOffset: [4]int{0, 1, 2, 3}, lookupOffsetNonSC: [3]int{1, 3, 4}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a"},
+		{index: 2, lookupType: [4]TokenType{WhiteSpace, LeftParenthesis, WhiteSpace, LeftSquareBracket}, lookupTypeNonSC: [3]TokenType{LeftParenthesis, LeftSquareBracket, Ident}, lookupOffset: [4]int{1, 2, 3, 4}, lookupOffsetNonSC: [3]int{0, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a "},
+		{index: 3, lookupType: [4]TokenType{LeftParenthesis, WhiteSpace, LeftSquareBracket, Ident}, lookupTypeNonSC: [3]TokenType{LeftSquareBracket, Ident, RightSquareBracket}, lookupOffset: [4]int{2, 3, 4, 5}, lookupOffsetNonSC: [3]int{1, 2, 5}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ("},
+		{index: 4, lookupType: [4]TokenType{WhiteSpace, LeftSquareBracket, Ident, WhiteSpace}, lookupTypeNonSC: [3]TokenType{LeftSquareBracket, Ident, RightSquareBracket}, lookupOffset: [4]int{3, 4, 5, 6}, lookupOffsetNonSC: [3]int{0, 1, 4}, lookupValueB: [2]bool{false, true}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( "},
+		{index: 5, lookupType: [4]TokenType{LeftSquareBracket, Ident, WhiteSpace, Comment}, lookupTypeNonSC: [3]TokenType{Ident, RightSquareBracket, Delim}, lookupOffset: [4]int{4, 5, 6, 7}, lookupOffsetNonSC: [3]int{0, 3, 5}, lookupValueB: [2]bool{true, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( ["},
+		{index: 6, lookupType: [4]TokenType{Ident, WhiteSpace, Comment, RightSquareBracket}, lookupTypeNonSC: [3]TokenType{RightSquareBracket, Delim, Ident}, lookupOffset: [4]int{5, 6, 7, 12}, lookupOffsetNonSC: [3]int{2, 4, 5}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b"},
+		{index: 7, lookupType: [4]TokenType{WhiteSpace, Comment, RightSquareBracket, WhiteSpace}, lookupTypeNonSC: [3]TokenType{RightSquareBracket, Delim, Ident}, lookupOffset: [4]int{6, 7, 12, 13}, lookupOffsetNonSC: [3]int{1, 3, 4}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b "},
+		{index: 8, lookupType: [4]TokenType{Comment, RightSquareBracket, WhiteSpace, Delim}, lookupTypeNonSC: [3]TokenType{RightSquareBracket, Delim, Ident}, lookupOffset: [4]int{7, 12, 13, 14}, lookupOffsetNonSC: [3]int{0, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{true, true, true, true}, isDelimDot: [3]bool{false, false, true}, substrToCursor: "a ( [b /*c*/"},
+		{index: 9, lookupType: [4]TokenType{RightSquareBracket, WhiteSpace, Delim, Ident}, lookupTypeNonSC: [3]TokenType{Delim, Ident, Delim}, lookupOffset: [4]int{12, 13, 14, 15}, lookupOffsetNonSC: [3]int{1, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, true, false}, substrToCursor: "a ( [b /*c*/]"},
+		{index: 10, lookupType: [4]TokenType{WhiteSpace, Delim, Ident, Delim}, lookupTypeNonSC: [3]TokenType{Delim, Ident, Delim}, lookupOffset: [4]int{13, 14, 15, 16}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{true, false, false}, substrToCursor: "a ( [b /*c*/] "},
+		{index: 11, lookupType: [4]TokenType{Delim, Ident, Delim, Ident}, lookupTypeNonSC: [3]TokenType{Ident, Delim, Ident}, lookupOffset: [4]int{14, 15, 16, 17}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] ."},
+		{index: 12, lookupType: [4]TokenType{Ident, Delim, Ident, RightParenthesis}, lookupTypeNonSC: [3]TokenType{Delim, Ident, RightParenthesis}, lookupOffset: [4]int{15, 16, 17, 18}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d"},
+		{index: 13, lookupType: [4]TokenType{Delim, Ident, RightParenthesis, WhiteSpace}, lookupTypeNonSC: [3]TokenType{Ident, RightParenthesis, LeftCurlyBracket}, lookupOffset: [4]int{16, 17, 18, 19}, lookupOffsetNonSC: [3]int{0, 1, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|"},
+		{index: 14, lookupType: [4]TokenType{Ident, RightParenthesis, WhiteSpace, LeftCurlyBracket}, lookupTypeNonSC: [3]TokenType{RightParenthesis, LeftCurlyBracket, Ident}, lookupOffset: [4]int{17, 18, 19, 20}, lookupOffsetNonSC: [3]int{0, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{true, true, true, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e"},
+		{index: 15, lookupType: [4]TokenType{RightParenthesis, WhiteSpace, LeftCurlyBracket, Ident}, lookupTypeNonSC: [3]TokenType{LeftCurlyBracket, Ident, Colon}, lookupOffset: [4]int{18, 19, 20, 21}, lookupOffsetNonSC: [3]int{1, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e)"},
+		{index: 16, lookupType: [4]TokenType{WhiteSpace, LeftCurlyBracket, Ident, Colon}, lookupTypeNonSC: [3]TokenType{LeftCurlyBracket, Ident, Colon}, lookupOffset: [4]int{19, 20, 21, 22}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) "},
+		{index: 17, lookupType: [4]TokenType{LeftCurlyBracket, Ident, Colon, WhiteSpace}, lookupTypeNonSC: [3]TokenType{Ident, Colon, Function}, lookupOffset: [4]int{20, 21, 22, 23}, lookupOffsetNonSC: [3]int{0, 1, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {"},
+		{index: 18, lookupType: [4]TokenType{Ident, Colon, WhiteSpace, Function}, lookupTypeNonSC: [3]TokenType{Colon, Function, Number}, lookupOffset: [4]int{21, 22, 23, 24}, lookupOffsetNonSC: [3]int{0, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, false}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x"},
+		{index: 19, lookupType: [4]TokenType{Colon, WhiteSpace, Function, Number}, lookupTypeNonSC: [3]TokenType{Function, Number, RightParenthesis}, lookupOffset: [4]int{22, 23, 24, 26}, lookupOffsetNonSC: [3]int{1, 2, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x:"},
+		{index: 20, lookupType: [4]TokenType{WhiteSpace, Function, Number, RightParenthesis}, lookupTypeNonSC: [3]TokenType{Function, Number, RightParenthesis}, lookupOffset: [4]int{23, 24, 26, 27}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: "},
+		{index: 21, lookupType: [4]TokenType{Function, Number, RightParenthesis, RightCurlyBracket}, lookupTypeNonSC: [3]TokenType{Number, RightParenthesis, RightCurlyBracket}, lookupOffset: [4]int{24, 26, 27, 28}, lookupOffsetNonSC: [3]int{0, 1, 2}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f("},
+		{index: 22, lookupType: [4]TokenType{Number, RightParenthesis, RightCurlyBracket, WhiteSpace}, lookupTypeNonSC: [3]TokenType{RightParenthesis, RightCurlyBracket, Delim}, lookupOffset: [4]int{26, 27, 28, 29}, lookupOffsetNonSC: [3]int{0, 1, 3}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{true, true, true, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1"},
+		{index: 23, lookupType: [4]TokenType{RightParenthesis, RightCurlyBracket, WhiteSpace, Delim}, lookupTypeNonSC: [3]TokenType{RightCurlyBracket, Delim, EOF}, lookupOffset: [4]int{27, 28, 29, 30}, lookupOffsetNonSC: [3]int{0, 2, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{true, true, true, true}, isDelimDot: [3]bool{false, false, true}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)"},
+		{index: 24, lookupType: [4]TokenType{RightCurlyBracket, WhiteSpace, Delim, WhiteSpace}, lookupTypeNonSC: [3]TokenType{Delim, EOF, EOF}, lookupOffset: [4]int{28, 29, 30, 31}, lookupOffsetNonSC: [3]int{1, 0, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, true, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)}"},
+		{index: 25, lookupType: [4]TokenType{WhiteSpace, Delim, WhiteSpace, EOF}, lookupTypeNonSC: [3]TokenType{Delim, EOF, EOF}, lookupOffset: [4]int{29, 30, 31, 32}, lookupOffsetNonSC: [3]int{0, 0, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{true, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)} "},
+		{index: 26, lookupType: [4]TokenType{Delim, WhiteSpace, EOF, EOF}, lookupTypeNonSC: [3]TokenType{EOF, EOF, EOF}, lookupOffset: [4]int{30, 31, 32, 32}, lookupOffsetNonSC: [3]int{0, 0, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, false, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)} ."},
+		{index: 27, lookupType: [4]TokenType{WhiteSpace, EOF, EOF, EOF}, lookupTypeNonSC: [3]TokenType{EOF, EOF, EOF}, lookupOffset: [4]int{31, 32, 32, 32}, lookupOffsetNonSC: [3]int{0, 0, 0}, lookupValueB: [2]bool{false, false}, isBalanceEdge: [4]bool{false, false, true, true}, isDelimDot: [3]bool{false, false, false}, substrToCursor: "a ( [b /*c*/] .d|e) {x: f(1)} . "},
 	} {
-		ts := NewTokenStream(tokenStreamSource)
-		ts.Skip(tt.index)
-		if ts.TokenIndex != tt.index {
-			t.Fatalf("after Skip(%d) TokenIndex = %d", tt.index, ts.TokenIndex)
-		}
-		for i, offset := range []int{-1, 0, 1, 2} {
-			if got := ts.LookupType(offset); got != tt.lookupType[i] {
-				t.Errorf("at %d LookupType(%d) = %v, want %v", tt.index, offset, got, tt.lookupType[i])
+		t.Run(fmt.Sprint(tt.index), func(t *testing.T) {
+			ts := NewTokenStream(tokenStreamSource)
+			ts.Skip(tt.index)
+			if ts.TokenIndex != tt.index {
+				t.Fatalf("after Skip(%d) TokenIndex = %d", tt.index, ts.TokenIndex)
 			}
-			if got := ts.LookupOffset(offset); got != tt.lookupOffset[i] {
-				t.Errorf("at %d LookupOffset(%d) = %d, want %d", tt.index, offset, got, tt.lookupOffset[i])
+			for i, offset := range []int{-1, 0, 1, 2} {
+				if got := ts.LookupType(offset); got != tt.lookupType[i] {
+					t.Errorf("at %d LookupType(%d) = %v, want %v", tt.index, offset, got, tt.lookupType[i])
+				}
+				if got := ts.LookupOffset(offset); got != tt.lookupOffset[i] {
+					t.Errorf("at %d LookupOffset(%d) = %d, want %d", tt.index, offset, got, tt.lookupOffset[i])
+				}
 			}
-		}
-		for idx := range 3 {
-			if got := ts.LookupTypeNonSC(idx); got != tt.lookupTypeNonSC[idx] {
-				t.Errorf("at %d LookupTypeNonSC(%d) = %v, want %v", tt.index, idx, got, tt.lookupTypeNonSC[idx])
+			for idx := range 3 {
+				if got := ts.LookupTypeNonSC(idx); got != tt.lookupTypeNonSC[idx] {
+					t.Errorf("at %d LookupTypeNonSC(%d) = %v, want %v", tt.index, idx, got, tt.lookupTypeNonSC[idx])
+				}
+				if got := ts.LookupOffsetNonSC(idx); got != tt.lookupOffsetNonSC[idx] {
+					t.Errorf("at %d LookupOffsetNonSC(%d) = %d, want %d", tt.index, idx, got, tt.lookupOffsetNonSC[idx])
+				}
+				if got := ts.IsDelim('.', idx); got != tt.isDelimDot[idx] {
+					t.Errorf("at %d IsDelim('.', %d) = %t, want %t", tt.index, idx, got, tt.isDelimDot[idx])
+				}
 			}
-			if got := ts.LookupOffsetNonSC(idx); got != tt.lookupOffsetNonSC[idx] {
-				t.Errorf("at %d LookupOffsetNonSC(%d) = %d, want %d", tt.index, idx, got, tt.lookupOffsetNonSC[idx])
+			for offset := range 2 {
+				if got := ts.LookupValue(offset, "b"); got != tt.lookupValueB[offset] {
+					t.Errorf("at %d LookupValue(%d, %q) = %t, want %t", tt.index, offset, "b", got, tt.lookupValueB[offset])
+				}
 			}
-			if got := ts.IsDelim('.', idx); got != tt.isDelimDot[idx] {
-				t.Errorf("at %d IsDelim('.', %d) = %t, want %t", tt.index, idx, got, tt.isDelimDot[idx])
+			for i, tokenIndex := range []int{tt.index - 1, tt.index, tt.index + 1, tt.index + 5} {
+				if got := ts.IsBalanceEdge(tokenIndex); got != tt.isBalanceEdge[i] {
+					t.Errorf("at %d IsBalanceEdge(%d) = %t, want %t", tt.index, tokenIndex, got, tt.isBalanceEdge[i])
+				}
 			}
-		}
-		for offset := range 2 {
-			if got := ts.LookupValue(offset, "b"); got != tt.lookupValueB[offset] {
-				t.Errorf("at %d LookupValue(%d, %q) = %t, want %t", tt.index, offset, "b", got, tt.lookupValueB[offset])
+			if got := ts.SubstrToCursor(0); got != tt.substrToCursor {
+				t.Errorf("at %d SubstrToCursor(0) = %q, want %q", tt.index, got, tt.substrToCursor)
 			}
-		}
-		for i, tokenIndex := range []int{tt.index - 1, tt.index, tt.index + 1, tt.index + 5} {
-			if got := ts.IsBalanceEdge(tokenIndex); got != tt.isBalanceEdge[i] {
-				t.Errorf("at %d IsBalanceEdge(%d) = %t, want %t", tt.index, tokenIndex, got, tt.isBalanceEdge[i])
-			}
-		}
-		if got := ts.SubstrToCursor(0); got != tt.substrToCursor {
-			t.Errorf("at %d SubstrToCursor(0) = %q, want %q", tt.index, got, tt.substrToCursor)
-		}
+		})
 	}
 }
 
@@ -522,57 +549,59 @@ func TestTokenStreamAccessors(t *testing.T) {
 		tokenType         TokenType
 		pair              int
 	}{
-		{-1, 0, 1, 1, -1},
-		{0, 0, 1, 1, -1},
-		{1, 1, 2, 13, -1},
-		{2, 2, 3, 21, 14},
-		{3, 3, 4, 13, -1},
-		{4, 4, 5, 19, 8},
-		{5, 5, 6, 1, -1},
-		{6, 6, 7, 13, -1},
-		{7, 7, 12, 25, -1},
-		{8, 12, 13, 20, 4},
-		{9, 13, 14, 13, -1},
-		{10, 14, 15, 9, -1},
-		{11, 15, 16, 1, -1},
-		{12, 16, 17, 9, -1},
-		{13, 17, 18, 1, -1},
-		{14, 18, 19, 22, 2},
-		{15, 19, 20, 13, -1},
-		{16, 20, 21, 23, 23},
-		{17, 21, 22, 1, -1},
-		{18, 22, 23, 16, -1},
-		{19, 23, 24, 13, -1},
-		{20, 24, 26, 2, 22},
-		{21, 26, 27, 10, -1},
-		{22, 27, 28, 22, 20},
-		{23, 28, 29, 24, 16},
-		{24, 29, 30, 13, -1},
-		{25, 30, 31, 9, -1},
-		{26, 31, 32, 13, -1},
-		{27, 32, 32, 0, -1},
-		{28, 32, 32, 0, -1},
+		{-1, 0, 1, Ident, -1},
+		{0, 0, 1, Ident, -1},
+		{1, 1, 2, WhiteSpace, -1},
+		{2, 2, 3, LeftParenthesis, 14},
+		{3, 3, 4, WhiteSpace, -1},
+		{4, 4, 5, LeftSquareBracket, 8},
+		{5, 5, 6, Ident, -1},
+		{6, 6, 7, WhiteSpace, -1},
+		{7, 7, 12, Comment, -1},
+		{8, 12, 13, RightSquareBracket, 4},
+		{9, 13, 14, WhiteSpace, -1},
+		{10, 14, 15, Delim, -1},
+		{11, 15, 16, Ident, -1},
+		{12, 16, 17, Delim, -1},
+		{13, 17, 18, Ident, -1},
+		{14, 18, 19, RightParenthesis, 2},
+		{15, 19, 20, WhiteSpace, -1},
+		{16, 20, 21, LeftCurlyBracket, 23},
+		{17, 21, 22, Ident, -1},
+		{18, 22, 23, Colon, -1},
+		{19, 23, 24, WhiteSpace, -1},
+		{20, 24, 26, Function, 22},
+		{21, 26, 27, Number, -1},
+		{22, 27, 28, RightParenthesis, 20},
+		{23, 28, 29, RightCurlyBracket, 16},
+		{24, 29, 30, WhiteSpace, -1},
+		{25, 30, 31, Delim, -1},
+		{26, 31, 32, WhiteSpace, -1},
+		{27, 32, 32, EOF, -1},
+		{28, 32, 32, EOF, -1},
 	} {
-		if got := ts.GetTokenStart(tt.index); got != tt.start {
-			t.Errorf("GetTokenStart(%d) = %d, want %d", tt.index, got, tt.start)
-		}
-		if got := ts.GetTokenEnd(tt.index); got != tt.end {
-			t.Errorf("GetTokenEnd(%d) = %d, want %d", tt.index, got, tt.end)
-		}
-		if got := ts.GetTokenType(tt.index); got != tt.tokenType {
-			t.Errorf("GetTokenType(%d) = %v, want %v", tt.index, got, tt.tokenType)
-		}
-		if got := ts.GetBlockTokenPairIndex(tt.index); got != tt.pair {
-			t.Errorf("GetBlockTokenPairIndex(%d) = %d, want %d", tt.index, got, tt.pair)
-		}
-		wantOpener := tt.tokenType == Function || tt.tokenType == LeftParenthesis || tt.tokenType == LeftSquareBracket || tt.tokenType == LeftCurlyBracket
-		if got := tt.tokenType.IsBlockOpener(); got != wantOpener {
-			t.Errorf("%v.IsBlockOpener() = %t, want %t", tt.tokenType, got, wantOpener)
-		}
-		wantCloser := tt.tokenType == RightParenthesis || tt.tokenType == RightSquareBracket || tt.tokenType == RightCurlyBracket
-		if got := tt.tokenType.IsBlockCloser(); got != wantCloser {
-			t.Errorf("%v.IsBlockCloser() = %t, want %t", tt.tokenType, got, wantCloser)
-		}
+		t.Run(fmt.Sprint(tt.index), func(t *testing.T) {
+			if got := ts.GetTokenStart(tt.index); got != tt.start {
+				t.Errorf("GetTokenStart(%d) = %d, want %d", tt.index, got, tt.start)
+			}
+			if got := ts.GetTokenEnd(tt.index); got != tt.end {
+				t.Errorf("GetTokenEnd(%d) = %d, want %d", tt.index, got, tt.end)
+			}
+			if got := ts.GetTokenType(tt.index); got != tt.tokenType {
+				t.Errorf("GetTokenType(%d) = %v, want %v", tt.index, got, tt.tokenType)
+			}
+			if got := ts.GetBlockTokenPairIndex(tt.index); got != tt.pair {
+				t.Errorf("GetBlockTokenPairIndex(%d) = %d, want %d", tt.index, got, tt.pair)
+			}
+			wantOpener := tt.tokenType == Function || tt.tokenType == LeftParenthesis || tt.tokenType == LeftSquareBracket || tt.tokenType == LeftCurlyBracket
+			if got := tt.tokenType.IsBlockOpener(); got != wantOpener {
+				t.Errorf("%v.IsBlockOpener() = %t, want %t", tt.tokenType, got, wantOpener)
+			}
+			wantCloser := tt.tokenType == RightParenthesis || tt.tokenType == RightSquareBracket || tt.tokenType == RightCurlyBracket
+			if got := tt.tokenType.IsBlockCloser(); got != wantCloser {
+				t.Errorf("%v.IsBlockCloser() = %t, want %t", tt.tokenType, got, wantCloser)
+			}
+		})
 	}
 }
 
@@ -666,19 +695,21 @@ func TestTokenStreamUnbalanced(t *testing.T) {
 		{"(([)]", []int{5, 5, 4, 4, 2}, []int{-1, -1, 4, -1, 2, -1}},
 		{")]}{[(", []int{6, 6, 6, 6, 6, 6}, []int{-1, -1, -1, -1, -1, -1, -1}},
 	} {
-		ts := NewTokenStream(tt.source)
-		var balance []int
-		for _, token := range ts.dump() {
-			balance = append(balance, token.Balance)
-		}
-		if !slices.Equal(balance, tt.balance) {
-			t.Errorf("NewTokenStream(%q) balance = %v, want %v", tt.source, balance, tt.balance)
-		}
-		for i, want := range tt.pairs {
-			if got := ts.GetBlockTokenPairIndex(i); got != want {
-				t.Errorf("NewTokenStream(%q).GetBlockTokenPairIndex(%d) = %d, want %d", tt.source, i, got, want)
+		t.Run(tt.source, func(t *testing.T) {
+			ts := NewTokenStream(tt.source)
+			var balance []int
+			for _, token := range ts.dump() {
+				balance = append(balance, token.Balance)
 			}
-		}
+			if !slices.Equal(balance, tt.balance) {
+				t.Errorf("NewTokenStream(%q) balance = %v, want %v", tt.source, balance, tt.balance)
+			}
+			for i, want := range tt.pairs {
+				if got := ts.GetBlockTokenPairIndex(i); got != want {
+					t.Errorf("NewTokenStream(%q).GetBlockTokenPairIndex(%d) = %d, want %d", tt.source, i, got, want)
+				}
+			}
+		})
 	}
 }
 
@@ -695,12 +726,14 @@ func TestSkipUntilBalanced(t *testing.T) {
 		{"end of the enclosing block", 2, 2, func(int) StopMode { return NoStop }, 4},
 		{"nil stop", 2, 2, nil, 4},
 	} {
-		ts := NewTokenStream(source)
-		ts.Skip(tt.skip)
-		ts.SkipUntilBalanced(tt.start, tt.stop)
-		if ts.TokenIndex != tt.want {
-			t.Errorf("%s: SkipUntilBalanced(%d) TokenIndex = %d, want %d", tt.name, tt.start, ts.TokenIndex, tt.want)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			ts := NewTokenStream(source)
+			ts.Skip(tt.skip)
+			ts.SkipUntilBalanced(tt.start, tt.stop)
+			if ts.TokenIndex != tt.want {
+				t.Errorf("%s: SkipUntilBalanced(%d) TokenIndex = %d, want %d", tt.name, tt.start, ts.TokenIndex, tt.want)
+			}
+		})
 	}
 }
 
@@ -749,12 +782,14 @@ func TestOffsetToLocationNewlines(t *testing.T) {
 		{"\n\n\f\na\r", []Position{{0, 1, 1}, {1, 2, 1}, {2, 3, 1}, {3, 4, 1}, {4, 5, 1}, {5, 5, 2}, {6, 6, 1}}},
 		{"\r\r\n\r", []Position{{0, 1, 1}, {1, 2, 1}, {2, 2, 2}, {3, 3, 1}, {4, 4, 1}}},
 	} {
-		l := &OffsetToLocation{Source: tt.source}
-		for offset, want := range tt.want {
-			if got := l.Position(offset); got != want {
-				t.Errorf("OffsetToLocation{Source: %q}.Position(%d) = %+v, want %+v", tt.source, offset, got, want)
+		t.Run(tt.source, func(t *testing.T) {
+			l := &OffsetToLocation{Source: tt.source}
+			for offset, want := range tt.want {
+				if got := l.Position(offset); got != want {
+					t.Errorf("OffsetToLocation{Source: %q}.Position(%d) = %+v, want %+v", tt.source, offset, got, want)
+				}
 			}
-		}
+		})
 	}
 }
 
@@ -860,9 +895,11 @@ func TestOffsetToLocationClamp(t *testing.T) {
 		{-5, Position{7, 1, 1}},
 		{100, Position{11, 2, 2}},
 	} {
-		if got := l.Position(tt.offset); got != tt.want {
-			t.Errorf("Position(%d) = %+v, want %+v", tt.offset, got, tt.want)
-		}
+		t.Run(fmt.Sprint(tt.offset), func(t *testing.T) {
+			if got := l.Position(tt.offset); got != tt.want {
+				t.Errorf("Position(%d) = %+v, want %+v", tt.offset, got, tt.want)
+			}
+		})
 	}
 
 	var zero OffsetToLocation
@@ -878,9 +915,11 @@ func TestTokenTypeString(t *testing.T) {
 	}{
 		{EOF, "EOF-token"}, {Comment, "comment-token"}, {LeftCurlyBracket, "{-token"}, {26, "TokenType(26)"}, {-1, "TokenType(-1)"},
 	} {
-		if got := tt.tokenType.String(); got != tt.want {
-			t.Errorf("TokenType(%d).String() = %q, want %q", int(tt.tokenType), got, tt.want)
-		}
+		t.Run(tt.want, func(t *testing.T) {
+			if got := tt.tokenType.String(); got != tt.want {
+				t.Errorf("TokenType(%d).String() = %q, want %q", int(tt.tokenType), got, tt.want)
+			}
+		})
 	}
 }
 
