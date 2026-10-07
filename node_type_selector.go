@@ -7,7 +7,7 @@ import "github.com/typelate/csstree/tokenizer"
 func eatIdentifierOrAsterisk(p *Parser) {
 	if p.TokenType != tokenizer.Ident &&
 		!p.IsDelim(asterisk, 0) {
-		p.Error("Identifier or asterisk is expected", -1)
+		p.Fail("Identifier or asterisk is expected")
 	}
 
 	p.Next()

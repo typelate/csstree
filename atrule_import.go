@@ -15,7 +15,7 @@ func importParseWithFallback(p *Parser, parse, fallback func() Node) Node {
 			defer func() {
 				p.SkipSC()
 				if p.LookupNonWSType(0) != tokenizer.RightParenthesis {
-					p.Error("", -1)
+					p.Unexpected()
 				}
 			}()
 
@@ -80,7 +80,7 @@ func importAtrule() AtruleParser {
 				children.AppendData(p.URL())
 
 			default:
-				p.Error("String or url() is expected", -1)
+				p.Fail("String or url() is expected")
 			}
 
 			p.SkipSC()

@@ -46,7 +46,7 @@ func selectorGetNode(p *Parser, _ *SequenceContext) Node {
 	case tokenizer.Dimension:
 		// throws when .123ident
 		if p.CharCodeAt(p.TokenStart) == fullStop {
-			p.Error("Identifier is expected", p.TokenStart+1)
+			p.FailAt("Identifier is expected", p.TokenStart+1)
 		}
 
 	case tokenizer.Delim:

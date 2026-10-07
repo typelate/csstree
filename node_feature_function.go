@@ -69,7 +69,7 @@ func getFeatureParser(p *Parser, kind, name string) func(p *Parser) Node {
 	parser := featuresOfKind[name]
 
 	if parser == nil {
-		p.Error("Unknown feature "+name+"()", -1)
+		p.Fail("Unknown feature " + name + "()")
 	}
 
 	return parser
@@ -94,7 +94,7 @@ func (p *Parser) FeatureFunction(kind string) *FeatureFunction {
 
 			if !p.EOF &&
 				!p.IsBalanceEdge(startValueToken) {
-				p.Error("", -1)
+				p.Unexpected()
 			}
 
 			return value

@@ -323,7 +323,7 @@ func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error
 	ast = contextParser(p, options)
 
 	if !p.EOF {
-		p.Error("", -1)
+		p.Unexpected()
 	}
 
 	return ast, nil
@@ -423,7 +423,7 @@ func (p *Parser) GetLastListNode(list *List[Node]) Node {
 }
 
 // ParseWithFallback returns consumer(). When consumer reports a syntax
-// error (panics with a *SyntaxError, as Error does), the parser rewinds to
+// error (panics with a *SyntaxError, as Fail does), the parser rewinds to
 // where consumer started, returns fallback() instead and reports the error
 // to OnParseError. Any other panic is not recovered: it ends the parse
 // with an *InternalError.
@@ -587,7 +587,7 @@ func (p *Parser) Eat(tokenType tokenizer.TokenType) {
 			}
 		}
 
-		p.Error(message, offset)
+		p.FailAt(message, offset)
 	}
 
 	p.Next()
@@ -597,7 +597,7 @@ func (p *Parser) Eat(tokenType tokenizer.TokenType) {
 // insensitive; name must be lowercase), or reports a syntax error.
 func (p *Parser) EatIdent(name string) {
 	if p.TokenType != tokenizer.Ident || !p.LookupValue(0, name) {
-		p.Error(`Identifier "`+name+`" is expected`, -1)
+		p.Fail(`Identifier "` + name + `" is expected`)
 	}
 
 	p.Next()
@@ -606,7 +606,7 @@ func (p *Parser) EatIdent(name string) {
 // EatDelim moves past a delim token for code, or reports a syntax error.
 func (p *Parser) EatDelim(code int) {
 	if !p.IsDelim(code, 0) {
-		p.Error(`Delim "`+string(rune(code))+`" is expected`, -1)
+		p.Fail(`Delim "` + string(rune(code)) + `" is expected`)
 	}
 
 	p.Next()
@@ -644,14 +644,31 @@ func (p *Parser) GetLocationFromList(list *List[Node]) *Location {
 	return nil
 }
 
-// Error reports a syntax error with message ("Unexpected input" when
-// empty) at offset. A negative offset (upstream: omitted) means the
-// current token, or the end of the source at EOF.
-//
-// Error panics with a *SyntaxError, which ParseWithFallback and the parse
-// function recover; extension callbacks may call it anywhere the parser
-// calls them.
-func (p *Parser) Error(message string, offset int) {
+// Unexpected reports an "Unexpected input" syntax error at the current
+// token (the end of the source at EOF). Like Fail and FailAt, it panics
+// with a *SyntaxError, which ParseWithFallback and the parse function
+// recover: extension callbacks may call it anywhere the parser calls them,
+// and it does not return.
+func (p *Parser) Unexpected() {
+	p.fail("Unexpected input", -1)
+}
+
+// Fail reports a syntax error with message at the current token (the end
+// of the source at EOF). See Unexpected.
+func (p *Parser) Fail(message string) {
+	p.fail(message, -1)
+}
+
+// FailAt reports a syntax error with message at the source offset offset;
+// an offset outside the source means the current token, as for Fail. See
+// Unexpected.
+func (p *Parser) FailAt(message string, offset int) {
+	p.fail(message, offset)
+}
+
+// fail panics with the *SyntaxError of message at offset (upstream
+// error(message, offset), with a negative offset for an omitted one).
+func (p *Parser) fail(message string, offset int) {
 	source := p.Source
 	var location tokenizer.Position
 	switch {
@@ -661,10 +678,6 @@ func (p *Parser) Error(message string, offset int) {
 		location = p.locationMap.Position(tokenizer.FindWhiteSpaceStart(source, len(source)-1))
 	default:
 		location = p.locationMap.Position(p.TokenStart)
-	}
-
-	if message == "" {
-		message = "Unexpected input"
 	}
 
 	panic(newSyntaxError(

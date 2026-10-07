@@ -98,7 +98,7 @@ func (p *Parser) Feature(kind string) *Feature {
 					p.SkipSC()
 
 					if p.IsDelim(solidus, 0) {
-						p.Error("", -1)
+						p.Unexpected()
 					}
 
 					return res
@@ -109,7 +109,7 @@ func (p *Parser) Feature(kind string) *Feature {
 			)
 
 		default:
-			p.Error("Number, dimension, ratio or identifier is expected", -1)
+			p.Fail("Number, dimension, ratio or identifier is expected")
 		}
 
 		p.SkipSC()

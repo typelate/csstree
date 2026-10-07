@@ -25,10 +25,10 @@ func consumeTerm(p *Parser) Node {
 		return p.Function(p.ReadSequence, p.Config.Scope["Value"])
 
 	default:
-		p.Error("Number of function is expected", -1)
+		p.Fail("Number of function is expected")
 	}
 
-	return nil // unreachable: Error panics
+	return nil // unreachable: Fail panics
 }
 
 // Ratio is <number [0,∞]> [ / <number [0,∞]> ]?

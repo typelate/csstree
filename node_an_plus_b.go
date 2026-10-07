@@ -16,14 +16,14 @@ func checkInteger(p *Parser, offset int, disallowSign bool) {
 
 	if code == plusSign || code == hyphenMinus {
 		if disallowSign {
-			p.Error("Number sign is not allowed", -1)
+			p.Fail("Number sign is not allowed")
 		}
 		pos++
 	}
 
 	for ; pos < p.TokenEnd; pos++ {
 		if !tokenizer.IsDigit(p.CharCodeAt(pos)) {
-			p.Error("Integer is expected", pos)
+			p.FailAt("Integer is expected", pos)
 		}
 	}
 }
@@ -43,7 +43,7 @@ func expectCharCode(p *Parser, offset, code int) {
 			msg = "HyphenMinus is expected"
 		}
 
-		p.Error(msg, p.TokenStart+offset)
+		p.FailAt(msg, p.TokenStart+offset)
 	}
 }
 
@@ -94,7 +94,7 @@ func consumeB(p *Parser) string {
 	if sign == 0 {
 		code := p.CharCodeAt(p.TokenStart)
 		if code != plusSign && code != hyphenMinus {
-			p.Error("Number sign is expected", -1)
+			p.Fail("Number sign is expected")
 		}
 	}
 
@@ -266,7 +266,7 @@ func (p *Parser) AnPlusB() *AnPlusB {
 		}
 
 		if i == p.TokenStart+sign {
-			p.Error("Integer is expected", p.TokenStart+sign)
+			p.FailAt("Integer is expected", p.TokenStart+sign)
 		}
 
 		expectCharCode(p, i-p.TokenStart, latinSmallLetterN)
@@ -296,7 +296,7 @@ func (p *Parser) AnPlusB() *AnPlusB {
 		}
 
 	default:
-		p.Error("", -1)
+		p.Unexpected()
 	}
 
 	if a != "" && a[0] == plusSign {

@@ -12,7 +12,7 @@ const (
 
 func getAttributeName(p *Parser) *Identifier {
 	if p.EOF {
-		p.Error("Unexpected end of input", -1)
+		p.Fail("Unexpected end of input")
 	}
 
 	start := p.TokenStart
@@ -30,10 +30,10 @@ func getAttributeName(p *Parser) *Identifier {
 			p.Next()
 			p.Eat(tokenizer.Ident)
 		} else if expectIdent {
-			p.Error("Identifier is expected", p.TokenEnd)
+			p.FailAt("Identifier is expected", p.TokenEnd)
 		}
 	} else if expectIdent {
-		p.Error("Vertical line is expected", -1)
+		p.Fail("Vertical line is expected")
 	}
 
 	return &Identifier{
@@ -52,14 +52,14 @@ func getOperator(p *Parser) string {
 		code != dollarSign && // $=
 		code != asterisk && // *=
 		code != verticalLine { // |=
-		p.Error("Attribute selector (=, ~=, ^=, $=, *=, |=) is expected", -1)
+		p.Fail("Attribute selector (=, ~=, ^=, $=, *=, |=) is expected")
 	}
 
 	p.Next()
 
 	if code != equalsSign {
 		if !p.IsDelim(equalsSign, 0) {
-			p.Error("Equal sign is expected", -1)
+			p.Fail("Equal sign is expected")
 		}
 
 		p.Next()
@@ -180,7 +180,7 @@ func (p *Parser) AttributeSelector() *AttributeSelector {
 		// attribute modifier: i | s
 		if p.TokenType == tokenizer.Ident {
 			if !isAttributeModifier(p) {
-				p.Error("Attribute selector modifier (i or s) is expected", -1)
+				p.Fail("Attribute selector modifier (i or s) is expected")
 			}
 			flags = p.Consume(tokenizer.Ident)
 

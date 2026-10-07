@@ -31,12 +31,12 @@ func eatHexSequence(p *Parser, offset int, allowDash bool) int {
 			default:
 				message = "Unexpected input"
 			}
-			p.Error(message, pos)
+			p.FailAt(message, pos)
 		}
 
 		length++
 		if length > 6 {
-			p.Error("Too many hex digits", pos)
+			p.FailAt("Too many hex digits", pos)
 		}
 	}
 
@@ -50,7 +50,7 @@ func eatQuestionMarkSequence(p *Parser, maximum int) {
 	for p.IsDelim(questionMark, 0) {
 		count++
 		if count > maximum {
-			p.Error("Too many question marks", -1)
+			p.Fail("Too many question marks")
 		}
 
 		p.Next()
@@ -65,7 +65,7 @@ func startsWith(p *Parser, code int) {
 		} else {
 			what = "Hyphen minus"
 		}
-		p.Error(what+" is expected", -1)
+		p.Fail(what + " is expected")
 	}
 }
 
@@ -143,7 +143,7 @@ func scanUnicodeRange(p *Parser) {
 			break
 		}
 
-		p.Error("Hex digit or question mark is expected", -1)
+		p.Fail("Hex digit or question mark is expected")
 	}
 }
 

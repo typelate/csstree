@@ -25,7 +25,7 @@ func TestParseReportsPanics(t *testing.T) {
 				var raw *Raw
 				return &Raw{Value: raw.Value} // nil dereference
 			case p.IsDelim('%', 0):
-				p.Error("Percent is not allowed", -1)
+				p.Fail("Percent is not allowed")
 			}
 
 			return defaultGetNode(p, context)

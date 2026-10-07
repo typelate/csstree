@@ -82,7 +82,7 @@ func (p *Parser) GeneralEnclosed(kind string) *GeneralEnclosed {
 
 			if !p.EOF &&
 				!p.IsBalanceEdge(startValueToken) {
-				p.Error("", -1)
+				p.Unexpected()
 			}
 
 			return nil

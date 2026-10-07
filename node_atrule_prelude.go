@@ -78,7 +78,7 @@ func (p *Parser) AtrulePrelude(name string) *AtrulePrelude {
 	if !p.EOF &&
 		p.TokenType != tokenizer.LeftCurlyBracket &&
 		p.TokenType != tokenizer.Semicolon {
-		p.Error("Semicolon or block is expected", -1)
+		p.Fail("Semicolon or block is expected")
 	}
 
 	return &AtrulePrelude{

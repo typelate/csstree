@@ -97,7 +97,7 @@ func (p *Parser) MediaQuery() *MediaQuery {
 		case tokenizer.LeftCurlyBracket, tokenizer.Semicolon, tokenizer.Comma, tokenizer.EOF:
 
 		default:
-			p.Error("Identifier or parenthesis is expected", -1)
+			p.Fail("Identifier or parenthesis is expected")
 		}
 	} else {
 		switch p.TokenType {
@@ -108,7 +108,7 @@ func (p *Parser) MediaQuery() *MediaQuery {
 		case tokenizer.LeftCurlyBracket, tokenizer.Semicolon, tokenizer.EOF:
 
 		default:
-			p.Error("Identifier or parenthesis is expected", -1)
+			p.Fail("Identifier or parenthesis is expected")
 		}
 	}
 

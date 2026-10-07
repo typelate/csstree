@@ -63,7 +63,7 @@ func (p *Parser) Selector() *Selector {
 
 	// nothing were consumed
 	if p.GetFirstListNode(children) == nil {
-		p.Error("Selector is expected", -1)
+		p.Fail("Selector is expected")
 	}
 
 	return &Selector{

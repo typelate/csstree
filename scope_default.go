@@ -80,7 +80,7 @@ func defaultRecognizer(p *Parser, context *SequenceContext) Node {
 		// TODO: produce a node with Delim node type
 
 		if code == numberSign {
-			p.Error("Hex or identifier is expected", p.TokenStart+1)
+			p.FailAt("Hex or identifier is expected", p.TokenStart+1)
 		}
 	}
 

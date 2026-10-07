@@ -56,7 +56,7 @@ func (p *Parser) URL() *URL {
 
 	case tokenizer.Function:
 		if !p.CmpStr(p.TokenStart, p.TokenEnd, "url(") {
-			p.Error("Function name must be `url`", -1)
+			p.Fail("Function name must be `url`")
 		}
 
 		p.Eat(tokenizer.Function)
@@ -68,7 +68,7 @@ func (p *Parser) URL() *URL {
 		}
 
 	default:
-		p.Error("Url or Function is expected", -1)
+		p.Fail("Url or Function is expected")
 	}
 
 	return &URL{

@@ -111,7 +111,7 @@ func readTerm(p *Parser) Node {
 				p.SkipSC()
 
 				if p.IsDelim(solidus, 0) {
-					p.Error("", -1)
+					p.Unexpected()
 				}
 
 				return res
@@ -122,10 +122,10 @@ func readTerm(p *Parser) Node {
 		)
 
 	default:
-		p.Error("Number, dimension, ratio or identifier is expected", -1)
+		p.Fail("Number, dimension, ratio or identifier is expected")
 	}
 
-	return nil // unreachable: Error panics
+	return nil // unreachable: Fail panics
 }
 
 func readComparison(p *Parser, expectColon bool) string {
@@ -154,9 +154,9 @@ func readComparison(p *Parser, expectColon bool) string {
 	if expectColon {
 		colon = `":", `
 	}
-	p.Error(`Expected `+colon+`"<", ">", "=" or ")"`, -1)
+	p.Fail(`Expected ` + colon + `"<", ">", "=" or ")"`)
 
-	return "" // unreachable: Error panics
+	return "" // unreachable: Fail panics
 }
 
 // checkRangeDirection reports a syntax error at the right comparison
@@ -168,14 +168,14 @@ func checkRangeDirection(p *Parser, leftComparison, rightComparison string) {
 	switch leftComparison[0] {
 	case '<':
 		if rightComparison[0] != '<' {
-			p.Error(`Expected "<", "<=" or ")"`, offset)
+			p.FailAt(`Expected "<", "<=" or ")"`, offset)
 		}
 	case '>':
 		if rightComparison[0] != '>' {
-			p.Error(`Expected ">", ">=" or ")"`, offset)
+			p.FailAt(`Expected ">", ">=" or ")"`, offset)
 		}
 	default:
-		p.Error(`")" is expected`, offset)
+		p.FailAt(`")" is expected`, offset)
 	}
 }
 

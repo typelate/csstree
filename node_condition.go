@@ -139,7 +139,7 @@ scan:
 					parentheses := conditionParentheses(kind)
 					if parentheses == nil {
 						// upstream: parentheses[kind] is not a function
-						p.Error("Unknown condition kind `"+kind+"`", -1)
+						p.Fail("Unknown condition kind `" + kind + "`")
 					}
 					return parentheses(p, kind)
 				},
@@ -185,11 +185,11 @@ scan:
 	}
 
 	if children.IsEmpty() {
-		p.Error("Condition is expected", -1)
+		p.Fail("Condition is expected")
 	}
 
 	if expectTerm {
-		p.Error("Parenthesis or function is expected", -1)
+		p.Fail("Parenthesis or function is expected")
 	}
 
 	return &Condition{
@@ -209,12 +209,12 @@ func conditionKeyword(p *Parser, keyword string, first, expectTerm, allowOr bool
 		if first && p.LookupValue(0, "not") {
 			return "not"
 		}
-		p.Error("Parenthesis or function is expected", -1)
+		p.Fail("Parenthesis or function is expected")
 	}
 
 	switch {
 	case keyword == "not":
-		p.Error("", -1)
+		p.Unexpected()
 	case p.LookupValue(0, "and") && keyword != "or":
 		return "and"
 	case p.LookupValue(0, "or") && keyword != "and" && allowOr:
@@ -230,13 +230,13 @@ func conditionKeyword(p *Parser, keyword string, first, expectTerm, allowOr bool
 func conditionTermError(p *Parser, keyword string, allowOr bool) {
 	switch {
 	case keyword == "not":
-		p.Error("", -1)
+		p.Unexpected()
 	case keyword == "" && allowOr:
-		p.Error(`Identifier "and" or "or" is expected`, -1)
+		p.Fail(`Identifier "and" or "or" is expected`)
 	case keyword == "":
-		p.Error(`Identifier "and" is expected`, -1)
+		p.Fail(`Identifier "and" is expected`)
 	default:
-		p.Error(`Identifier "`+keyword+`" is expected`, -1)
+		p.Fail(`Identifier "` + keyword + `" is expected`)
 	}
 }
 

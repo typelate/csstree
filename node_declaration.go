@@ -26,7 +26,7 @@ func consumeValue(p *Parser, end int) Node {
 	value := p.Value()
 
 	if value.Type() != "Raw" && p.TokenIndex != end {
-		p.Error("", -1)
+		p.Unexpected()
 	}
 
 	return value
@@ -209,7 +209,7 @@ func (p *Parser) Declaration() *Declaration {
 	if !p.EOF &&
 		p.TokenType != tokenizer.Semicolon &&
 		!p.IsBalanceEdge(startToken) {
-		p.Error("", -1)
+		p.Unexpected()
 	}
 
 	return &Declaration{

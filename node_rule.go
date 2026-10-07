@@ -14,7 +14,7 @@ func consumePrelude(p *Parser) Node {
 	if prelude.Type() != "Raw" &&
 		!p.EOF &&
 		p.TokenType != tokenizer.LeftCurlyBracket {
-		p.Error("", -1)
+		p.Unexpected()
 	}
 
 	return prelude

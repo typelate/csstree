@@ -25,7 +25,7 @@ loop:
 			break loop
 
 		default:
-			p.Error("Identifier, string or comma is expected", -1)
+			p.Fail("Identifier, string or comma is expected")
 		}
 
 		p.SkipSC()

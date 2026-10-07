@@ -63,7 +63,7 @@ func (p *Parser) Combinator() *Combinator {
 			// column combinator: two adjacent | delims
 			p.Next()
 			if !p.IsDelim(verticalLine, 0) {
-				p.Error(`Delim "|" is expected`, -1)
+				p.Fail(`Delim "|" is expected`)
 			}
 			p.Next()
 
@@ -73,7 +73,7 @@ func (p *Parser) Combinator() *Combinator {
 			p.EatDelim(solidus)
 
 		default:
-			p.Error("Combinator is expected", -1)
+			p.Fail("Combinator is expected")
 		}
 
 		name = p.SubstrToCursor(start)
