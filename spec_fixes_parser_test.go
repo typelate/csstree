@@ -1,6 +1,7 @@
 package csstree
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -36,11 +37,13 @@ func plainJSON(t *testing.T, node Node) string {
 	if err := json.Unmarshal(data, &plain); err != nil {
 		t.Fatal(err)
 	}
-	data, err = json.Marshal(dropLocations(plain))
-	if err != nil {
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(dropLocations(plain)); err != nil {
 		t.Fatal(err)
 	}
-	return string(data)
+	return strings.TrimSuffix(buf.String(), "\n")
 }
 
 func dropLocations(value any) any {
@@ -643,6 +646,198 @@ func TestSpecConditionGrammar(t *testing.T) {
 			source:   "@container card (width>1px) or style(--a:b){}",
 			types:    "StyleSheet Atrule AtrulePrelude Identifier Condition FeatureRange Identifier Dimension Identifier FeatureFunction Declaration Raw Block",
 			generate: "@container card (width>1px) or style(--a:b){}",
+		},
+	})
+}
+
+// CSS Nesting: a style block holds declarations and nested style rules.
+// CSS Syntax 3 "consume a block's contents" tries a declaration first and
+// parses a qualified rule when that is not a declaration: an identifier
+// (or a property hack), a colon and a value that is not a {}-block mixed
+// with anything else; a custom property is always a declaration.
+// https://drafts.csswg.org/css-syntax-3/#consume-block-contents
+// https://drafts.csswg.org/css-nesting-1/#syntax
+func TestSpecNestedRules(t *testing.T) {
+	const (
+		ruleA       = "StyleSheet Rule SelectorList Selector ClassSelector Block "
+		nestedClass = "Rule SelectorList Selector ClassSelector Block"
+	)
+	runSpecParseTests(t, []specParseTest{
+		{
+			source:   ".a{.b{}}",
+			types:    ruleA + nestedClass,
+			generate: ".a{.b{}}",
+		},
+		{
+			source:   ".a{.b &{}}",
+			types:    ruleA + "Rule SelectorList Selector ClassSelector Combinator NestingSelector Block",
+			generate: ".a{.b &{}}",
+		},
+		{
+			source:   ".a{> .b{}}",
+			context:  "rule",
+			json:     `{"block":{"children":[{"block":{"children":[],"type":"Block"},"prelude":{"children":[{"children":[{"name":">","type":"Combinator"},{"name":"b","type":"ClassSelector"}],"type":"Selector"}],"type":"SelectorList"},"type":"Rule"}],"type":"Block"},"prelude":{"children":[{"children":[{"name":"a","type":"ClassSelector"}],"type":"Selector"}],"type":"SelectorList"},"type":"Rule"}`,
+			generate: ".a{>.b{}}",
+		},
+		{
+			source:   ".a{+ .b{}}",
+			types:    ruleA + "Rule SelectorList Selector Combinator ClassSelector Block",
+			generate: ".a{+.b{}}",
+		},
+		{
+			source:   ".a{~ .b{}}",
+			types:    ruleA + "Rule SelectorList Selector Combinator ClassSelector Block",
+			generate: ".a{~.b{}}",
+		},
+		{
+			source:   ".a{>.b,+.c{}}",
+			types:    ruleA + "Rule SelectorList Selector Combinator ClassSelector Selector Combinator ClassSelector Block",
+			generate: ".a{>.b,+.c{}}",
+		},
+		{
+			source:   ".a{color:red; .b{} color:blue}",
+			types:    ruleA + "Declaration Value Identifier " + nestedClass + " Declaration Value Identifier",
+			generate: ".a{color:red;.b{}color:blue}",
+		},
+		{
+			source:   ".a{:hover{}}",
+			types:    ruleA + "Rule SelectorList Selector PseudoClassSelector Block",
+			generate: ".a{:hover{}}",
+		},
+		{
+			source:   ".a{div{}}",
+			types:    ruleA + "Rule SelectorList Selector TypeSelector Block",
+			generate: ".a{div{}}",
+		},
+		{
+			// a {}-block and anything else is not a declaration value
+			source:   ".a{div:hover{color:red}}",
+			types:    ruleA + "Rule SelectorList Selector TypeSelector PseudoClassSelector Block Declaration Value Identifier",
+			generate: ".a{div:hover{color:red}}",
+		},
+		{
+			source:   ".a{font:bold{}}",
+			types:    ruleA + "Rule SelectorList Selector TypeSelector PseudoClassSelector Block",
+			generate: ".a{font:bold{}}",
+		},
+		{
+			source:   ".a{div .b{} p{}}",
+			types:    ruleA + "Rule SelectorList Selector TypeSelector Combinator ClassSelector Block Rule SelectorList Selector TypeSelector Block",
+			generate: ".a{div .b{}p{}}",
+		},
+		{
+			source:   ".a{#b{}}",
+			types:    ruleA + "Rule SelectorList Selector IdSelector Block",
+			generate: ".a{#b{}}",
+		},
+		{
+			source:   ".a{*{}}",
+			types:    ruleA + "Rule SelectorList Selector TypeSelector Block",
+			generate: ".a{*{}}",
+		},
+		{
+			source:   ".a{[x]{}}",
+			types:    ruleA + "Rule SelectorList Selector AttributeSelector Identifier Block",
+			generate: ".a{[x]{}}",
+		},
+		{
+			source:   ".a{.b{.c{color:red}}}",
+			types:    ruleA + "Rule SelectorList Selector ClassSelector Block Rule SelectorList Selector ClassSelector Block Declaration Value Identifier",
+			generate: ".a{.b{.c{color:red}}}",
+		},
+		{
+			// a custom property is a declaration, whatever its value
+			source:   ".a{--x:{a:b}}",
+			types:    ruleA + "Declaration Raw",
+			generate: ".a{--x:{a:b}}",
+		},
+		{
+			source:   ".a{--x:hover{}}",
+			types:    ruleA + "Declaration Raw",
+			generate: ".a{--x:hover{}}",
+		},
+		{
+			// a {}-block as the whole value is a declaration
+			source:   ".a{a:{}}",
+			types:    ruleA + "Declaration Raw",
+			generate: ".a{a:{}}",
+			errors:   "Unexpected input",
+		},
+		{
+			source:   ".a{a:{} !important}",
+			types:    ruleA + "Declaration Raw",
+			generate: ".a{a:{}!important}",
+			errors:   "Unexpected input",
+		},
+		{
+			// property hacks are still declarations
+			source:   ".a{*zoom:1;_b:2;#c:3;+d:4}",
+			types:    ruleA + "Declaration Value Number Declaration Value Number Declaration Value Number Declaration Value Number",
+			generate: ".a{*zoom:1;_b:2;#c:3;+d:4}",
+		},
+		{
+			source:   ".a{color:red}",
+			types:    ruleA + "Declaration Value Identifier",
+			generate: ".a{color:red}",
+		},
+		{
+			// neither a declaration nor a rule (no {} before the ;)
+			source:   ".a{foo bar;color:red}",
+			types:    ruleA + "Raw Declaration Value Identifier",
+			generate: ".a{foo bar;color:red}",
+			errors:   "Colon is expected",
+		},
+		{
+			source:   ".a{.b;color:red}",
+			types:    ruleA + "Raw Declaration Value Identifier",
+			generate: ".a{.b;color:red}",
+			errors:   "Identifier is expected",
+		},
+		{
+			source:   ".a{@media (x){color:red}}",
+			types:    ruleA + "Atrule AtrulePrelude MediaQueryList MediaQuery Condition Feature Block Declaration Value Identifier",
+			generate: ".a{@media (x){color:red}}",
+		},
+		{
+			source:   ".a{@media (x){.b{}}}",
+			types:    ruleA + "Atrule AtrulePrelude MediaQueryList MediaQuery Condition Feature Block " + nestedClass,
+			generate: ".a{@media (x){.b{}}}",
+		},
+		{
+			source:   ".a{&:hover{}}",
+			types:    ruleA + "Rule SelectorList Selector NestingSelector PseudoClassSelector Block",
+			generate: ".a{&:hover{}}",
+		},
+		{
+			// top-level @media blocks hold rules, as before
+			source:   "@media (x){.b{}}",
+			types:    "StyleSheet Atrule AtrulePrelude MediaQueryList MediaQuery Condition Feature Block " + nestedClass,
+			generate: "@media (x){.b{}}",
+		},
+		{
+			// descriptor blocks hold no style rules: upstream's parse
+			source:   "@font-face{a:b {}}",
+			types:    "StyleSheet Atrule Block Declaration Raw",
+			generate: "@font-face{a:b {}}",
+			errors:   "Unexpected input",
+		},
+		{
+			source:   "@page{.b{}color:red}",
+			types:    "StyleSheet Atrule Block Raw",
+			generate: "@page{.b{}color:red}",
+			errors:   "Identifier is expected",
+		},
+		{
+			source:   ".b{} color:red",
+			context:  "declarationList",
+			types:    "DeclarationList " + nestedClass + " Declaration Value Identifier",
+			generate: ".b{}color:red",
+		},
+		{
+			source:   ".bar & { color: green; }; div:hover { color: red; }",
+			context:  "declarationList",
+			types:    "DeclarationList Rule SelectorList Selector ClassSelector Combinator NestingSelector Block Declaration Value Identifier Rule SelectorList Selector TypeSelector PseudoClassSelector Block Declaration Value Identifier",
+			generate: ".bar &{color:green}div:hover{color:red}",
 		},
 	})
 }

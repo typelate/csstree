@@ -249,24 +249,94 @@
             ]
         }
     },
-    "don't parse nested rule when it not started with &": {
+    "parse nested rule when it not started with &": {
         "source": ".bar & { color: green; }; div:hover { color: red; }",
-        "generate": ".bar & { color: green; };div:hover { color: red; }",
+        "generate": ".bar &{color:green}div:hover{color:red}",
         "ast": {
-
             "type": "DeclarationList",
             "children": [
                 {
-                    "type": "Raw",
-                    "value": ".bar & { color: green; };"
+                    "type": "Rule",
+                    "prelude": {
+                        "type": "SelectorList",
+                        "children": [
+                            {
+                                "type": "Selector",
+                                "children": [
+                                    {
+                                        "type": "ClassSelector",
+                                        "name": "bar"
+                                    },
+                                    {
+                                        "type": "Combinator",
+                                        "name": " "
+                                    },
+                                    {
+                                        "type": "NestingSelector"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "block": {
+                        "type": "Block",
+                        "children": [
+                            {
+                                "type": "Declaration",
+                                "important": false,
+                                "property": "color",
+                                "value": {
+                                    "type": "Value",
+                                    "children": [
+                                        {
+                                            "type": "Identifier",
+                                            "name": "green"
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
                 },
                 {
-                    "type": "Declaration",
-                    "important": false,
-                    "property": "div",
-                    "value": {
-                        "type": "Raw",
-                        "value": "hover { color: red; }"
+                    "type": "Rule",
+                    "prelude": {
+                        "type": "SelectorList",
+                        "children": [
+                            {
+                                "type": "Selector",
+                                "children": [
+                                    {
+                                        "type": "TypeSelector",
+                                        "name": "div"
+                                    },
+                                    {
+                                        "type": "PseudoClassSelector",
+                                        "name": "hover",
+                                        "children": null
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "block": {
+                        "type": "Block",
+                        "children": [
+                            {
+                                "type": "Declaration",
+                                "important": false,
+                                "property": "color",
+                                "value": {
+                                    "type": "Value",
+                                    "children": [
+                                        {
+                                            "type": "Identifier",
+                                            "name": "red"
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
                     }
                 }
             ]

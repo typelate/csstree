@@ -10,7 +10,7 @@ func pageAtrule() AtruleParser {
 			)
 		},
 		Block: func(p *Parser, _ bool) *Block {
-			return p.Block(true)
+			return p.descriptorBlock()
 		},
 	}
 }

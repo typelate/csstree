@@ -73,7 +73,7 @@ func (p *Parser) DeclarationList() *DeclarationList {
 			children.Push(p.ParseWithFallback(func() Node { return p.Atrule(true) }, func() Node { return declarationListConsumeRaw(p) }))
 
 		default:
-			if p.IsDelim(ampersand, 0) {
+			if isNestedRuleAhead(p) {
 				children.Push(p.ParseWithFallback(func() Node { return p.Rule() }, func() Node { return declarationListConsumeRaw(p) }))
 			} else {
 				children.Push(p.ParseWithFallback(func() Node { return p.Declaration() }, func() Node { return declarationListConsumeRaw(p) }))

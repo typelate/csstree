@@ -33,15 +33,14 @@ func consumeValue(p *Parser, end int) Node {
 }
 
 // declarationValueEnd returns the index of the token that ends the value
-// of the declaration at the cursor and whether the value is followed by
+// of a declaration that starts at the token index start and whether the value is followed by
 // ! and an identifier. CSS Syntax 3 "consume a declaration" takes the
 // component values up to a ; (or the end of the block) and removes the
 // last two non-whitespace ones when they are ! and important; the port
 // also splits off ! and any other identifier, for upstream's support of
 // hacks like !ie.
 // https://drafts.csswg.org/css-syntax-3/#consume-declaration
-func declarationValueEnd(p *Parser) (end int, important bool) {
-	start := p.TokenIndex
+func declarationValueEnd(p *Parser, start int) (end int, important bool) {
 	end = p.scanUntilBalanced(start, tokenizer.Semicolon)
 
 	ident := lastNonSC(p, start, end)
@@ -178,7 +177,7 @@ func (p *Parser) Declaration() *Declaration {
 		p.SkipSC()
 	}
 
-	valueEnd, hasImportant := declarationValueEnd(p)
+	valueEnd, hasImportant := declarationValueEnd(p, p.TokenIndex)
 	consumeRaw := func() Node { return consumeValueRaw(p, valueEnd, !customProperty) }
 
 	if parseValue {
@@ -231,6 +230,80 @@ func generateDeclaration(g *Generator, node Node) {
 		g.Token(tokenizer.Delim, "!")
 		g.Token(tokenizer.Ident, n.Important)
 	}
+}
+
+// isDeclarationAhead reports whether the tokens at the cursor are a
+// declaration as CSS Syntax 3 "consume a declaration" reads one, to tell a
+// declaration from a nested rule: a property name (an identifier, or a
+// hack readProperty accepts), a colon and a value that does not mix a
+// {}-block with anything else (any value for a custom property). A
+// trailing ! and an identifier are not part of the value.
+// https://drafts.csswg.org/css-syntax-3/#consume-declaration
+func isDeclarationAhead(p *Parser) bool {
+	i := p.TokenIndex
+
+	// hacks, as readProperty reads them
+	if p.GetTokenType(i) == tokenizer.Delim {
+		switch p.CharCodeAt(p.GetTokenStart(i)) {
+		case asterisk, dollarSign, plusSign, numberSign, ampersand:
+			i++
+
+		case solidus:
+			i++
+			if p.GetTokenType(i) == tokenizer.Delim && p.CharCodeAt(p.GetTokenStart(i)) == solidus {
+				i++
+			}
+		}
+	}
+
+	if tokenType := p.GetTokenType(i); tokenType != tokenizer.Ident && tokenType != tokenizer.Hash {
+		return false
+	}
+	property := p.Substring(p.TokenStart, p.GetTokenEnd(i))
+
+	i = nextNonSC(p, i+1)
+	if p.GetTokenType(i) != tokenizer.Colon {
+		return false
+	}
+
+	if IsCustomProperty(property, 0) {
+		return true
+	}
+
+	// a {}-block may only be the whole value
+	valueEnd, _ := declarationValueEnd(p, i+1)
+	block, other := false, false
+	for j := i + 1; j < valueEnd; j++ {
+		tokenType := p.GetTokenType(j)
+		switch tokenType {
+		case tokenizer.WhiteSpace, tokenizer.Comment:
+			continue
+		case tokenizer.LeftCurlyBracket:
+			block = true
+		default:
+			other = true
+		}
+		// skip the rest of a block
+		if p.IsBlockOpenerTokenType(tokenType) && p.Balance[j] > j {
+			j = p.Balance[j]
+		}
+	}
+
+	return !block || !other
+}
+
+// nextNonSC returns the index of the first token from index that is not
+// whitespace or a comment.
+func nextNonSC(p *Parser, index int) int {
+	for index < p.TokenCount {
+		switch p.GetTokenType(index) {
+		case tokenizer.WhiteSpace, tokenizer.Comment:
+			index++
+		default:
+			return index
+		}
+	}
+	return p.TokenCount
 }
 
 func readProperty(p *Parser) string {
