@@ -363,7 +363,7 @@ func buildMultiplierMatchGraph(node *definitionsyntax.Multiplier) (*matchGraphNo
 		return nil, err
 	}
 
-	if node.Max == 0 {
+	if node.Max == definitionsyntax.Unbounded {
 		// disable repeating of empty match to prevent infinite loop
 		matchTerm = createCondition(
 			matchTerm,
@@ -499,11 +499,11 @@ func buildMatchGraphInternal(node definitionsyntax.Node) (*matchGraphNode, error
 			groupNode([]definitionsyntax.Node{
 				&definitionsyntax.Type{Name: "!boolean-group"},
 				groupNode([]definitionsyntax.Node{
-					&definitionsyntax.Multiplier{Comma: false, Min: 0, Max: 0, Term: groupNode([]definitionsyntax.Node{
+					&definitionsyntax.Multiplier{Comma: false, Min: 0, Max: definitionsyntax.Unbounded, Term: groupNode([]definitionsyntax.Node{
 						&definitionsyntax.Keyword{Name: "and"},
 						&definitionsyntax.Type{Name: "!boolean-group"},
 					}, " ", false)},
-					&definitionsyntax.Multiplier{Comma: false, Min: 0, Max: 0, Term: groupNode([]definitionsyntax.Node{
+					&definitionsyntax.Multiplier{Comma: false, Min: 0, Max: definitionsyntax.Unbounded, Term: groupNode([]definitionsyntax.Node{
 						&definitionsyntax.Keyword{Name: "or"},
 						&definitionsyntax.Type{Name: "!boolean-group"},
 					}, " ", false)},

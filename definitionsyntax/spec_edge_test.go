@@ -5,6 +5,7 @@ package definitionsyntax_test
 // notation, functional notation and errors. Every expected value is what
 // upstream csstree 3.2.1 gives for the same source: the AST as JSON, the
 // generated text (default and compact), or the error message and offset.
+// Cases where the port follows the spec instead are in spec_fixes_test.go.
 
 import (
 	"encoding/json"
@@ -69,13 +70,10 @@ func runSpecEdgeTest(t *testing.T, tt specEdgeTest) {
 func TestParseSpecEdges(t *testing.T) {
 	for _, tt := range []specEdgeTest{
 		{"a{0,5}", `{"type":"Group","terms":[{"type":"Multiplier","comma":false,"min":0,"max":5,"term":{"type":"Keyword","name":"a"}}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "a{0,5}", "a{0,5}", "", 0},
-		{"a{2,1}", `{"type":"Group","terms":[{"type":"Multiplier","comma":false,"min":2,"max":1,"term":{"type":"Keyword","name":"a"}}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "a{2,1}", "a{2,1}", "", 0},
 		{"a{1}", `{"type":"Group","terms":[{"type":"Multiplier","comma":false,"min":1,"max":1,"term":{"type":"Keyword","name":"a"}}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "a", "a", "", 0},
 		{"a{1,1}", `{"type":"Group","terms":[{"type":"Multiplier","comma":false,"min":1,"max":1,"term":{"type":"Keyword","name":"a"}}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "a", "a", "", 0},
 		{"#{1,1}", "", "", "", "Unexpected input", 0},
 		{"a#{1}", `{"type":"Group","terms":[{"type":"Multiplier","comma":true,"min":1,"max":1,"term":{"type":"Keyword","name":"a"}}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "a", "a", "", 0},
-		{"a{0}", `{"type":"Group","terms":[{"type":"Multiplier","comma":false,"min":0,"max":0,"term":{"type":"Keyword","name":"a"}}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "a*", "a*", "", 0},
-		{"a{0,0}", `{"type":"Group","terms":[{"type":"Multiplier","comma":false,"min":0,"max":0,"term":{"type":"Keyword","name":"a"}}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "a*", "a*", "", 0},
 		{"a*#", "", "", "", "Unexpected input", 2},
 		{"a*?", "", "", "", "Unexpected input", 2},
 		{"a??", "", "", "", "Unexpected input", 2},
@@ -124,9 +122,6 @@ func TestParseSpecEdges(t *testing.T) {
 		{"f() a", `{"type":"Group","terms":[{"type":"Function","name":"f"},{"type":"Token","value":")"},{"type":"Keyword","name":"a"}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "f( ) a", "f( ) a", "", 0},
 		{"<boolean-expr[ <a> ]>?", `{"type":"Group","terms":[{"type":"Multiplier","comma":false,"min":0,"max":1,"term":{"type":"Boolean","term":{"type":"Type","name":"a","opts":null}}}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "<boolean-expr[<a>]>?", "<boolean-expr[<a>]>?", "", 0},
 		{"a && b || c | d e", `{"type":"Group","terms":[{"type":"Group","terms":[{"type":"Group","terms":[{"type":"Keyword","name":"a"},{"type":"Keyword","name":"b"}],"combinator":"&&","disallowEmpty":false,"explicit":false},{"type":"Keyword","name":"c"}],"combinator":"||","disallowEmpty":false,"explicit":false},{"type":"Group","terms":[{"type":"Keyword","name":"d"},{"type":"Keyword","name":"e"}],"combinator":" ","disallowEmpty":false,"explicit":false}],"combinator":"|","disallowEmpty":false,"explicit":false}`, "a && b || c | d e", "a&&b||c|d e", "", 0},
-		// §2.1 writes minus infinity with U+2212 MINUS SIGN; upstream only
-		// accepts U+002D HYPHEN-MINUS before ∞.
-		{"<length [−∞,0]>", "", "", "", "Expect a number", 9},
 		{"<length [-∞,0]>", `{"type":"Group","terms":[{"type":"Type","name":"length","opts":{"type":"Range","min":null,"max":0}}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "<length [-∞,0]>", "<length [-∞,0]>", "", 0},
 		// a number too large for a float64 is -Infinity, which JSON writes as null
 		{"<a [-" + strings.Repeat("9", 400) + ",1]>", `{"type":"Group","terms":[{"type":"Type","name":"a","opts":{"type":"Range","min":null,"max":1}}],"combinator":" ","disallowEmpty":false,"explicit":false}`, "<a [-Infinity,1]>", "<a [-Infinity,1]>", "", 0},

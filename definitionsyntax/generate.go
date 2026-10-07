@@ -26,7 +26,7 @@ func noop(value string, _ Node) string {
 func generateMultiplier(multiplier *Multiplier) string {
 	min, max, comma := multiplier.Min, multiplier.Max, multiplier.Comma
 
-	if min == 0 && max == 0 {
+	if min == 0 && max == Unbounded {
 		if comma {
 			return "#?"
 		}
@@ -37,7 +37,7 @@ func generateMultiplier(multiplier *Multiplier) string {
 		return "?"
 	}
 
-	if min == 1 && max == 0 {
+	if min == 1 && max == Unbounded {
 		if comma {
 			return "#"
 		}
@@ -58,7 +58,7 @@ func generateMultiplier(multiplier *Multiplier) string {
 	}
 
 	maxText := ""
-	if max != 0 {
+	if max != Unbounded {
 		maxText = strconv.Itoa(max)
 	}
 	return prefix + "{" + strconv.Itoa(min) + "," + maxText + "}"

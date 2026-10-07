@@ -29,6 +29,7 @@ const (
 	verticalLine       = 124 // |
 	rightCurlyBracket  = 125 // }
 	infinity           = "∞" // U+221E, more than one byte in a Go string
+	minusSign          = "−" // U+2212, as CSS Values §2.4.1 writes −∞
 )
 
 // combinatorPrecedence is upstream COMBINATOR_PRECEDENCE.
@@ -103,8 +104,15 @@ func readMultiplierRange(s *scanner) (min, max int) {
 		s.pos++
 		s.skipWs()
 
+		max = Unbounded
 		if s.charCode() != rightCurlyBracket {
+			// {A,B}: "at least A and at most B"; upstream accepts B < A
+			maxStart := s.pos
 			max = scanInt(s)
+			if max < min {
+				s.pos = maxStart
+				s.error("Wrong multiplier range")
+			}
 			s.skipWs()
 		}
 	} else {
@@ -124,12 +132,12 @@ func readMultiplier(s *scanner) *Multiplier {
 	case asterisk:
 		s.pos++
 
-		min, max = 0, 0
+		min, max = 0, Unbounded
 
 	case plusSign:
 		s.pos++
 
-		min, max = 1, 0
+		min, max = 1, Unbounded
 
 	case questionMark:
 		s.pos++
@@ -149,9 +157,9 @@ func readMultiplier(s *scanner) *Multiplier {
 			// In this case just treat "#?" as a single multiplier
 			// { min: 0, max: 0, comma: true }
 			s.pos++
-			min, max = 0, 0
+			min, max = 0, Unbounded
 		} else {
-			min, max = 1, 0
+			min, max = 1, Unbounded
 		}
 
 	case leftCurlyBracket:
@@ -246,10 +254,7 @@ func readTypeRange(s *scanner) *Range {
 
 	s.eat(leftSquareBracket)
 
-	if s.charCode() == hyphenMinus {
-		s.peek()
-		sign = -1
-	}
+	sign = readSign(s)
 
 	if sign == -1 && s.hasPrefix(infinity) {
 		s.peek()
@@ -268,12 +273,7 @@ func readTypeRange(s *scanner) *Range {
 	if s.hasPrefix(infinity) {
 		s.peek()
 	} else {
-		sign = 1
-
-		if s.charCode() == hyphenMinus {
-			s.peek()
-			sign = -1
-		}
+		sign = readSign(s)
 
 		max = &RangeBound{Value: sign * scanFloat(s)}
 
@@ -288,6 +288,21 @@ func readTypeRange(s *scanner) *Range {
 		Min: min,
 		Max: max,
 	}
+}
+
+// readSign moves past a U+002D HYPHEN-MINUS or a U+2212 MINUS SIGN and
+// returns -1, or returns 1 when there is neither (upstream accepts only the
+// hyphen-minus).
+func readSign(s *scanner) float64 {
+	if s.charCode() == hyphenMinus {
+		s.pos++
+		return -1
+	}
+	if s.hasPrefix(minusSign) {
+		s.pos += len(minusSign)
+		return -1
+	}
+	return 1
 }
 
 func readType(s *scanner) Node {

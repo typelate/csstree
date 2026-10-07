@@ -31,8 +31,14 @@ type Group struct {
 	Explicit      bool // the group is written in square brackets
 }
 
-// Multiplier repeats Term from Min to Max times. A Max of 0 means there is no
-// upper bound. Comma is set for the "#" multiplier.
+// Unbounded is the Max of a Multiplier with no upper bound, such as `*`, `+`,
+// `#` or `{A,}`.
+const Unbounded = -1
+
+// Multiplier repeats Term from Min to Max times. Max is Unbounded when there
+// is no upper bound; a Max of 0, as in `{0}`, means exactly zero times
+// (upstream uses max 0 for "no upper bound", so it reads `{0}` as `*`).
+// Comma is set for the "#" multiplier.
 type Multiplier struct {
 	Comma bool
 	Min   int
@@ -201,14 +207,26 @@ func (n *Group) MarshalJSON() ([]byte, error) {
 	}{n.Type(), terms, n.Combinator, n.DisallowEmpty, n.Explicit})
 }
 
+// MarshalJSON writes max 0 for Unbounded, as upstream does. An exact zero
+// max, which upstream cannot represent, is written as null: upstream's
+// matcher reads a null max as no repetitions, never as unbounded.
 func (n *Multiplier) MarshalJSON() ([]byte, error) {
+	var maxValue *int
+	switch n.Max {
+	case Unbounded:
+		maxValue = new(0)
+	case 0:
+		// null
+	default:
+		maxValue = new(n.Max)
+	}
 	return json.Marshal(struct {
 		Type  string `json:"type"`
 		Comma bool   `json:"comma"`
 		Min   int    `json:"min"`
-		Max   int    `json:"max"`
+		Max   *int   `json:"max"`
 		Term  Node   `json:"term"`
-	}{n.Type(), n.Comma, n.Min, n.Max, n.Term})
+	}{n.Type(), n.Comma, n.Min, maxValue, n.Term})
 }
 
 func (n *Boolean) MarshalJSON() ([]byte, error) {
