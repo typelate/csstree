@@ -82,76 +82,11 @@ type ParseOptions struct {
 	// OnComment is called for every comment with its text (without /* and
 	// */) and its location, which is nil unless Positions is set.
 	OnComment func(value string, loc *Location)
-	// OnToken is called for every token before parsing.
-	OnToken func(api *TokenIterateAPI, tokenType tokenizer.TokenType, start, end, index int)
-}
-
-// TokenIterateAPI is the `this` of upstream's onToken callback.
-type TokenIterateAPI struct {
-	Filename   string
-	Source     string
-	TokenCount int
-	Balance    []int
-
-	parser      *Parser
-	locationMap *tokenizer.OffsetToLocation
-}
-
-// GetTokenType returns the type of the token at index.
-func (api *TokenIterateAPI) GetTokenType(index int) tokenizer.TokenType {
-	return api.parser.GetTokenType(index)
-}
-
-// GetTokenTypeName returns the name of the type of the token at index.
-func (api *TokenIterateAPI) GetTokenTypeName(index int) string {
-	return api.parser.GetTokenType(index).String()
-}
-
-// GetTokenStart returns the start offset of the token at index.
-func (api *TokenIterateAPI) GetTokenStart(index int) int {
-	return api.parser.GetTokenStart(index)
-}
-
-// GetTokenEnd returns the end offset of the token at index.
-func (api *TokenIterateAPI) GetTokenEnd(index int) int {
-	return api.parser.GetTokenEnd(index)
-}
-
-// GetTokenValue returns the text of the token at index.
-func (api *TokenIterateAPI) GetTokenValue(index int) string {
-	return substring(api.parser.Source, api.parser.GetTokenStart(index), api.parser.GetTokenEnd(index))
-}
-
-// Substring returns Source[start:end].
-func (api *TokenIterateAPI) Substring(start, end int) string {
-	return substring(api.parser.Source, start, end)
-}
-
-// IsBlockOpenerTokenType reports whether tokenType opens a block.
-func (api *TokenIterateAPI) IsBlockOpenerTokenType(tokenType tokenizer.TokenType) bool {
-	return tokenType.IsBlockOpener()
-}
-
-// IsBlockCloserTokenType reports whether tokenType closes a block.
-func (api *TokenIterateAPI) IsBlockCloserTokenType(tokenType tokenizer.TokenType) bool {
-	return tokenType.IsBlockCloser()
-}
-
-// GetBlockTokenPairIndex returns the index of the token paired with the
-// block token at index, or -1.
-func (api *TokenIterateAPI) GetBlockTokenPairIndex(index int) int {
-	return api.parser.GetBlockTokenPairIndex(index)
-}
-
-// GetLocation returns the position of offset.
-func (api *TokenIterateAPI) GetLocation(offset int) tokenizer.SourcePosition {
-	return tokenizer.SourcePosition{Filename: api.Filename, Position: api.locationMap.Position(offset)}
-}
-
-// GetRangeLocation returns the location of [start, end).
-func (api *TokenIterateAPI) GetRangeLocation(start, end int) *Location {
-	loc := api.locationMap.Range(start, end)
-	return &loc
+	// OnToken is called for every token, in order, before parsing, with
+	// the token's type and its byte range in the source (upstream
+	// onToken, whose this, the token stream, is
+	// tokenizer.NewTokenStream(source)).
+	OnToken func(tokenType tokenizer.TokenType, start, end int)
 }
 
 // UnknownContextError is returned by a parse with a context the syntax does
@@ -291,16 +226,8 @@ func (p *Parser) parse(source string, options ParseOptions) (ast Node, err error
 	}
 
 	if options.OnToken != nil {
-		api := &TokenIterateAPI{
-			Filename:    p.filename,
-			Source:      source,
-			TokenCount:  p.TokenCount,
-			Balance:     p.Balance[:p.TokenCount+1],
-			parser:      p,
-			locationMap: p.locationMap,
-		}
-		p.ForEachToken(func(tokenType tokenizer.TokenType, start, end, index int) {
-			options.OnToken(api, tokenType, start, end, index)
+		p.ForEachToken(func(tokenType tokenizer.TokenType, start, end, _ int) {
+			options.OnToken(tokenType, start, end)
 		})
 	}
 

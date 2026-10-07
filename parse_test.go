@@ -551,101 +551,40 @@ func TestParse(t *testing.T) {
 		}
 
 		t.Run("as function", func(t *testing.T) {
-			type indexedToken struct {
-				Index int
-				token
-			}
-			var actual []indexedToken
+			var actual []token
 			if _, err := Parse(source, ParseOptions{
-				OnToken: func(_ *TokenIterateAPI, tokenType tokenizer.TokenType, start, end, index int) {
-					actual = append(actual, indexedToken{index, token{tokenType, start, end}})
+				OnToken: func(tokenType tokenizer.TokenType, start, end int) {
+					actual = append(actual, token{tokenType, start, end})
 				},
 			}); err != nil {
 				t.Fatalf("Parse(%q, ...): %v", source, err)
 			}
 
-			var want []indexedToken
-			for index, token := range expected {
-				want = append(want, indexedToken{index, token})
-			}
-			if !slices.Equal(actual, want) {
-				t.Errorf("tokens = %+v, want %+v", actual, want)
+			if !slices.Equal(actual, expected) {
+				t.Errorf("tokens = %+v, want %+v", actual, expected)
 			}
 		})
 
 		t.Run("as function with API", func(t *testing.T) {
-			const filename = "test.css"
-			offsetToLocation := &tokenizer.OffsetToLocation{Source: source, Filename: filename}
+			// upstream calls onToken with the token stream as this; in Go
+			// the caller builds it from the source: OnToken's tokens are
+			// the stream's, index for index
 			tokenStream := tokenizer.NewTokenStream(source)
-			type apiToken struct {
-				Index                  int
-				Filename               string
-				Source                 string
-				TokenCount             int
-				Type                   tokenizer.TokenType
-				TypeName               string
-				IsBlockOpenerTokenType bool
-				IsBlockCloserTokenType bool
-				Balance                int
-				BlockTokenPairIndex    int
-				Start                  int
-				End                    int
-				Value                  string
-				Substring              string
-				Location               tokenizer.SourcePosition
-				RangeLocation          *Location
-			}
-			var actual []apiToken
-
+			index := 0
 			if _, err := Parse(source, ParseOptions{
-				Filename: filename,
-				OnToken: func(api *TokenIterateAPI, tokenType tokenizer.TokenType, start, end, index int) {
-					actual = append(actual, apiToken{
-						Index:                  index,
-						Filename:               api.Filename,
-						Source:                 api.Source,
-						TokenCount:             api.TokenCount,
-						Type:                   api.GetTokenType(index),
-						TypeName:               api.GetTokenTypeName(index),
-						IsBlockOpenerTokenType: api.IsBlockOpenerTokenType(tokenType),
-						IsBlockCloserTokenType: api.IsBlockCloserTokenType(tokenType),
-						Balance:                api.Balance[index],
-						BlockTokenPairIndex:    api.GetBlockTokenPairIndex(index),
-						Start:                  api.GetTokenStart(index),
-						End:                    api.GetTokenEnd(index),
-						Value:                  api.GetTokenValue(index),
-						Substring:              api.Substring(start, end),
-						Location:               api.GetLocation(start),
-						RangeLocation:          api.GetRangeLocation(start, end),
-					})
+				OnToken: func(tokenType tokenizer.TokenType, start, end int) {
+					got := token{tokenType, start, end}
+					want := token{tokenStream.GetTokenType(index), tokenStream.GetTokenStart(index), tokenStream.GetTokenEnd(index)}
+					if got != want {
+						t.Errorf("token %d = %+v, want the stream's %+v", index, got, want)
+					}
+					index++
 				},
 			}); err != nil {
 				t.Fatalf("Parse(%q, ...): %v", source, err)
 			}
-
-			var want []apiToken
-			for index, token := range expected {
-				want = append(want, apiToken{
-					Index:                  index,
-					Filename:               filename,
-					Source:                 source,
-					TokenCount:             tokenStream.TokenCount,
-					Type:                   token.Type,
-					TypeName:               token.Type.String(),
-					IsBlockOpenerTokenType: slices.Contains([]tokenizer.TokenType{tokenizer.Function, tokenizer.LeftParenthesis, tokenizer.LeftSquareBracket, tokenizer.LeftCurlyBracket}, token.Type),
-					IsBlockCloserTokenType: slices.Contains([]tokenizer.TokenType{tokenizer.RightParenthesis, tokenizer.RightSquareBracket, tokenizer.RightCurlyBracket}, token.Type),
-					Balance:                tokenStream.Balance[index],
-					BlockTokenPairIndex:    tokenStream.GetBlockTokenPairIndex(index),
-					Start:                  token.Start,
-					End:                    token.End,
-					Value:                  source[token.Start:token.End],
-					Substring:              source[token.Start:token.End],
-					Location:               tokenizer.SourcePosition{Filename: filename, Position: offsetToLocation.Position(token.Start)},
-					RangeLocation:          new(offsetToLocation.Range(token.Start, token.End)),
-				})
-			}
-			if !reflect.DeepEqual(actual, want) {
-				t.Errorf("tokens =\n%s\nwant\n%s", jsonText(t, actual, "    "), jsonText(t, want, "    "))
+			if index != tokenStream.TokenCount {
+				t.Errorf("OnToken called %d times, want TokenCount %d", index, tokenStream.TokenCount)
 			}
 		})
 

@@ -97,7 +97,7 @@ func TestParseReportsPanics(t *testing.T) {
 	})
 
 	t.Run("a panic in OnToken is returned", func(t *testing.T) {
-		_, err := Parse("a{}", ParseOptions{OnToken: func(*TokenIterateAPI, tokenizer.TokenType, int, int, int) {
+		_, err := Parse("a{}", ParseOptions{OnToken: func(tokenizer.TokenType, int, int) {
 			panic("boom")
 		}})
 		assertInternalError(t, err)
