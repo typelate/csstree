@@ -293,16 +293,16 @@ func TestLexerSpecEdgeCases(t *testing.T) {
 		{kind: "type", name: "number", value: "+.5", matched: true, iterations: 3},
 		{kind: "type", name: "number", value: "1e3", matched: true, iterations: 3},
 		{kind: "type", name: "number", value: "1e309", matched: true, iterations: 3},
-		// <number> does not check the token type, so it takes any token
-		// whose text is a number: the delims + and - and idents like e5,
-		// which the spec rejects (a <number> is a <number-token>)
-		{kind: "type", name: "number", value: "+", matched: true, iterations: 3},
-		{kind: "type", name: "number", value: "-", matched: true, iterations: 3},
-		{kind: "type", name: "number", value: "e5", matched: true, iterations: 3},
-		{kind: "type", name: "number", value: "-E3", matched: true, iterations: 3},
-		{kind: "property", name: "opacity", value: "e5", matched: true, iterations: 8},
-		{kind: "property", name: "opacity", value: "+", matched: true, iterations: 8},
-		{kind: "property", name: "line-height", value: "e5", matched: true, iterations: 9},
+		// a <number> is a <number-token>: upstream does not check the token
+		// type, so it takes any token whose text is a number, the delims +
+		// and - and idents like e5; the port follows the spec
+		{kind: "type", name: "number", value: "+", iterations: 3},
+		{kind: "type", name: "number", value: "-", iterations: 3},
+		{kind: "type", name: "number", value: "e5", iterations: 3},
+		{kind: "type", name: "number", value: "-E3", iterations: 3},
+		{kind: "property", name: "opacity", value: "e5", iterations: 12},
+		{kind: "property", name: "opacity", value: "+", iterations: 12},
+		{kind: "property", name: "line-height", value: "e5", iterations: 18},
 		// Values 4 §6 unitless zero is a <length>, not an <angle> or <time>
 		{kind: "type", name: "length", value: "0", matched: true, iterations: 3},
 		{kind: "type", name: "length", value: "0.0", matched: true, iterations: 3},

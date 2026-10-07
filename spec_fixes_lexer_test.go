@@ -125,3 +125,44 @@ func TestSpecEscapedVar(t *testing.T) {
 		}
 	}
 }
+
+// TestSpecNumberTokens checks that <number> is a <number-token> and
+// <integer> a <number-token> of digits (CSS Values 4 §5.2, §5.3): delims
+// and idents whose text reads as a number are not numbers.
+func TestSpecNumberTokens(t *testing.T) {
+	runSpecMatchCases(t, []specMatchCase{
+		{"type", "number", "+", false},
+		{"type", "number", "-", false},
+		{"type", "number", "e5", false},
+		{"type", "number", "-E3", false},
+		{"type", "number", "e-5", false},
+		{"type", "number", "+e5", false},
+		{"property", "opacity", "e5", false},
+		{"property", "opacity", "+", false},
+		{"property", "line-height", "e5", false},
+		{"syntax", "<number [0,∞]>", "e5", false},
+		{"type", "number", "1", true},
+		{"type", "number", "+.5", true},
+		{"type", "number", "-1e-3", true},
+		{"type", "number", "1e309", true},
+		{"property", "opacity", ".5", true},
+		{"property", "line-height", "1.5", true},
+		// the IE postfix hack is still taken
+		{"type", "number", `1\9`, true},
+		{"type", "number", `1\0`, true},
+		{"type", "number", `1px`, false},
+		{"type", "number", `1%`, false},
+		// an integer is written with digits only
+		{"type", "integer", "1", true},
+		{"type", "integer", "-1", true},
+		{"type", "integer", "+0", true},
+		{"type", "integer", "1.0", false},
+		{"type", "integer", "1e3", false},
+		{"type", "integer", "1E0", false},
+		{"type", "integer", "e5", false},
+		{"type", "integer", "+", false},
+		{"property", "z-index", "1e3", false},
+		{"property", "z-index", "1.0", false},
+		{"property", "z-index", "10", true},
+	})
+}

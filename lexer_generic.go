@@ -725,13 +725,16 @@ func zero(next genericFunc) genericFunc {
 // Number values are denoted by <number>, and represent real numbers, possibly with a fractional component.
 // ... It corresponds to the <number-token> production
 func number(token *matchToken, _ func(offset int) *matchToken, opts *definitionsyntax.Range) int {
-	if token == nil {
+	// ... a <number-token>, or the <dimension-token> of a number with the
+	// IE postfix hack (123\9); upstream reads any token whose text is a
+	// number, such as the delims + and - or the ident e5
+	if token == nil || token.typ != tokenizer.Number && token.typ != tokenizer.Dimension {
 		return 0
 	}
 
 	numberEnd := tokenizer.ConsumeNumber(token.value, 0)
-	isNumber := numberEnd == len(token.value)
-	if !isNumber && !isPostfixIeHack(token.value, numberEnd) {
+	isNumber := token.typ == tokenizer.Number && numberEnd == len(token.value)
+	if !isNumber && (token.typ != tokenizer.Dimension || !isPostfixIeHack(token.value, numberEnd)) {
 		return 0
 	}
 
