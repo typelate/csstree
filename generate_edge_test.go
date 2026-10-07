@@ -248,3 +248,75 @@ func TestCloneASTFixtures(t *testing.T) {
 		}))
 	})
 }
+
+// Go only: a hand-built node with nil fields generates or fails with an
+// *UnknownNodeTypeError (a missing node), never with an *InternalError (a
+// nil dereference); nil lists generate as empty lists.
+func TestGenerateZeroNodes(t *testing.T) {
+	for _, node := range []Node{
+		&AnPlusB{},
+		&AtrulePrelude{},
+		&Atrule{},
+		&AttributeSelector{},
+		&Block{},
+		&Brackets{},
+		&CDC{},
+		&CDO{},
+		&ClassSelector{},
+		&Combinator{},
+		&Comment{},
+		&Condition{},
+		&DeclarationList{},
+		&Declaration{},
+		&Dimension{},
+		&FeatureFunction{},
+		&FeatureRange{},
+		&Feature{},
+		&Function{},
+		&GeneralEnclosed{},
+		&Hash{},
+		&IDSelector{},
+		&Identifier{},
+		&LayerList{},
+		&Layer{},
+		&MediaQueryList{},
+		&MediaQuery{},
+		&NestingSelector{},
+		&Nth{},
+		&Number{},
+		&Operator{},
+		&Parentheses{},
+		&Percentage{},
+		&PseudoClassSelector{},
+		&PseudoElementSelector{},
+		&Ratio{},
+		&Raw{},
+		&Rule{},
+		&Scope{},
+		&SelectorList{},
+		&Selector{},
+		&String{},
+		&StyleSheet{},
+		&SupportsDeclaration{},
+		&TypeSelector{},
+		&UnicodeRange{},
+		&URL{},
+		&Value{},
+		&WhiteSpace{},
+	} {
+		t.Run(node.Type(), func(t *testing.T) {
+			css, err := Generate(node, GenerateOptions{})
+			var unknown *UnknownNodeTypeError
+			if err != nil && !errors.As(err, &unknown) {
+				t.Errorf("Generate(&%s{}) = %q, %v; want no error or an *UnknownNodeTypeError", node.Type(), css, err)
+			}
+		})
+	}
+
+	if css, err := Generate(&Rule{Prelude: &SelectorList{}}, GenerateOptions{}); err == nil {
+		t.Errorf("Generate(Rule without Block) = %q, want an error", css)
+	}
+	if css, err := Generate(&Rule{Prelude: &SelectorList{}, Block: &Block{}}, GenerateOptions{}); err != nil || css != "{}" {
+		t.Errorf("Generate(Rule with empty lists) = %q, %v; want {}", css, err)
+	}
+}

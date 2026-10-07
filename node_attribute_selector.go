@@ -202,7 +202,7 @@ func (p *Parser) AttributeSelector() *AttributeSelector {
 func generateAttributeSelector(g *Generator, node Node) {
 	n := node.(*AttributeSelector)
 	g.Token(tokenizer.Delim, "[")
-	g.Node(n.Name)
+	g.Node(nodeOrNil(n.Name))
 
 	if n.Matcher != "" {
 		g.Tokenize(n.Matcher)

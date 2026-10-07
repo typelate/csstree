@@ -68,6 +68,20 @@ func (g *Generator) Children(children *List[Node], delimiter func(prev Node)) {
 	}
 }
 
+// nodeOrNil returns node as a Node, nil for a nil pointer, so that
+// generating a missing node field of a pointer type fails with an
+// *UnknownNodeTypeError as a missing Node field does (upstream: reading
+// the type of null throws).
+func nodeOrNil[P interface {
+	*T
+	Node
+}, T any](node P) Node {
+	if node == nil {
+		return nil
+	}
+	return node
+}
+
 // Token emits a token of tokenType with text value.
 func (g *Generator) Token(tokenType tokenizer.TokenType, value string) {
 	g.h.token(tokenType, value, false)

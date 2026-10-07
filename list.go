@@ -64,7 +64,10 @@ type listCursor[T any] struct {
 // Insert) or is already in a list (the item Insert, Prepend and Append
 // link): such misuse would otherwise corrupt both lists.
 //
-// The zero value is an empty list ready to use. ForEach and ForEachRight
+// The zero value is an empty list ready to use, and a nil *List reads as
+// an empty list (Len, IsEmpty, First, Last, Head, Tail, All and Backward),
+// so a hand-built node with nil children generates, walks and clones as
+// one without children. ForEach and ForEachRight
 // update the list's internal cursor stack, so they, like every mutating
 // method, must not run concurrently with other uses of the list.
 type List[T any] struct {
@@ -140,7 +143,7 @@ func (l *List[T]) updateCursors(prevOld, prevNew, nextOld, nextNew *ListItem[T])
 // current item during the iteration ends it (use ForEach to mutate).
 func (l *List[T]) All() iter.Seq[T] {
 	return func(yield func(T) bool) {
-		for item := l.head; item != nil; item = item.Next {
+		for item := l.Head(); item != nil; item = item.Next {
 			if !yield(item.Data) {
 				return
 			}
@@ -152,7 +155,7 @@ func (l *List[T]) All() iter.Seq[T] {
 // All, it only reads the list.
 func (l *List[T]) Backward() iter.Seq[T] {
 	return func(yield func(T) bool) {
-		for item := l.tail; item != nil; item = item.Prev {
+		for item := l.Tail(); item != nil; item = item.Prev {
 			if !yield(item.Data) {
 				return
 			}
@@ -162,30 +165,39 @@ func (l *List[T]) Backward() iter.Seq[T] {
 
 // Head returns the first item, or nil when l is empty.
 func (l *List[T]) Head() *ListItem[T] {
+	if l == nil {
+		return nil
+	}
 	return l.head
 }
 
 // Tail returns the last item, or nil when l is empty.
 func (l *List[T]) Tail() *ListItem[T] {
+	if l == nil {
+		return nil
+	}
 	return l.tail
 }
 
 // Len returns the number of items of l.
 func (l *List[T]) Len() int {
+	if l == nil {
+		return 0
+	}
 	return l.len
 }
 
 // IsEmpty reports whether l has no items.
 func (l *List[T]) IsEmpty() bool {
-	return l.head == nil
+	return l.Head() == nil
 }
 
 // First returns the data of the head item, or the zero value of T (nil for
 // List[Node]) when l is empty.
 func (l *List[T]) First() T {
 	var data T
-	if l.head != nil {
-		data = l.head.Data
+	if head := l.Head(); head != nil {
+		data = head.Data
 	}
 	return data
 }
@@ -194,15 +206,15 @@ func (l *List[T]) First() T {
 // List[Node]) when l is empty.
 func (l *List[T]) Last() T {
 	var data T
-	if l.tail != nil {
-		data = l.tail.Data
+	if tail := l.Tail(); tail != nil {
+		data = tail.Data
 	}
 	return data
 }
 
 // MarshalJSON encodes l as a JSON array of its data (upstream toJSON).
 func (l *List[T]) MarshalJSON() ([]byte, error) {
-	array := make([]T, 0, l.len)
+	array := make([]T, 0, l.Len())
 	for data := range l.All() {
 		array = append(array, data)
 	}

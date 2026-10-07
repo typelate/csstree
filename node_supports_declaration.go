@@ -76,6 +76,6 @@ func (p *Parser) SupportsDeclaration() *SupportsDeclaration {
 func generateSupportsDeclaration(g *Generator, node Node) {
 	n := node.(*SupportsDeclaration)
 	g.Token(tokenizer.LeftParenthesis, "(")
-	g.Node(n.Declaration)
+	g.Node(nodeOrNil(n.Declaration))
 	g.Token(tokenizer.RightParenthesis, ")")
 }

@@ -104,5 +104,5 @@ func (p *Parser) Rule() *Rule {
 func generateRule(g *Generator, node Node) {
 	n := node.(*Rule)
 	g.Node(n.Prelude)
-	g.Node(n.Block)
+	g.Node(nodeOrNil(n.Block))
 }
