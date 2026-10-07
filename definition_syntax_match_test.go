@@ -16,6 +16,7 @@ import (
 	"testing"
 	"unicode"
 
+	"github.com/typelate/csstree/definitionsyntax"
 	"github.com/typelate/csstree/internal/fixturetest"
 )
 
@@ -218,16 +219,16 @@ func createSyntaxTest(t *testing.T, testName string, test definitionSyntaxMatchT
 				if err != nil {
 					t.Fatalf("matchGraph(): %v", err)
 				}
-				m, err := matchAsList(stringToTokens(input), graph, syntaxes)
+				m, list, err := matchAsList(stringToTokens(input), graph, syntaxes)
 				if err != nil {
 					t.Fatalf("matchAsList(stringToTokens(input), graph, syntaxes): %v", err)
 				}
 
-				if m.list == nil {
+				if list == nil {
 					t.Fatalf("matchAsList(%q) = null, want a match", input)
 				}
 				var matched []string
-				for _, x := range m.list {
+				for _, x := range list {
 					if x.isToken {
 						matched = append(matched, x.token)
 					}
@@ -250,12 +251,12 @@ func createSyntaxTest(t *testing.T, testName string, test definitionSyntaxMatchT
 				if err != nil {
 					t.Fatalf("matchGraph(): %v", err)
 				}
-				m, err := matchAsList(stringToTokens(input), graph, syntaxes)
+				_, list, err := matchAsList(stringToTokens(input), graph, syntaxes)
 				if err != nil {
 					t.Fatalf("matchAsList(stringToTokens(input), graph, syntaxes): %v", err)
 				}
 
-				if m.list != nil {
+				if list != nil {
 					t.Errorf("matchAsList(%q) matched, want null", input)
 				}
 			})
@@ -295,7 +296,7 @@ func TestDefinitionSyntaxMatch(t *testing.T) {
 				t.Fatalf("buildMatchGraphFromString(%q, nil): %v", "<foo>", err)
 			}
 
-			_, err = matchAsList(stringToTokens("foo"), matchTree, &testMatchSyntaxes{})
+			_, _, err = matchAsList(stringToTokens("foo"), matchTree, &testMatchSyntaxes{})
 			pattern := regexp.MustCompile(`Bad syntax reference: <foo>`)
 			if err == nil || !pattern.MatchString(err.Error()) {
 				t.Errorf("matchAsList() error = %v, want %v", err, pattern)
@@ -308,11 +309,54 @@ func TestDefinitionSyntaxMatch(t *testing.T) {
 				t.Fatalf("buildMatchGraphFromString(%q, nil): %v", "<'foo'>", err)
 			}
 
-			_, err = matchAsList(stringToTokens("foo"), matchTree, &testMatchSyntaxes{})
+			_, _, err = matchAsList(stringToTokens("foo"), matchTree, &testMatchSyntaxes{})
 			pattern := regexp.MustCompile(`Bad syntax reference: <'foo'>`)
 			if err == nil || !pattern.MatchString(err.Error()) {
 				t.Errorf("matchAsList() error = %v, want %v", err, pattern)
 			}
 		})
 	})
+}
+
+// matchListItem is an entry of matchAsList's result: the opening or
+// closing of a syntax, or a token.
+type matchListItem struct {
+	kind    stackItemKind
+	syntax  definitionsyntax.Node
+	isToken bool
+	token   string
+	node    Node
+}
+
+// matchAsList is upstream matchAsList, which only its tests use: the match
+// as a list of tokens and syntax openings and closings, nil when the
+// tokens do not match.
+func matchAsList(tokens []matchToken, matchGraph *matchGraphNode, syntaxes matchSyntaxes) (*matchResult, []matchListItem, error) {
+	matchResult, err := internalMatch(tokens, matchGraph, syntaxes)
+	if err != nil {
+		return nil, nil, err
+	}
+	if matchResult.match == nil {
+		return matchResult, nil, nil
+	}
+
+	list := []matchListItem{}
+	for item := reverseList(matchResult.match).prev; item != nil; item = item.prev {
+		switch item.kind {
+		case openSyntaxItem, closeSyntaxItem:
+			list = append(list, matchListItem{
+				kind:   item.kind,
+				syntax: item.syntax,
+			})
+
+		default:
+			list = append(list, matchListItem{
+				isToken: true,
+				token:   item.token.value,
+				node:    item.token.node,
+			})
+		}
+	}
+
+	return matchResult, list, nil
 }

@@ -97,27 +97,16 @@ type elseStackItem struct {
 	prev        *elseStackItem
 }
 
-// matchResult is the result of internalMatch, matchAsList and matchAsTree.
-// match is set by internalMatch (nil unless the value matched), list by
-// matchAsList and tree by matchAsTree.
+// matchResult is the result of internalMatch and matchAsTree. match is
+// set by internalMatch (nil unless the value matched) and tree by
+// matchAsTree.
 type matchResult struct {
 	tokens       []matchToken
 	reason       exitReason
 	iterations   int
 	match        *matchStackItem
-	list         []matchListItem
 	tree         *MatchNode
 	longestMatch int
-}
-
-// matchListItem is an entry of matchAsList's result: the opening or
-// closing of a syntax, or a token.
-type matchListItem struct {
-	kind    stackItemKind
-	syntax  definitionsyntax.Node
-	isToken bool
-	token   string
-	node    Node
 }
 
 func reverseList(list *matchStackItem) *matchStackItem {
@@ -645,40 +634,6 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 		match:        matchStack,
 		longestMatch: longestMatch,
 	}, nil
-}
-
-func matchAsList(tokens []matchToken, matchGraph *matchGraphNode, syntaxes matchSyntaxes) (*matchResult, error) {
-	matchResult, err := internalMatch(tokens, matchGraph, syntaxes)
-	if err != nil {
-		return nil, err
-	}
-
-	if matchResult.match != nil {
-		item := reverseList(matchResult.match).prev
-
-		matchResult.list = []matchListItem{}
-
-		for item != nil {
-			switch item.kind {
-			case openSyntaxItem, closeSyntaxItem:
-				matchResult.list = append(matchResult.list, matchListItem{
-					kind:   item.kind,
-					syntax: item.syntax,
-				})
-
-			default:
-				matchResult.list = append(matchResult.list, matchListItem{
-					isToken: true,
-					token:   item.token.value,
-					node:    item.token.node,
-				})
-			}
-
-			item = item.prev
-		}
-	}
-
-	return matchResult, nil
 }
 
 func matchAsTree(tokens []matchToken, matchGraph *matchGraphNode, syntaxes matchSyntaxes) (*matchResult, error) {
