@@ -97,47 +97,48 @@ func outOfRangeUnit(bounds *definitionsyntax.Range, value string, numEnd int, un
 	return false
 }
 
-// consumeFunction returns how many of tokens the function or block they
-// start with takes: up to its closing token, or all of them when it is not
-// closed.
-func consumeFunction(tokens []matchToken) int {
-	var balanceCloseType tokenizer.TokenType
-	var balanceStash []tokenizer.TokenType
-	length := 0
+// scanBalanced returns how many tokens from the start of tokens form a
+// balanced run: it stops before an unmatched ), ] or }, and before a token
+// for which stop, when not nil, returns true; topLevel tells whether the
+// token is outside every function and block.
+func scanBalanced(tokens []matchToken, stop func(token *matchToken, topLevel bool) bool) int {
+	// the closing token types of the open functions and blocks
+	var closers []tokenizer.TokenType
 
-	// balanced token consuming
-scan:
-	for ; length < len(tokens); length++ {
-		token := &tokens[length]
+	for i := range tokens {
+		token := &tokens[i]
+		if stop != nil && stop(token, len(closers) == 0) {
+			return i
+		}
+
 		switch token.typ {
 		case tokenizer.RightCurlyBracket, tokenizer.RightParenthesis, tokenizer.RightSquareBracket:
-			if token.typ != balanceCloseType {
-				break scan
+			if len(closers) == 0 || token.typ != closers[len(closers)-1] {
+				return i
 			}
-
-			balanceCloseType, balanceStash = popTokenType(balanceStash)
-
-			if len(balanceStash) == 0 {
-				length++
-				break scan
-			}
+			closers = closers[:len(closers)-1]
 
 		case tokenizer.Function, tokenizer.LeftParenthesis, tokenizer.LeftSquareBracket, tokenizer.LeftCurlyBracket:
-			balanceStash = append(balanceStash, balanceCloseType)
-			balanceCloseType = balancePair(token.typ)
+			closers = append(closers, balancePair(token.typ))
 		}
 	}
 
-	return length
+	return len(tokens)
 }
 
-// popTokenType is balanceStash.pop(): it returns the last item (0 for an
-// empty stack, upstream undefined) and the shortened stack.
-func popTokenType(stack []tokenizer.TokenType) (tokenizer.TokenType, []tokenizer.TokenType) {
-	if len(stack) == 0 {
-		return 0, stack
+// consumeFunction returns how many of tokens, which start with a function
+// token or an opening bracket, the function or block takes: up to its
+// closing token, or all of them when it is not closed.
+func consumeFunction(tokens []matchToken) int {
+	if len(tokens) == 0 {
+		return 0
 	}
-	return stack[len(stack)-1], stack[:len(stack)-1]
+
+	length := 1 + scanBalanced(tokens[1:], nil)
+	if length < len(tokens) && tokens[length].typ == balancePair(tokens[0].typ) {
+		length++
+	}
+	return length
 }
 
 func tokenType(expectedTokenType tokenizer.TokenType) genericFunc {
@@ -269,51 +270,24 @@ func idSelector(tokens []matchToken, _ *definitionsyntax.Range) int {
 // https://drafts.csswg.org/css-syntax/#any-value
 // It represents the entirety of what a valid declaration can have as its value.
 func declarationValue(tokens []matchToken, _ *definitionsyntax.Range) int {
-	if len(tokens) == 0 {
-		return 0
-	}
-
-	var balanceCloseType tokenizer.TokenType
-	var balanceStash []tokenizer.TokenType
-	length := 0
-
 	// The <declaration-value> production matches any sequence of one or more tokens,
 	// so long as the sequence does not contain ...
-scan:
-	for ; length < len(tokens); length++ {
-		token := &tokens[length]
+	return scanBalanced(tokens, func(token *matchToken, topLevel bool) bool {
 		switch token.typ {
 		// ... <bad-string-token>, <bad-url-token>,
 		case tokenizer.BadString, tokenizer.BadURL:
-			break scan
-
-		// ... unmatched <)-token>, <]-token>, or <}-token>,
-		case tokenizer.RightCurlyBracket, tokenizer.RightParenthesis, tokenizer.RightSquareBracket:
-			if token.typ != balanceCloseType {
-				break scan
-			}
-
-			balanceCloseType, balanceStash = popTokenType(balanceStash)
-
+			return true
+		// ... unmatched <)-token>, <]-token>, or <}-token> (scanBalanced
+		// stops before them),
 		// ... or top-level <semicolon-token> tokens
 		case tokenizer.Semicolon:
-			if balanceCloseType == 0 {
-				break scan
-			}
-
+			return topLevel
 		// ... or <delim-token> tokens with a value of "!"
 		case tokenizer.Delim:
-			if balanceCloseType == 0 && token.value == "!" {
-				break scan
-			}
-
-		case tokenizer.Function, tokenizer.LeftParenthesis, tokenizer.LeftSquareBracket, tokenizer.LeftCurlyBracket:
-			balanceStash = append(balanceStash, balanceCloseType)
-			balanceCloseType = balancePair(token.typ)
+			return topLevel && token.value == "!"
 		}
-	}
-
-	return length
+		return false
+	})
 }
 
 // https://drafts.csswg.org/css-syntax/#any-value
@@ -321,39 +295,12 @@ scan:
 // allows top-level <semicolon-token> tokens and <delim-token> tokens
 // with a value of "!". It represents the entirety of what valid CSS can be in any context.
 func anyValue(tokens []matchToken, _ *definitionsyntax.Range) int {
-	if len(tokens) == 0 {
-		return 0
-	}
-
-	var balanceCloseType tokenizer.TokenType
-	var balanceStash []tokenizer.TokenType
-	length := 0
-
 	// The <any-value> production matches any sequence of one or more tokens,
-	// so long as the sequence ...
-scan:
-	for ; length < len(tokens); length++ {
-		token := &tokens[length]
-		switch token.typ {
-		// ... does not contain <bad-string-token>, <bad-url-token>,
-		case tokenizer.BadString, tokenizer.BadURL:
-			break scan
-
-		// ... unmatched <)-token>, <]-token>, or <}-token>,
-		case tokenizer.RightCurlyBracket, tokenizer.RightParenthesis, tokenizer.RightSquareBracket:
-			if token.typ != balanceCloseType {
-				break scan
-			}
-
-			balanceCloseType, balanceStash = popTokenType(balanceStash)
-
-		case tokenizer.Function, tokenizer.LeftParenthesis, tokenizer.LeftSquareBracket, tokenizer.LeftCurlyBracket:
-			balanceStash = append(balanceStash, balanceCloseType)
-			balanceCloseType = balancePair(token.typ)
-		}
-	}
-
-	return length
+	// so long as the sequence does not contain <bad-string-token>,
+	// <bad-url-token>, unmatched <)-token>, <]-token>, or <}-token>
+	return scanBalanced(tokens, func(token *matchToken, _ bool) bool {
+		return token.typ == tokenizer.BadString || token.typ == tokenizer.BadURL
+	})
 }
 
 // =========================
