@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"math"
 	"strconv"
+	"strings"
 )
 
 // Node is a definition syntax AST node. The set of node types is closed: it
@@ -131,21 +132,56 @@ func (b RangeBound) String() string {
 	return formatNumber(b.Value) + b.Unit
 }
 
-// formatNumber formats v as JavaScript's Number.prototype.toString does for
-// the integral values a definition syntax holds.
+// formatNumber formats v as JavaScript's Number.prototype.toString does
+// (ECMA-262 Number::toString): the shortest round-tripping digits, written
+// in plain notation for decimal exponents in [-6, 21) and as d.ddde±x
+// otherwise.
 func formatNumber(v float64) string {
 	switch {
+	case math.IsNaN(v):
+		return "NaN"
 	case v == 0:
 		return "0" // also for -0
 	case math.IsInf(v, 1):
 		return "Infinity"
 	case math.IsInf(v, -1):
 		return "-Infinity"
-	case math.Abs(v) >= 1e21:
-		return strconv.FormatFloat(v, 'e', -1, 64)
-	default:
-		return strconv.FormatFloat(v, 'f', -1, 64)
 	}
+
+	sign := ""
+	if v < 0 {
+		sign = "-"
+		v = -v
+	}
+
+	// d.ddde±x: the digits and the position n of the decimal point
+	mantissa, exponent, _ := strings.Cut(strconv.FormatFloat(v, 'e', -1, 64), "e")
+	e, err := strconv.Atoi(exponent)
+	if err != nil {
+		return sign + strconv.FormatFloat(v, 'g', -1, 64)
+	}
+	digits := strings.Replace(mantissa, ".", "", 1)
+	k := len(digits)
+	n := e + 1
+
+	switch {
+	case k <= n && n <= 21:
+		return sign + digits + strings.Repeat("0", n-k)
+	case 0 < n && n <= 21:
+		return sign + digits[:n] + "." + digits[n:]
+	case -6 < n && n <= 0:
+		return sign + "0." + strings.Repeat("0", -n) + digits
+	}
+
+	exponentSign := "+"
+	if e < 0 {
+		exponentSign = "-"
+		e = -e
+	}
+	if k > 1 {
+		digits = digits[:1] + "." + digits[1:]
+	}
+	return sign + digits + "e" + exponentSign + strconv.Itoa(e)
 }
 
 // The MarshalJSON methods match upstream JSON.stringify(ast): "type" first,
