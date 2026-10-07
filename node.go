@@ -1,6 +1,8 @@
 // Ported from lib/syntax/node/index.js and the node type definition shape
 // (name, structure, walkContext, generate) shared by lib/syntax/node/*.js.
 
+//go:generate go run ./internal/cmd/nodegen
+
 package csstree
 
 import (

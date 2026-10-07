@@ -50,55 +50,11 @@ func blockConsumeDeclaration(p *Parser) Node {
 }
 
 // Block is a {}-block of rules or declarations.
+//
+//csstree:node walkContext=block
 type Block struct {
 	Loc      *Location
-	Children *List[Node]
-}
-
-func (n *Block) Type() string        { return "Block" }
-func (n *Block) Location() *Location { return n.Loc }
-
-func (n *Block) MarshalJSON() ([]byte, error) {
-	return marshalNode(n,
-		jsonField{"children", n.Children},
-	)
-}
-
-func blockNodeType() NodeConfig {
-	return NodeConfig{
-		Name:        "Block",
-		WalkContext: "block",
-		Structure: []StructureField{
-			{Name: "children", Types: []FieldType{listField(
-				"Atrule",
-				"Rule",
-				"Declaration",
-			)}},
-		},
-		Generate:        generateBlock,
-		Walk:            walkBlock,
-		Clone:           cloneBlock,
-		FromPlainObject: fromPlainObjectBlock,
-	}
-}
-
-func walkBlock(node Node, _ bool, _ func(Node) bool, walkList func(*List[Node]) bool) bool {
-	n := node.(*Block)
-	return n.Children != nil && walkList(n.Children)
-}
-
-func cloneBlock(node Node, clone func(Node) Node) Node {
-	c := *node.(*Block)
-	c.Loc = cloneLocation(c.Loc)
-	c.Children = cloneList(c.Children, clone)
-	return &c
-}
-
-func fromPlainObjectBlock(r *PlainObjectReader, object map[string]any) Node {
-	return &Block{
-		Loc:      r.Location(object),
-		Children: r.List(object, "children"),
-	}
+	Children *List[Node] `css:"children,[Atrule|Rule|Declaration]"`
 }
 
 // Block parses a {}-block; isStyleBlock makes it a block of declarations
