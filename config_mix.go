@@ -29,6 +29,9 @@ func appendOrSet(a, b string) string {
 // ext that are set replace those of base, and Functions are merged by
 // name.
 func mergeRecognizer(base, ext *Recognizer) *Recognizer {
+	if ext == nil {
+		ext = new(Recognizer)
+	}
 	result := new(Recognizer)
 	if base != nil {
 		*result = *base
@@ -85,7 +88,8 @@ func mergeNodeConfig(base, ext NodeConfig) NodeConfig {
 
 // mix returns a new config: dest with the keys set in src mixed in.
 // Upstream copies src keys that are present; here a key is present when
-// its field is not the zero value (nil map, nil slice, nil Generic).
+// its field is not the zero value (nil map, nil slice, nil Generic). The
+// maps of the keys set in src are new; the others are shared with dest.
 func mix(dest, src *Config) *Config {
 	if dest == nil {
 		dest = new(Config)
@@ -107,136 +111,80 @@ func mix(dest, src *Config) *Config {
 		}
 	}
 
-	if src.Units != nil {
-		result.Units = maps.Clone(dest.Units)
-		if result.Units == nil {
-			result.Units = make(map[string][]string)
+	result.Units = overlay(dest.Units, src.Units, func(_, patch []string) []string {
+		if patch == nil {
+			return []string{}
 		}
-		for name, patch := range src.Units {
-			if patch == nil {
-				patch = []string{}
-			}
-			result.Units[name] = patch
-		}
-	}
+		return patch
+	})
+	result.Atrules = overlay(dest.Atrules, src.Atrules, mixAtrule)
+	result.Types = overlay(dest.Types, src.Types, appendOrSet)
+	result.Properties = overlay(dest.Properties, src.Properties, appendOrSet)
 
-	if src.Atrules != nil {
-		result.Atrules = maps.Clone(dest.Atrules)
-		if result.Atrules == nil {
-			result.Atrules = make(map[string]AtruleDefinition)
-		}
-
-		for name, atrule := range src.Atrules {
-			exists := result.Atrules[name]
-			current := AtruleDefinition{
-				Prelude:     exists.Prelude,
-				Descriptors: maps.Clone(exists.Descriptors),
-			}
-			if current.Descriptors == nil {
-				current.Descriptors = make(map[string]string)
-			}
-
-			if atrule.Prelude != "" {
-				current.Prelude = appendOrSet(current.Prelude, atrule.Prelude)
-			}
-
-			for descriptorName, descriptorValue := range atrule.Descriptors {
-				if descriptorValue != "" {
-					current.Descriptors[descriptorName] = appendOrSet(current.Descriptors[descriptorName], descriptorValue)
-				} else {
-					current.Descriptors[descriptorName] = ""
-				}
-			}
-
-			if len(current.Descriptors) == 0 {
-				current.Descriptors = nil
-			}
-
-			result.Atrules[name] = current
-		}
-	}
-
-	if src.Types != nil {
-		result.Types = mixSyntaxes(dest.Types, src.Types)
-	}
-
-	if src.Properties != nil {
-		result.Properties = mixSyntaxes(dest.Properties, src.Properties)
-	}
-
-	if src.Contexts != nil {
-		result.Contexts = maps.Clone(dest.Contexts)
-		if result.Contexts == nil {
-			result.Contexts = make(map[ParseContext]ContextParser)
-		}
-		maps.Copy(result.Contexts, src.Contexts)
-	}
-
-	if src.Scope != nil {
-		result.Scope = maps.Clone(dest.Scope)
-		if result.Scope == nil {
-			result.Scope = make(map[string]*Recognizer)
-		}
-		for key, props := range src.Scope {
-			if props == nil {
-				props = new(Recognizer)
-			}
-			result.Scope[key] = mergeRecognizer(result.Scope[key], props)
-		}
-	}
-
-	if src.Features != nil {
-		result.Features = maps.Clone(dest.Features)
-		if result.Features == nil {
-			result.Features = make(map[string]map[string]FeatureParser)
-		}
-		for key, props := range src.Features {
-			merged := maps.Clone(result.Features[key])
-			if merged == nil {
-				merged = make(map[string]FeatureParser)
-			}
-			maps.Copy(merged, props)
-			result.Features[key] = merged
-		}
-	}
-
-	if src.Atrule != nil {
-		result.Atrule = maps.Clone(dest.Atrule)
-		if result.Atrule == nil {
-			result.Atrule = make(map[string]AtruleParser)
-		}
-		maps.Copy(result.Atrule, src.Atrule)
-	}
-
-	if src.Pseudo != nil {
-		result.Pseudo = maps.Clone(dest.Pseudo)
-		if result.Pseudo == nil {
-			result.Pseudo = make(map[string]PseudoParser)
-		}
-		maps.Copy(result.Pseudo, src.Pseudo)
-	}
-
-	if src.Node != nil {
-		result.Node = maps.Clone(dest.Node)
-		if result.Node == nil {
-			result.Node = make(map[string]NodeConfig)
-		}
-		for key, props := range src.Node {
-			result.Node[key] = mergeNodeConfig(result.Node[key], props)
-		}
-	}
+	result.Contexts = overlay(dest.Contexts, src.Contexts, replace)
+	result.Scope = overlay(dest.Scope, src.Scope, mergeRecognizer)
+	result.Features = overlay(dest.Features, src.Features, func(base, ext map[string]FeatureParser) map[string]FeatureParser {
+		merged := make(map[string]FeatureParser, len(base)+len(ext))
+		maps.Copy(merged, base)
+		maps.Copy(merged, ext)
+		return merged
+	})
+	result.Atrule = overlay(dest.Atrule, src.Atrule, replace)
+	result.Pseudo = overlay(dest.Pseudo, src.Pseudo, replace)
+	result.Node = overlay(dest.Node, src.Node, mergeNodeConfig)
 
 	return &result
 }
 
-// mixSyntaxes is the types and properties case of mix.
-func mixSyntaxes(dest, src map[string]string) map[string]string {
-	result := maps.Clone(dest)
-	if result == nil {
-		result = make(map[string]string)
+// overlay returns a new map of the entries of dest and src, merging the
+// value of a key of src with merge(dest value or zero value, src value);
+// it returns dest itself when src is nil (upstream: the key is absent).
+func overlay[K comparable, V any](dest, src map[K]V, merge func(base, ext V) V) map[K]V {
+	if src == nil {
+		return dest
 	}
-	for name, syntax := range src {
-		result[name] = appendOrSet(result[name], syntax)
+
+	result := make(map[K]V, len(dest)+len(src))
+	maps.Copy(result, dest)
+	for key, value := range src {
+		result[key] = merge(result[key], value)
 	}
+
 	return result
+}
+
+// replace is the merge of overlay that keeps the value of src.
+func replace[V any](_, ext V) V {
+	return ext
+}
+
+// mixAtrule is the atrules case of mix: the prelude and descriptor
+// syntaxes of atrule are mixed into exists with appendOrSet, and a
+// descriptor syntax of "" (upstream null) is set as is.
+func mixAtrule(exists, atrule AtruleDefinition) AtruleDefinition {
+	current := AtruleDefinition{
+		Prelude:     exists.Prelude,
+		Descriptors: maps.Clone(exists.Descriptors),
+	}
+	if current.Descriptors == nil {
+		current.Descriptors = make(map[string]string)
+	}
+
+	if atrule.Prelude != "" {
+		current.Prelude = appendOrSet(current.Prelude, atrule.Prelude)
+	}
+
+	for descriptorName, descriptorValue := range atrule.Descriptors {
+		if descriptorValue != "" {
+			current.Descriptors[descriptorName] = appendOrSet(current.Descriptors[descriptorName], descriptorValue)
+		} else {
+			current.Descriptors[descriptorName] = ""
+		}
+	}
+
+	if len(current.Descriptors) == 0 {
+		current.Descriptors = nil
+	}
+
+	return current
 }
