@@ -168,124 +168,141 @@ func typeOpts(syntax definitionsyntax.Node) *definitionsyntax.Range {
 	return nil
 }
 
-// internalMatch runs the matcher. It fails where upstream throws: on a
-// reference to an unknown type or property and when building a referenced
-// match graph fails.
-func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyntaxes) (*matchResult, error) {
-	var syntaxStack *syntaxStackItem
-	var thenStack *thenStackItem
-	var elseStack *elseStackItem
+// matcher is the state of one run of the matcher (upstream the local
+// variables of internalMatch).
+type matcher struct {
+	tokens   []matchToken
+	syntaxes matchSyntaxes
+
+	state *matchGraphNode
+
+	token        *matchToken
+	tokenIndex   int
+	longestMatch int
+
+	matchStack  *matchStackItem
+	syntaxStack *syntaxStackItem
+	thenStack   *thenStackItem
+	elseStack   *elseStackItem
 
 	// nil, !syntaxStashDisabled – stashing allowed, nothing stashed
 	// nil, syntaxStashDisabled – stashing disabled, nothing stashed
 	// anything else – fail stashable syntaxes, some syntax stashed
 	// (upstream: null, false, a state snapshot)
-	var syntaxStash *elseStackItem
-	syntaxStashDisabled := false
+	syntaxStash         *elseStackItem
+	syntaxStashDisabled bool
+}
 
+func (m *matcher) moveToNextToken() {
+	for {
+		m.tokenIndex++
+		m.token = nil
+		if m.tokenIndex < len(m.tokens) {
+			m.token = &m.tokens[m.tokenIndex]
+		}
+		if m.token == nil || (m.token.typ != tokenizer.WhiteSpace && m.token.typ != tokenizer.Comment) {
+			break
+		}
+	}
+}
+
+func (m *matcher) stateSnapshotFromSyntax(nextState *matchGraphNode, prev *elseStackItem) *elseStackItem {
+	return &elseStackItem{
+		nextState:   nextState,
+		matchStack:  m.matchStack,
+		syntaxStack: m.syntaxStack,
+		thenStack:   m.thenStack,
+		tokenIndex:  m.tokenIndex,
+		prev:        prev,
+	}
+}
+
+func (m *matcher) pushThenStack(nextState *matchGraphNode) {
+	m.thenStack = &thenStackItem{
+		nextState:   nextState,
+		matchStack:  m.matchStack,
+		syntaxStack: m.syntaxStack,
+		prev:        m.thenStack,
+	}
+}
+
+func (m *matcher) pushElseStack(nextState *matchGraphNode) {
+	m.elseStack = m.stateSnapshotFromSyntax(nextState, m.elseStack)
+}
+
+func (m *matcher) addTokenToMatch() {
+	m.matchStack = &matchStackItem{
+		kind:   tokenItem,
+		syntax: m.state.syntax,
+		token:  m.token,
+		prev:   m.matchStack,
+	}
+
+	m.moveToNextToken()
+	m.syntaxStash = nil
+	m.syntaxStashDisabled = false
+
+	if m.tokenIndex > m.longestMatch {
+		m.longestMatch = m.tokenIndex
+	}
+}
+
+func (m *matcher) openSyntax() {
+	bounds := typeOpts(m.state.syntax)
+	if bounds == nil && m.syntaxStack != nil {
+		bounds = m.syntaxStack.bounds
+	}
+	m.syntaxStack = &syntaxStackItem{
+		syntax:         m.state.syntax,
+		bounds:         bounds,
+		percentSibling: m.state.percentSibling,
+		prev:           m.syntaxStack,
+	}
+
+	m.matchStack = &matchStackItem{
+		kind:   openSyntaxItem,
+		syntax: m.state.syntax,
+		token:  m.matchStack.token,
+		prev:   m.matchStack,
+	}
+}
+
+func (m *matcher) closeSyntax() {
+	if m.matchStack.kind == openSyntaxItem {
+		m.matchStack = m.matchStack.prev
+	} else {
+		m.matchStack = &matchStackItem{
+			kind:   closeSyntaxItem,
+			syntax: m.syntaxStack.syntax,
+			token:  m.matchStack.token,
+			prev:   m.matchStack,
+		}
+	}
+
+	m.syntaxStack = m.syntaxStack.prev
+}
+
+// internalMatch runs the matcher. It fails where upstream throws: on a
+// reference to an unknown type or property and when building a referenced
+// match graph fails.
+func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyntaxes) (*matchResult, error) {
+	m := &matcher{
+		tokens:     tokens,
+		syntaxes:   syntaxes,
+		state:      state,
+		tokenIndex: -1,
+		matchStack: &matchStackItem{kind: stubItem},
+	}
+
+	return m.run()
+}
+
+// run matches the tokens from the state the matcher starts in.
+func (m *matcher) run() (*matchResult, error) {
 	iterationCount := 0 // count iterations and prevent infinite loop
 	var reason exitReason
 
-	var token *matchToken
-	tokenIndex := -1
-	longestMatch := 0
-	matchStack := &matchStackItem{
-		kind:   stubItem,
-		syntax: nil,
-		token:  nil,
-		prev:   nil,
-	}
-
-	moveToNextToken := func() {
-		for {
-			tokenIndex++
-			token = nil
-			if tokenIndex < len(tokens) {
-				token = &tokens[tokenIndex]
-			}
-			if token == nil || (token.typ != tokenizer.WhiteSpace && token.typ != tokenizer.Comment) {
-				break
-			}
-		}
-	}
-
-	stateSnapshotFromSyntax := func(nextState *matchGraphNode, prev *elseStackItem) *elseStackItem {
-		return &elseStackItem{
-			nextState:   nextState,
-			matchStack:  matchStack,
-			syntaxStack: syntaxStack,
-			thenStack:   thenStack,
-			tokenIndex:  tokenIndex,
-			prev:        prev,
-		}
-	}
-
-	pushThenStack := func(nextState *matchGraphNode) {
-		thenStack = &thenStackItem{
-			nextState:   nextState,
-			matchStack:  matchStack,
-			syntaxStack: syntaxStack,
-			prev:        thenStack,
-		}
-	}
-
-	pushElseStack := func(nextState *matchGraphNode) {
-		elseStack = stateSnapshotFromSyntax(nextState, elseStack)
-	}
-
-	addTokenToMatch := func() {
-		matchStack = &matchStackItem{
-			kind:   tokenItem,
-			syntax: state.syntax,
-			token:  token,
-			prev:   matchStack,
-		}
-
-		moveToNextToken()
-		syntaxStash = nil
-		syntaxStashDisabled = false
-
-		if tokenIndex > longestMatch {
-			longestMatch = tokenIndex
-		}
-	}
-
-	openSyntax := func() {
-		bounds := typeOpts(state.syntax)
-		if bounds == nil && syntaxStack != nil {
-			bounds = syntaxStack.bounds
-		}
-		syntaxStack = &syntaxStackItem{
-			syntax:         state.syntax,
-			bounds:         bounds,
-			percentSibling: state.percentSibling,
-			prev:           syntaxStack,
-		}
-
-		matchStack = &matchStackItem{
-			kind:   openSyntaxItem,
-			syntax: state.syntax,
-			token:  matchStack.token,
-			prev:   matchStack,
-		}
-	}
-
-	closeSyntax := func() {
-		if matchStack.kind == openSyntaxItem {
-			matchStack = matchStack.prev
-		} else {
-			matchStack = &matchStackItem{
-				kind:   closeSyntaxItem,
-				syntax: syntaxStack.syntax,
-				token:  matchStack.token,
-				prev:   matchStack,
-			}
-		}
-
-		syntaxStack = syntaxStack.prev
-	}
-
-	moveToNextToken()
+	m.moveToNextToken()
 
 	for reason == 0 {
 		iterationCount++
@@ -293,14 +310,14 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			break
 		}
 
-		switch state.kind {
+		switch m.state.kind {
 		case graphMatch:
-			if thenStack == nil {
+			if m.thenStack == nil {
 				// turn to MISMATCH when some tokens left unmatched
-				if token != nil {
+				if m.token != nil {
 					// doesn't mismatch if just one token left and it's an IE hack
-					if tokenIndex != len(tokens)-1 || (token.value != `\0` && token.value != `\9`) {
-						state = mismatchState
+					if m.tokenIndex != len(m.tokens)-1 || (m.token.value != `\0` && m.token.value != `\9`) {
+						m.state = mismatchState
 						break
 					}
 				}
@@ -311,37 +328,37 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			}
 
 			// go to next syntax (`then` branch)
-			state = thenStack.nextState
+			m.state = m.thenStack.nextState
 
 			// check match is not empty
-			if state == disallowEmptyState {
-				if thenStack.matchStack == matchStack {
-					state = mismatchState
+			if m.state == disallowEmptyState {
+				if m.thenStack.matchStack == m.matchStack {
+					m.state = mismatchState
 					break
 				} else {
-					state = matchState
+					m.state = matchState
 				}
 			}
 
 			// close syntax if needed
-			for thenStack.syntaxStack != syntaxStack {
-				closeSyntax()
+			for m.thenStack.syntaxStack != m.syntaxStack {
+				m.closeSyntax()
 			}
 
 			// pop stack
-			thenStack = thenStack.prev
+			m.thenStack = m.thenStack.prev
 
 		case graphMismatch:
 			// when some syntax is stashed
-			if syntaxStash != nil {
+			if m.syntaxStash != nil {
 				// there is no else branches or a branch reduce match stack
-				if elseStack == nil || tokenIndex > elseStack.tokenIndex {
+				if m.elseStack == nil || m.tokenIndex > m.elseStack.tokenIndex {
 					// restore state from the stash
-					elseStack = syntaxStash
-					syntaxStash = nil
-					syntaxStashDisabled = true // disable stashing
+					m.elseStack = m.syntaxStash
+					m.syntaxStash = nil
+					m.syntaxStashDisabled = true // disable stashing
 				}
-			} else if elseStack == nil {
+			} else if m.elseStack == nil {
 				// no else branches -> break the main loop
 				// return a result - MISMATCH
 				reason = exitMismatch
@@ -349,147 +366,147 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			}
 
 			// go to next syntax (`else` branch)
-			state = elseStack.nextState
+			m.state = m.elseStack.nextState
 
 			// restore all the rest stack states
-			thenStack = elseStack.thenStack
-			syntaxStack = elseStack.syntaxStack
-			matchStack = elseStack.matchStack
-			tokenIndex = elseStack.tokenIndex
-			token = nil
-			if tokenIndex < len(tokens) {
-				token = &tokens[tokenIndex]
+			m.thenStack = m.elseStack.thenStack
+			m.syntaxStack = m.elseStack.syntaxStack
+			m.matchStack = m.elseStack.matchStack
+			m.tokenIndex = m.elseStack.tokenIndex
+			m.token = nil
+			if m.tokenIndex < len(m.tokens) {
+				m.token = &m.tokens[m.tokenIndex]
 			}
 
 			// pop stack
-			elseStack = elseStack.prev
+			m.elseStack = m.elseStack.prev
 
 		case graphMatchGraph:
-			state = state.match
+			m.state = m.state.match
 
 		case graphIf:
 			// IMPORTANT: else stack push must go first,
 			// since it stores the state of thenStack before changes
-			if state.els != mismatchState {
-				pushElseStack(state.els)
+			if m.state.els != mismatchState {
+				m.pushElseStack(m.state.els)
 			}
 
-			if state.then != matchState {
-				pushThenStack(state.then)
+			if m.state.then != matchState {
+				m.pushThenStack(m.state.then)
 			}
 
-			state = state.match
+			m.state = m.state.match
 
 		case graphMatchOnce:
-			state = &matchGraphNode{
+			m.state = &matchGraphNode{
 				kind:  graphMatchOnceBuffer,
-				once:  state,
+				once:  m.state,
 				index: 0,
 				mask:  0,
 			}
 
 		case graphMatchOnceBuffer:
-			terms := state.once.terms
+			terms := m.state.once.terms
 
-			if state.index == len(terms) {
+			if m.state.index == len(terms) {
 				// no matches at all or it's required all terms to be matched
-				if state.mask == 0 || state.once.all {
-					state = mismatchState
+				if m.state.mask == 0 || m.state.once.all {
+					m.state = mismatchState
 					break
 				}
 
 				// a partial match is ok
-				state = matchState
+				m.state = matchState
 				break
 			}
 
 			// all terms are matched
-			if state.mask == (1<<len(terms))-1 {
-				state = matchState
+			if m.state.mask == (1<<len(terms))-1 {
+				m.state = matchState
 				break
 			}
 
-			for buffer := state; buffer.index < len(terms); buffer.index++ {
+			for buffer := m.state; buffer.index < len(terms); buffer.index++ {
 				matchFlag := 1 << buffer.index
 
 				if buffer.mask&matchFlag == 0 {
 					// IMPORTANT: else stack push must go first,
 					// since it stores the state of thenStack before changes
-					pushElseStack(buffer)
-					pushThenStack(&matchGraphNode{
+					m.pushElseStack(buffer)
+					m.pushThenStack(&matchGraphNode{
 						kind: graphAddMatchOnce,
 						once: buffer.once,
 						mask: buffer.mask | matchFlag,
 					})
 
 					// match
-					state = terms[buffer.index]
+					m.state = terms[buffer.index]
 					buffer.index++
 					break
 				}
 			}
 
 		case graphAddMatchOnce:
-			state = &matchGraphNode{
+			m.state = &matchGraphNode{
 				kind:  graphMatchOnceBuffer,
-				once:  state.once,
+				once:  m.state.once,
 				index: 0,
-				mask:  state.mask,
+				mask:  m.state.mask,
 			}
 
 		case graphEnum:
-			if token != nil {
-				name := toLowerCase(token.value)
+			if m.token != nil {
+				name := toLowerCase(m.token.value)
 
 				// drop \0 and \9 hack from keyword name
 				if strings.Contains(name, `\`) {
 					name = keywordHack.ReplaceAllString(name, "")
 				}
 
-				if next, ok := state.enumMap[name]; ok {
-					state = next
+				if next, ok := m.state.enumMap[name]; ok {
+					m.state = next
 					break
 				}
 
 				// the value with escapes decoded, see tokenNameIs
-				if next, ok := enumLookup(state.enumMap, decodedNames(token)); ok {
-					state = next
+				if next, ok := enumLookup(m.state.enumMap, decodedNames(m.token)); ok {
+					m.state = next
 					break
 				}
 			}
 
-			state = mismatchState
+			m.state = mismatchState
 
 		case graphGeneric:
 			var bounds *definitionsyntax.Range
-			if syntaxStack != nil {
-				bounds = syntaxStack.bounds
+			if m.syntaxStack != nil {
+				bounds = m.syntaxStack.bounds
 			}
 			// math functions are type checked (Values 4 §10.9)
-			percentSibling := syntaxStack != nil && syntaxStack.percentSibling
-			rest := tokens[tokenIndex:]
-			consumed, handled := matchMathFunction(state.generic.calc, percentSibling, rest)
+			percentSibling := m.syntaxStack != nil && m.syntaxStack.percentSibling
+			rest := m.tokens[m.tokenIndex:]
+			consumed, handled := matchMathFunction(m.state.generic.calc, percentSibling, rest)
 			if !handled {
-				consumed = state.generic.fn(rest, bounds)
+				consumed = m.state.generic.fn(rest, bounds)
 			}
-			lastTokenIndex := tokenIndex + consumed
+			lastTokenIndex := m.tokenIndex + consumed
 
-			if lastTokenIndex > tokenIndex {
-				for tokenIndex < lastTokenIndex {
-					addTokenToMatch()
+			if lastTokenIndex > m.tokenIndex {
+				for m.tokenIndex < lastTokenIndex {
+					m.addTokenToMatch()
 				}
 
-				state = matchState
+				m.state = matchState
 			} else {
-				state = mismatchState
+				m.state = mismatchState
 			}
 
 		case graphType, graphProperty:
-			isType := state.kind == graphType
+			isType := m.state.kind == graphType
 			var dictSyntax *matchGraphNode
-			if syntaxes != nil {
+			if m.syntaxes != nil {
 				var err error
-				dictSyntax, err = syntaxes.lookupMatch(isType, state.name)
+				dictSyntax, err = m.syntaxes.lookupMatch(isType, m.state.name)
 				if err != nil {
 					return nil, err
 				}
@@ -500,114 +517,114 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 				if isType {
 					kind = KindType
 				}
-				return nil, newBadSyntaxReferenceError(kind, state.name)
+				return nil, newBadSyntaxReferenceError(kind, m.state.name)
 			}
 
 			// stash a syntax for types with low priority
-			if !syntaxStashDisabled && token != nil && isType {
+			if !m.syntaxStashDisabled && m.token != nil && isType {
 				// https://drafts.csswg.org/css-values-4/#custom-idents
 				// When parsing positionally-ambiguous keywords in a property value, a <custom-ident> production
 				// can only claim the keyword if no other unfulfilled production can claim it.
-				lowPriorityCustomIdent := state.name == "custom-ident" && token.typ == tokenizer.Ident
+				lowPriorityCustomIdent := m.state.name == "custom-ident" && m.token.typ == tokenizer.Ident
 
 				// https://drafts.csswg.org/css-values-4/#lengths
 				// ... if a `0` could be parsed as either a <number> or a <length> in a property (such as line-height),
 				// it must parse as a <number>
-				lowPriorityLength := state.name == "length" && token.value == "0"
+				lowPriorityLength := m.state.name == "length" && m.token.value == "0"
 
 				lowPriorityMatching := lowPriorityCustomIdent || lowPriorityLength
 
 				if lowPriorityMatching {
-					if syntaxStash == nil {
-						syntaxStash = stateSnapshotFromSyntax(state, elseStack)
+					if m.syntaxStash == nil {
+						m.syntaxStash = m.stateSnapshotFromSyntax(m.state, m.elseStack)
 					}
 
-					state = mismatchState
+					m.state = mismatchState
 					break
 				}
 			}
 
-			openSyntax()
-			state = dictSyntax
+			m.openSyntax()
+			m.state = dictSyntax
 
 		case graphKeyword:
-			name := state.name
+			name := m.state.name
 
-			if token != nil {
-				keywordName := token.value
+			if m.token != nil {
+				keywordName := m.token.value
 
 				// drop \0 and \9 hack from keyword name
 				if strings.Contains(keywordName, `\`) {
 					keywordName = keywordHack.ReplaceAllString(keywordName, "")
 				}
 
-				if asciiEqualFold(keywordName, name) || tokenNameIs(token, name) {
-					addTokenToMatch()
-					state = matchState
+				if asciiEqualFold(keywordName, name) || tokenNameIs(m.token, name) {
+					m.addTokenToMatch()
+					m.state = matchState
 					break
 				}
 			}
 
-			state = mismatchState
+			m.state = mismatchState
 
 		case graphAtKeyword, graphFunction:
-			if token != nil && (asciiEqualFold(token.value, state.name) || tokenNameIs(token, state.name)) {
-				addTokenToMatch()
-				state = matchState
+			if m.token != nil && (asciiEqualFold(m.token.value, m.state.name) || tokenNameIs(m.token, m.state.name)) {
+				m.addTokenToMatch()
+				m.state = matchState
 				break
 			}
 
-			state = mismatchState
+			m.state = mismatchState
 
 		case graphToken:
-			if token != nil && token.value == state.value {
-				addTokenToMatch()
-				state = matchState
+			if m.token != nil && m.token.value == m.state.value {
+				m.addTokenToMatch()
+				m.state = matchState
 				break
 			}
 
-			state = mismatchState
+			m.state = mismatchState
 
 		case graphComma:
-			if token != nil && token.typ == tokenizer.Comma {
-				if isCommaContextStart(matchStack.token) {
-					state = mismatchState
+			if m.token != nil && m.token.typ == tokenizer.Comma {
+				if isCommaContextStart(m.matchStack.token) {
+					m.state = mismatchState
 				} else {
-					addTokenToMatch()
-					if isCommaContextEnd(token) {
-						state = mismatchState
+					m.addTokenToMatch()
+					if isCommaContextEnd(m.token) {
+						m.state = mismatchState
 					} else {
-						state = matchState
+						m.state = matchState
 					}
 				}
 			} else {
-				if isCommaContextStart(matchStack.token) || isCommaContextEnd(token) {
-					state = matchState
+				if isCommaContextStart(m.matchStack.token) || isCommaContextEnd(m.token) {
+					m.state = matchState
 				} else {
-					state = mismatchState
+					m.state = mismatchState
 				}
 			}
 
 		case graphString:
 			var str strings.Builder
-			lastTokenIndex := tokenIndex
+			lastTokenIndex := m.tokenIndex
 
-			for ; lastTokenIndex < len(tokens) && str.Len() < len(state.value); lastTokenIndex++ {
-				str.WriteString(tokens[lastTokenIndex].value)
+			for ; lastTokenIndex < len(m.tokens) && str.Len() < len(m.state.value); lastTokenIndex++ {
+				str.WriteString(m.tokens[lastTokenIndex].value)
 			}
 
-			if asciiEqualFold(str.String(), state.value) {
-				for tokenIndex < lastTokenIndex {
-					addTokenToMatch()
+			if asciiEqualFold(str.String(), m.state.value) {
+				for m.tokenIndex < lastTokenIndex {
+					m.addTokenToMatch()
 				}
 
-				state = matchState
+				m.state = matchState
 			} else {
-				state = mismatchState
+				m.state = mismatchState
 			}
 
 		default:
-			return nil, &UnknownNodeTypeError{Type: state.kind.String()}
+			return nil, &UnknownNodeTypeError{Type: m.state.kind.String()}
 		}
 	}
 
@@ -616,23 +633,23 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 		// upstream also logs "[csstree-match] BREAK after 15000 iterations"
 		// with console.warn
 		reason = exitIterationLimit
-		matchStack = nil
+		m.matchStack = nil
 
 	case exitMatch:
-		for syntaxStack != nil {
-			closeSyntax()
+		for m.syntaxStack != nil {
+			m.closeSyntax()
 		}
 
 	default:
-		matchStack = nil
+		m.matchStack = nil
 	}
 
 	return &matchResult{
-		tokens:       tokens,
+		tokens:       m.tokens,
 		reason:       reason,
 		iterations:   iterationCount,
-		match:        matchStack,
-		longestMatch: longestMatch,
+		match:        m.matchStack,
+		longestMatch: m.longestMatch,
 	}, nil
 }
 
