@@ -10,65 +10,69 @@ import (
 )
 
 // unitFactor is a unit of a group whose units convert to one another: a
-// value in the unit is ratio (or float, for rad) canonical units.
+// value in the unit is num/den canonical units, or float canonical units
+// for rad, whose den is 0.
 type unitFactor struct {
-	group string
-	ratio *big.Rat // nil for rad
-	float float64
+	group    unitGroup
+	num, den int64
+	float    float64
+}
+
+// ratio returns the exact factor of a unit other than rad.
+func (f unitFactor) ratio() *big.Rat {
+	return big.NewRat(f.num, f.den)
 }
 
 // convertibleUnit returns the factor of a lowercase unit that converts to
 // the canonical unit of its group (CSS Values 4 §6.2 absolute lengths,
 // §7.1 angles, §7.2 durations, §7.3 frequencies, §7.4 resolutions).
 func convertibleUnit(unit string) (unitFactor, bool) {
-	rat := func(group string, num, den int64) (unitFactor, bool) {
-		r := big.NewRat(num, den)
-		f, _ := r.Float64()
-		return unitFactor{group: group, ratio: r, float: f}, true
+	rat := func(group unitGroup, num, den int64) (unitFactor, bool) {
+		return unitFactor{group: group, num: num, den: den, float: float64(num) / float64(den)}, true
 	}
 
 	switch unit {
 	// absolute lengths, in px: 1in = 2.54cm = 96px = 72pt = 6pc, 1cm = 40Q
 	case "px":
-		return rat("length", 1, 1)
+		return rat(lengthUnits, 1, 1)
 	case "cm":
-		return rat("length", 9600, 254)
+		return rat(lengthUnits, 9600, 254)
 	case "mm":
-		return rat("length", 960, 254)
+		return rat(lengthUnits, 960, 254)
 	case "q":
-		return rat("length", 240, 254)
+		return rat(lengthUnits, 240, 254)
 	case "in":
-		return rat("length", 96, 1)
+		return rat(lengthUnits, 96, 1)
 	case "pt":
-		return rat("length", 4, 3)
+		return rat(lengthUnits, 4, 3)
 	case "pc":
-		return rat("length", 16, 1)
+		return rat(lengthUnits, 16, 1)
 	// angles, in deg
 	case "deg":
-		return rat("angle", 1, 1)
+		return rat(angleUnits, 1, 1)
 	case "grad":
-		return rat("angle", 9, 10)
+		return rat(angleUnits, 9, 10)
 	case "turn":
-		return rat("angle", 360, 1)
+		return rat(angleUnits, 360, 1)
 	case "rad":
-		return unitFactor{group: "angle", float: 180 / math.Pi}, true
+		return unitFactor{group: angleUnits, float: 180 / math.Pi}, true
 	// durations, in s
 	case "s":
-		return rat("time", 1, 1)
+		return rat(timeUnits, 1, 1)
 	case "ms":
-		return rat("time", 1, 1000)
+		return rat(timeUnits, 1, 1000)
 	// frequencies, in hz
 	case "hz":
-		return rat("frequency", 1, 1)
+		return rat(frequencyUnits, 1, 1)
 	case "khz":
-		return rat("frequency", 1000, 1)
+		return rat(frequencyUnits, 1000, 1)
 	// resolutions, in dppx
 	case "dppx", "x":
-		return rat("resolution", 1, 1)
+		return rat(resolutionUnits, 1, 1)
 	case "dpi":
-		return rat("resolution", 1, 96)
+		return rat(resolutionUnits, 1, 96)
 	case "dpcm":
-		return rat("resolution", 254, 9600)
+		return rat(resolutionUnits, 254, 9600)
 	}
 
 	return unitFactor{}, false
@@ -103,7 +107,7 @@ func compareToBound(num float64, unit string, bound *definitionsyntax.RangeBound
 	numFactor, numOK := convertibleUnit(unit)
 	boundFactor, boundOK := convertibleUnit(boundUnit)
 	if numOK && boundOK && numFactor.group == boundFactor.group {
-		if numFactor.ratio == nil || boundFactor.ratio == nil {
+		if numFactor.den == 0 || boundFactor.den == 0 {
 			return cmp.Compare(num*numFactor.float, bound.Value*boundFactor.float), true
 		}
 		// the decimal numbers as written, so that 2.54cm is exactly 1in
@@ -112,7 +116,7 @@ func compareToBound(num float64, unit string, bound *definitionsyntax.RangeBound
 		if !numOK || !boundOK {
 			return cmp.Compare(num*numFactor.float, bound.Value*boundFactor.float), true
 		}
-		return numRat.Mul(numRat, numFactor.ratio).Cmp(boundRat.Mul(boundRat, boundFactor.ratio)), true
+		return numRat.Mul(numRat, numFactor.ratio()).Cmp(boundRat.Mul(boundRat, boundFactor.ratio())), true
 	}
 
 	numSign, boundSign := signOf(num), signOf(bound.Value)
