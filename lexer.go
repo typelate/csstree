@@ -520,7 +520,7 @@ func (l *Lexer) StructureDocs(nodeType string) map[string]string {
 	return maps.Clone(structure.docs)
 }
 
-// descriptorSource is the syntax createDescriptor takes: definition syntax
+// descriptorSource is the syntax newDescriptor takes: definition syntax
 // text, a definition syntax tree or a generic function (upstream a string,
 // an object or a function).
 type descriptorSource struct {
@@ -530,21 +530,19 @@ type descriptorSource struct {
 	generic genericType
 }
 
-func (l *Lexer) createDescriptor(source descriptorSource, kind SyntaxKind, name, parent string) *Descriptor {
-	ref := &SyntaxRef{
-		Kind: kind,
-		Name: name,
-	}
+// newDescriptor is upstream createDescriptor; parent is the at-rule of a
+// KindAtruleDescriptor.
+func newDescriptor(source descriptorSource, ref SyntaxRef, parent string) *Descriptor {
 	descriptor := &Descriptor{
-		kind:         kind,
-		name:         name,
+		kind:         ref.Kind,
+		name:         ref.Name,
 		parent:       parent,
 		serializable: source.isText || source.tree != nil,
 	}
 
 	if source.generic.fn != nil {
 		descriptor.syntax = func() (definitionsyntax.Node, error) { return nil, nil }
-		match := buildGenericMatchGraphRoot(source.generic, ref)
+		match := buildGenericMatchGraphRoot(source.generic, &ref)
 		descriptor.match = func() (*matchGraphNode, error) { return match, nil }
 		descriptor.matchRef = func() (*matchGraphNode, error) { return nil, nil }
 
@@ -575,11 +573,11 @@ func (l *Lexer) createDescriptor(source descriptorSource, kind SyntaxKind, name,
 			//lint:ignore ST1005 upstream message
 			return nil, errors.New("Unknown node type:")
 		}
-		return buildMatchGraph(syntax, ref)
+		return buildMatchGraph(syntax, &ref)
 	})
 
 	descriptor.matchRef = func() (*matchGraphNode, error) { return nil, nil }
-	if kind == KindProperty {
+	if ref.Kind == KindProperty {
 		descriptor.matchRef = sync.OnceValues(func() (*matchGraphNode, error) {
 			syntax, err := descriptor.syntax()
 			if err != nil {
@@ -595,24 +593,26 @@ func (l *Lexer) createDescriptor(source descriptorSource, kind SyntaxKind, name,
 				Combinator:    group.Combinator,
 				DisallowEmpty: group.DisallowEmpty,
 				Explicit:      group.Explicit,
-			}, ref)
+			}, &ref)
 		})
 	}
 
 	return descriptor
 }
 
-// CreateDescriptor returns a descriptor of kind for a definition syntax,
-// without adding it to the lexer; pass it to MatchDescriptor. parent is
-// the at-rule of a KindAtruleDescriptor.
-func (l *Lexer) CreateDescriptor(syntax string, kind SyntaxKind, name, parent string) *Descriptor {
-	return l.createDescriptor(descriptorSource{text: syntax, isText: true}, kind, name, parent)
+// NewDescriptor returns a descriptor named ref for a definition syntax,
+// such as "fn( <number># )", to match values against with any lexer's
+// MatchDescriptor (upstream createDescriptor). The syntax is parsed on
+// first use, so matching reports a syntax that does not parse. A
+// descriptor keeps its parsed syntax and match graph, so matching many
+// values against one descriptor is cheaper than Lexer.Match.
+func NewDescriptor(ref SyntaxRef, syntax string) *Descriptor {
+	return newDescriptor(descriptorSource{text: syntax, isText: true}, ref, "")
 }
 
-// CreateDescriptorFromTree is CreateDescriptor for a parsed definition
-// syntax.
-func (l *Lexer) CreateDescriptorFromTree(syntax definitionsyntax.Node, kind SyntaxKind, name, parent string) *Descriptor {
-	return l.createDescriptor(descriptorSource{tree: syntax}, kind, name, parent)
+// NewDescriptorFromTree is NewDescriptor for a parsed definition syntax.
+func NewDescriptorFromTree(ref SyntaxRef, syntax definitionsyntax.Node) *Descriptor {
+	return newDescriptor(descriptorSource{tree: syntax}, ref, "")
 }
 
 // addAtrule adds or replaces the syntax of the at-rule name.
@@ -621,16 +621,15 @@ func (l *Lexer) addAtrule(name string, syntax AtruleDefinition) {
 		name: name,
 	}
 	if syntax.Prelude != "" {
-		atrule.prelude = l.CreateDescriptor(syntax.Prelude, KindAtrulePrelude, name, "")
+		atrule.prelude = NewDescriptor(SyntaxRef{Kind: KindAtrulePrelude, Name: name}, syntax.Prelude)
 	}
 	if syntax.Descriptors != nil {
 		atrule.descriptors = make(map[string]*Descriptor)
 		atrule.descriptorNames = sortedKeys(syntax.Descriptors)
 		for _, descName := range atrule.descriptorNames {
-			atrule.descriptors[descName] = l.createDescriptor(
+			atrule.descriptors[descName] = newDescriptor(
 				descriptorSourceFromText(syntax.Descriptors[descName]),
-				KindAtruleDescriptor,
-				descName,
+				SyntaxRef{Kind: KindAtruleDescriptor, Name: descName},
 				name,
 			)
 		}
@@ -661,7 +660,7 @@ func (l *Lexer) addProperty(name, syntax string) {
 	if _, ok := l.properties[name]; !ok {
 		l.propertyNames = append(l.propertyNames, name)
 	}
-	l.properties[name] = l.CreateDescriptor(syntax, KindProperty, name, "")
+	l.properties[name] = NewDescriptor(SyntaxRef{Kind: KindProperty, Name: name}, syntax)
 }
 
 // addType adds or replaces the syntax of the type name; an empty syntax
@@ -671,11 +670,11 @@ func (l *Lexer) addType(name, syntax string) {
 		return
 	}
 
-	l.setType(name, l.CreateDescriptor(syntax, KindType, name, ""))
+	l.setType(name, NewDescriptor(SyntaxRef{Kind: KindType, Name: name}, syntax))
 }
 
 func (l *Lexer) addGenericType(generic genericType) {
-	l.setType(generic.name, l.createDescriptor(descriptorSource{generic: generic}, KindType, generic.name, ""))
+	l.setType(generic.name, newDescriptor(descriptorSource{generic: generic}, SyntaxRef{Kind: KindType, Name: generic.name}, ""))
 }
 
 func (l *Lexer) setType(name string, descriptor *Descriptor) {
@@ -874,15 +873,21 @@ func (l *Lexer) matchType(typeName string, value matchInput) (*MatchResult, erro
 	return matchSyntax(l, typeSyntax, value, false)
 }
 
+// anonymousRef names the syntaxes of Match and MatchString.
+var anonymousRef = SyntaxRef{Kind: KindType, Name: "anonymous"}
+
 // Match matches value against a definition syntax, such as
-// "fn( <number># )" (upstream match with a string syntax).
+// "fn( <number># )" (upstream match with a string syntax). It parses the
+// syntax and builds its match graph on every call; to match many values
+// against one syntax, create a descriptor with NewDescriptor once and use
+// MatchDescriptor.
 func (l *Lexer) Match(syntax string, value Node) (*MatchResult, error) {
-	return l.MatchDescriptor(l.CreateDescriptor(syntax, KindType, "anonymous", ""), value)
+	return l.MatchDescriptor(NewDescriptor(anonymousRef, syntax), value)
 }
 
 // MatchString is Match for value text.
 func (l *Lexer) MatchString(syntax, value string) (*MatchResult, error) {
-	return l.MatchDescriptorString(l.CreateDescriptor(syntax, KindType, "anonymous", ""), value)
+	return l.MatchDescriptorString(NewDescriptor(anonymousRef, syntax), value)
 }
 
 // MatchDescriptor matches value against a descriptor, such as one Type
@@ -906,21 +911,24 @@ func (l *Lexer) match(syntax *Descriptor, value matchInput) (*MatchResult, error
 }
 
 // FindValueFragments returns the runs of nodes of value that matched the
-// syntax named name of type typ ("Type", "Property", "Keyword", ...) when
-// matching value against the property's syntax.
-func (l *Lexer) FindValueFragments(propertyName string, value Node, typ, name string) ([]Fragment, error) {
+// syntax target when matching value against the property's syntax. The
+// syntaxes of the match compare by Type and SyntaxName: target.Kind is
+// KindType or KindProperty for a type or property, or the Type of another
+// definition syntax node, such as "Keyword" or "Function". A value that
+// does not match has no fragments.
+func (l *Lexer) FindValueFragments(propertyName string, value Node, target SyntaxRef) ([]Fragment, error) {
 	match, err := l.MatchProperty(propertyName, value)
 	if err != nil {
 		// a value that does not match has no fragments
 		return nil, nil
 	}
 
-	return matchFragments(l, value, match, typ, name)
+	return matchFragments(l, value, match, target)
 }
 
 // FindDeclarationValueFragments is FindValueFragments for the property
 // and value of a Declaration node.
-func (l *Lexer) FindDeclarationValueFragments(declaration Node, typ, name string) ([]Fragment, error) {
+func (l *Lexer) FindDeclarationValueFragments(declaration Node, target SyntaxRef) ([]Fragment, error) {
 	var value Node
 	if declaration, ok := declaration.(*Declaration); ok {
 		value = declaration.Value
@@ -932,19 +940,19 @@ func (l *Lexer) FindDeclarationValueFragments(declaration Node, typ, name string
 		return nil, nil
 	}
 
-	return matchFragments(l, value, match, typ, name)
+	return matchFragments(l, value, match, target)
 }
 
 // FindAllFragments is FindDeclarationValueFragments for every declaration
 // in ast.
-func (l *Lexer) FindAllFragments(ast Node, typ, name string) ([]Fragment, error) {
+func (l *Lexer) FindAllFragments(ast Node, target SyntaxRef) ([]Fragment, error) {
 	var result []Fragment
 	var findErr error
 
 	err := l.syntax.walkReadOnly(ast, WalkOptions{
 		Visit: "Declaration",
 		Enter: func(_ *WalkContext, declaration Node, _ *ListItem[Node], _ *List[Node]) WalkAction {
-			fragments, err := l.FindDeclarationValueFragments(declaration, typ, name)
+			fragments, err := l.FindDeclarationValueFragments(declaration, target)
 			if err != nil {
 				findErr = err
 				return WalkBreak

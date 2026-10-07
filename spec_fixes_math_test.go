@@ -347,7 +347,7 @@ func TestSpecMathTrace(t *testing.T) {
 	if _, err := lexer.MatchProperty("margin", node); err != nil {
 		t.Fatalf("MatchProperty(margin) error = %v", err)
 	}
-	fragments, err := lexer.FindValueFragments("margin", node, "Type", "length")
+	fragments, err := lexer.FindValueFragments("margin", node, SyntaxRef{Kind: KindType, Name: "length"})
 	if err != nil {
 		t.Fatalf("FindValueFragments() error = %v", err)
 	}

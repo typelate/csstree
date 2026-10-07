@@ -29,7 +29,7 @@ func TestLexerSearchFragments(t *testing.T) {
 	t.Run("findValueFragments()", func(t *testing.T) {
 		t.Run("should find single entry", func(t *testing.T) {
 			declaration := mustParse(t, "border: 1px solid red", ParseOptions{Context: "declaration"}).(*Declaration)
-			result, err := lexer.FindValueFragments(declaration.Property, declaration.Value, "Type", "color")
+			result, err := lexer.FindValueFragments(declaration.Property, declaration.Value, SyntaxRef{Kind: KindType, Name: "color"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -41,7 +41,7 @@ func TestLexerSearchFragments(t *testing.T) {
 
 		t.Run("should find multiple entries", func(t *testing.T) {
 			declaration := mustParse(t, "font: 10px Arial, Courier new, Times new roman", ParseOptions{Context: "declaration"}).(*Declaration)
-			result, err := lexer.FindValueFragments(declaration.Property, declaration.Value, "Type", "family-name")
+			result, err := lexer.FindValueFragments(declaration.Property, declaration.Value, SyntaxRef{Kind: KindType, Name: "family-name"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -55,7 +55,7 @@ func TestLexerSearchFragments(t *testing.T) {
 	t.Run("findDeclarationValueFragments()", func(t *testing.T) {
 		t.Run("should find single entry", func(t *testing.T) {
 			declaration := mustParse(t, "border: 1px solid red", ParseOptions{Context: "declaration"})
-			result, err := lexer.FindDeclarationValueFragments(declaration, "Type", "color")
+			result, err := lexer.FindDeclarationValueFragments(declaration, SyntaxRef{Kind: KindType, Name: "color"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +67,7 @@ func TestLexerSearchFragments(t *testing.T) {
 
 		t.Run("should find multiple entries", func(t *testing.T) {
 			declaration := mustParse(t, "font: 10px Arial, Courier new, Times new roman", ParseOptions{Context: "declaration"})
-			result, err := lexer.FindDeclarationValueFragments(declaration, "Type", "family-name")
+			result, err := lexer.FindDeclarationValueFragments(declaration, SyntaxRef{Kind: KindType, Name: "family-name"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -81,7 +81,7 @@ func TestLexerSearchFragments(t *testing.T) {
 	t.Run("findAllFragments()", func(t *testing.T) {
 		t.Run("should find all entries in ast", func(t *testing.T) {
 			ast := mustParse(t, "foo { border: 1px solid red; } bar { color: rgba(1,2,3,4); border-color: #123 rgb(1,2,3) }", ParseOptions{})
-			result, err := lexer.FindAllFragments(ast, "Type", "color")
+			result, err := lexer.FindAllFragments(ast, SyntaxRef{Kind: KindType, Name: "color"})
 			if err != nil {
 				t.Fatal(err)
 			}

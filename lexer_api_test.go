@@ -325,21 +325,22 @@ func TestLexerFragmentEdges(t *testing.T) {
 
 	lexer := DefaultLexer()
 	for _, test := range []struct {
-		property, value, typ, name string
-		want                       []string
+		property, value string
+		target          SyntaxRef
+		want            []string
 	}{
 		// a name "" is upstream's omitted name, which matches the syntaxes
 		// without one
-		{"font", "12px/1.5 serif", "Token", "", []string{"Operator:/"}},
-		{"border", "1px solid red", "Keyword", "solid", []string{"Identifier:solid"}},
+		{"font", "12px/1.5 serif", SyntaxRef{Kind: "Token"}, []string{"Operator:/"}},
+		{"border", "1px solid red", SyntaxRef{Kind: "Keyword", Name: "solid"}, []string{"Identifier:solid"}},
 	} {
 		value := mustParse(t, test.value, ParseOptions{Context: "value"})
-		fragments, err := lexer.FindValueFragments(test.property, value, test.typ, test.name)
+		fragments, err := lexer.FindValueFragments(test.property, value, test.target)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if got := nodeNames(fragments); !slices.Equal(got, test.want) {
-			t.Errorf("FindValueFragments(%s, %q, %s %q) = %v, want %v", test.property, test.value, test.typ, test.name, got, test.want)
+			t.Errorf("FindValueFragments(%s, %q, %+v) = %v, want %v", test.property, test.value, test.target, got, test.want)
 		}
 	}
 
@@ -353,7 +354,7 @@ func TestLexerFragmentEdges(t *testing.T) {
 	if _, err := custom.Lexer().MatchProperty("foo", value); err != nil {
 		t.Fatalf("MatchProperty(foo, (1px)) error = %v", err)
 	}
-	fragments, err := custom.Lexer().FindValueFragments("foo", value, "Type", "a")
+	fragments, err := custom.Lexer().FindValueFragments("foo", value, SyntaxRef{Kind: KindType, Name: "a"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -430,7 +431,7 @@ func TestLexerMatchDescriptorEdges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	descriptor := lexer.CreateDescriptorFromTree(tree, KindType, "anonymous", "")
+	descriptor := NewDescriptorFromTree(SyntaxRef{Kind: KindType, Name: "anonymous"}, tree)
 	for _, test := range []struct {
 		value      string
 		matched    bool
@@ -483,12 +484,29 @@ func TestLexerMatchDescriptorEdges(t *testing.T) {
 		t.Errorf(`MatchAtrulePreludeString("font-face", "") = %v, %v, want no match and no error`, result.Matched, err)
 	}
 
+	pair := NewDescriptor(SyntaxRef{Kind: KindType, Name: "pair"}, "<number> <number>")
+	if pair.Kind() != KindType || pair.Name() != "pair" || pair.Parent() != "" || !pair.Serializable() {
+		t.Errorf("NewDescriptor(pair) = %s %q parent %q serializable %v, want Type pair", pair.Kind(), pair.Name(), pair.Parent(), pair.Serializable())
+	}
+	for _, value := range []string{"1 2", "3 4"} {
+		if _, err := lexer.MatchDescriptorString(pair, value); err != nil {
+			t.Errorf("MatchDescriptorString(pair, %q) error = %v", value, err)
+		}
+	}
+	if _, err := lexer.MatchDescriptorString(pair, "1"); err == nil {
+		t.Errorf(`MatchDescriptorString(pair, "1") = a match, want an error`)
+	}
+	bad := NewDescriptor(SyntaxRef{Kind: KindType, Name: "bad"}, "<number")
+	if _, err := lexer.MatchDescriptorString(bad, "1"); err == nil {
+		t.Errorf(`MatchDescriptorString(<number, "1") = a match, want a parse error`)
+	}
+
 	// a group with a combinator the definition syntax parser never
 	// produces fails to build (upstream builds an undefined graph)
-	unknownCombinator := lexer.CreateDescriptorFromTree(&definitionsyntax.Group{
+	unknownCombinator := NewDescriptorFromTree(SyntaxRef{Kind: KindType, Name: "anonymous"}, &definitionsyntax.Group{
 		Combinator: "x",
 		Terms:      []definitionsyntax.Node{&definitionsyntax.Keyword{Name: "a"}},
-	}, KindType, "anonymous", "")
+	})
 	if result, err := lexer.MatchDescriptorString(unknownCombinator, "a"); result.Matched != nil || err == nil {
 		t.Errorf(`MatchDescriptorString(group with combinator "x", "a") = %v, %v, want an error`, result.Matched, err)
 	}
@@ -511,19 +529,19 @@ func TestLexerFunctionFragmentsAndTrace(t *testing.T) {
 	}
 
 	for _, test := range []struct {
-		typ, name string
-		want      []string
+		target SyntaxRef
+		want   []string
 	}{
-		{"Function", "translate", []string{"Function:translate"}},
-		{"Type", "transform-function", []string{"Function:translate", "Function:rotate"}},
-		{"Keyword", "translate", nil},
+		{SyntaxRef{Kind: "Function", Name: "translate"}, []string{"Function:translate"}},
+		{SyntaxRef{Kind: KindType, Name: "transform-function"}, []string{"Function:translate", "Function:rotate"}},
+		{SyntaxRef{Kind: "Keyword", Name: "translate"}, nil},
 	} {
-		fragments, err := lexer.FindValueFragments("transform", value, test.typ, test.name)
+		fragments, err := lexer.FindValueFragments("transform", value, test.target)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if got := fragmentNames(fragments); !slices.Equal(got, test.want) {
-			t.Errorf("FindValueFragments(transform, %s %s) = %v, want %v", test.typ, test.name, got, test.want)
+			t.Errorf("FindValueFragments(transform, %+v) = %v, want %v", test.target, got, test.want)
 		}
 	}
 

@@ -40,14 +40,14 @@ func getLastMatchNode(matchNode *MatchNode) (Node, error) {
 	return getLastMatchNode(matchNode.Match[len(matchNode.Match)-1])
 }
 
-func matchFragments(lexer *Lexer, ast Node, match *MatchResult, typ, name string) ([]Fragment, error) {
+func matchFragments(lexer *Lexer, ast Node, match *MatchResult, target SyntaxRef) ([]Fragment, error) {
 	var fragments []Fragment
 
 	var findFragments func(matchNode *MatchNode) error
 	findFragments = func(matchNode *MatchNode) error {
 		if matchNode.Syntax != nil &&
-			matchNode.Syntax.Type() == typ &&
-			syntaxName(matchNode.Syntax) == name {
+			matchNode.Syntax.Type() == string(target.Kind) &&
+			syntaxName(matchNode.Syntax) == target.Name {
 			start, err := getFirstMatchNode(matchNode)
 			if err != nil {
 				return err

@@ -57,19 +57,19 @@ func TestFindFragmentsEmptyMatch(t *testing.T) {
 		t.Fatalf("MatchProperty(-webkit-box-reflect, empty) error = %v, want a match", err)
 	}
 
-	fragments, err := lexer.FindValueFragments("-webkit-box-reflect", value, "Property", "-webkit-box-reflect")
+	fragments, err := lexer.FindValueFragments("-webkit-box-reflect", value, SyntaxRef{Kind: KindProperty, Name: "-webkit-box-reflect"})
 	if err == nil {
 		t.Errorf("FindValueFragments(-webkit-box-reflect, empty) = %v, want an error", fragments)
 	}
 
 	ast := mustParse(t, "a{-webkit-box-reflect:}", ParseOptions{})
-	fragments, err = lexer.FindAllFragments(ast, "Property", "-webkit-box-reflect")
+	fragments, err = lexer.FindAllFragments(ast, SyntaxRef{Kind: KindProperty, Name: "-webkit-box-reflect"})
 	if err == nil {
 		t.Errorf("FindAllFragments(-webkit-box-reflect, empty) = %v, want an error", fragments)
 	}
 
 	// other syntaxes of the empty match are searched as before
-	fragments, err = lexer.FindValueFragments("-webkit-box-reflect", value, "Type", "length")
+	fragments, err = lexer.FindValueFragments("-webkit-box-reflect", value, SyntaxRef{Kind: KindType, Name: "length"})
 	if err != nil || len(fragments) != 0 {
 		t.Errorf("FindValueFragments(-webkit-box-reflect, empty, <length>) = %v, %v, want none", fragments, err)
 	}

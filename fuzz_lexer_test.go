@@ -51,7 +51,7 @@ func FuzzMatchProperty(f *testing.F) {
 		}
 		result, err = lexer.MatchProperty(property, ast)
 		checkResult("MatchProperty", result, err)
-		if _, err := lexer.FindValueFragments(property, ast, "Type", "color"); err != nil {
+		if _, err := lexer.FindValueFragments(property, ast, SyntaxRef{Kind: KindType, Name: "color"}); err != nil {
 			t.Errorf("FindValueFragments() error = %v", err)
 		}
 	})

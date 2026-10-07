@@ -51,7 +51,7 @@ func TestConcurrentReads(t *testing.T) {
 			if _, err := lexer.CheckStructure(ast); err != nil {
 				t.Errorf("CheckStructure(ast): %v", err)
 			}
-			if _, err := lexer.FindAllFragments(ast, "type", "color"); err != nil {
+			if _, err := lexer.FindAllFragments(ast, SyntaxRef{Kind: KindType, Name: "color"}); err != nil {
 				t.Errorf("FindAllFragments(ast): %v", err)
 			}
 			for _, declaration := range FindAll(ast, isDeclaration) {
