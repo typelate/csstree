@@ -180,15 +180,15 @@ func TestLexer(t *testing.T) {
 		})
 
 		t.Run("properties", func(t *testing.T) {
-			assertMatched(t, `MatchPropertyString("color", "foo")`, customSyntax.Lexer.MatchPropertyString("color", "foo"))
-			assertMatched(t, `MatchPropertyString("new", "foo")`, customSyntax.Lexer.MatchPropertyString("new", "foo"))
+			assertMatched(t, `MatchPropertyString("color", "foo")`, customSyntax.Lexer().MatchPropertyString("color", "foo"))
+			assertMatched(t, `MatchPropertyString("new", "foo")`, customSyntax.Lexer().MatchPropertyString("new", "foo"))
 		})
 		t.Run("types", func(t *testing.T) {
-			assertMatched(t, `MatchTypeString("box", "foo")`, customSyntax.Lexer.MatchTypeString("box", "foo"))
-			assertMatched(t, `MatchTypeString("new", "foo")`, customSyntax.Lexer.MatchTypeString("new", "foo"))
+			assertMatched(t, `MatchTypeString("box", "foo")`, customSyntax.Lexer().MatchTypeString("box", "foo"))
+			assertMatched(t, `MatchTypeString("new", "foo")`, customSyntax.Lexer().MatchTypeString("new", "foo"))
 		})
 		t.Run("should not append to generic", func(t *testing.T) {
-			assertNotMatched(t, `MatchTypeString("length", "foo")`, customSyntax.Lexer.MatchTypeString("length", "foo"))
+			assertNotMatched(t, `MatchTypeString("length", "foo")`, customSyntax.Lexer().MatchTypeString("length", "foo"))
 		})
 	})
 
@@ -251,11 +251,11 @@ func TestLexer(t *testing.T) {
 				return prev
 			}))
 
-			if got, err := recoverySyntax.Lexer.Validate(); got != nil || err != nil {
+			if got, err := recoverySyntax.Lexer().Validate(); got != nil || err != nil {
 				t.Errorf("Validate() = %+v, %v, want nil, nil", got, err)
 			}
-			assertMatched(t, `MatchPropertyString("test", "1 2aa 3")`, recoverySyntax.Lexer.MatchPropertyString("test", "1 2aa 3"))
-			assertMatched(t, `MatchPropertyString("test", "wide")`, recoverySyntax.Lexer.MatchPropertyString("test", "wide"))
+			assertMatched(t, `MatchPropertyString("test", "1 2aa 3")`, recoverySyntax.Lexer().MatchPropertyString("test", "1 2aa 3"))
+			assertMatched(t, `MatchPropertyString("test", "wide")`, recoverySyntax.Lexer().MatchPropertyString("test", "wide"))
 		})
 	})
 }

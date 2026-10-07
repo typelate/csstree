@@ -330,10 +330,10 @@ func TestLexerFragmentEdges(t *testing.T) {
 		return prev
 	}))
 	value := mustParse(t, "(1px)", ParseOptions{Context: "value"})
-	if result := custom.Lexer.MatchProperty("foo", value); result.Matched == nil {
+	if result := custom.Lexer().MatchProperty("foo", value); result.Matched == nil {
 		t.Fatalf("MatchProperty(foo, (1px)) error = %v", result.Error)
 	}
-	fragments, err := custom.Lexer.FindValueFragments("foo", value, "Type", "a")
+	fragments, err := custom.Lexer().FindValueFragments("foo", value, "Type", "a")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -352,7 +352,7 @@ func TestLexerBrokenReference(t *testing.T) {
 	}))
 
 	for _, name := range []string{"a", "b"} {
-		result := custom.Lexer.MatchTypeString(name, "x")
+		result := custom.Lexer().MatchTypeString(name, "x")
 		if result.Matched != nil || result.Error == nil || !strings.HasPrefix(result.Error.Error(), "Expect `]`") {
 			t.Errorf("MatchTypeString(%s, x) error = %v, want Expect `]`", name, result.Error)
 		}

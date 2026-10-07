@@ -148,10 +148,10 @@ func TestCommon(t *testing.T) {
 		}
 
 		// Generic should be set
-		if forkWithoutGeneric.Lexer.Generic() != false {
+		if forkWithoutGeneric.Lexer().Generic() != false {
 			t.Errorf("forkWithoutGeneric.Lexer.Generic() = true, want false")
 		}
-		if forkWithGeneric.Lexer.Generic() != true {
+		if forkWithGeneric.Lexer().Generic() != true {
 			t.Errorf("forkWithGeneric.Lexer.Generic() = false, want true")
 		}
 
@@ -164,10 +164,10 @@ func TestCommon(t *testing.T) {
 		// upstream asserts that match throws; the Go lexer reports what
 		// upstream throws as the result's Error, not a *SyntaxMatchError
 		var matchError *SyntaxMatchError
-		if result := forkWithoutGeneric.Lexer.Match("<length>", node); result.Error == nil || errors.As(result.Error, &matchError) {
+		if result := forkWithoutGeneric.Lexer().Match("<length>", node); result.Error == nil || errors.As(result.Error, &matchError) {
 			t.Errorf(`forkWithoutGeneric.Lexer.Match("<length>", 1px) error = %v, want "Bad syntax reference: <length>"`, result.Error)
 		}
-		if result := forkWithGeneric.Lexer.Match("<length>", node); result.Error != nil {
+		if result := forkWithGeneric.Lexer().Match("<length>", node); result.Error != nil {
 			t.Errorf(`forkWithGeneric.Lexer.Match("<length>", 1px) error = %v, want nil`, result.Error)
 		}
 	})

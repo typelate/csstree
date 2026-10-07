@@ -25,25 +25,25 @@ func TestLexerMatchType(t *testing.T) {
 	})
 
 	t.Run("should match type", func(t *testing.T) {
-		match := customSyntax().Lexer.MatchType("bar", singleNumber())
+		match := customSyntax().Lexer().MatchType("bar", singleNumber())
 
 		assertMatchNoError(t, `MatchType("bar", 1)`, match)
 	})
 
 	t.Run("should match type using nested", func(t *testing.T) {
-		match := customSyntax().Lexer.MatchType("foo", severalNumbers())
+		match := customSyntax().Lexer().MatchType("foo", severalNumbers())
 
 		assertMatchNoError(t, `MatchType("foo", 1, 2, 3)`, match)
 	})
 
 	t.Run("should fail on matching wrong value", func(t *testing.T) {
-		match := customSyntax().Lexer.MatchType("bar", severalNumbers())
+		match := customSyntax().Lexer().MatchType("bar", severalNumbers())
 
 		assertMismatch(t, `MatchType("bar", 1, 2, 3)`, match)
 	})
 
 	t.Run("should return null and save error for unknown type", func(t *testing.T) {
-		match := customSyntax().Lexer.MatchType("baz", singleNumber())
+		match := customSyntax().Lexer().MatchType("baz", singleNumber())
 
 		if match.Matched != nil {
 			t.Errorf(`MatchType("baz", 1) matched a value, want nil`)
@@ -54,7 +54,7 @@ func TestLexerMatchType(t *testing.T) {
 	t.Run("should not match to CSS wide keywords", func(t *testing.T) {
 		for _, keyword := range testCSSWideKeywords() {
 			t.Run(keyword, func(t *testing.T) {
-				match := customSyntax().Lexer.MatchType("foo", mustParse(t, keyword, ParseOptions{Context: "value"}))
+				match := customSyntax().Lexer().MatchType("foo", mustParse(t, keyword, ParseOptions{Context: "value"}))
 
 				if match.Matched != nil {
 					t.Errorf(`MatchType("foo", %s) matched a value, want nil`, keyword)

@@ -34,37 +34,37 @@ func TestLexerMatchAtruleDescriptor(t *testing.T) {
 	})
 
 	t.Run("should match", func(t *testing.T) {
-		match := customSyntax().Lexer.MatchAtruleDescriptor("font-face", "font-display", swapValue())
+		match := customSyntax().Lexer().MatchAtruleDescriptor("font-face", "font-display", swapValue())
 
 		assertMatchNoError(t, `MatchAtruleDescriptor("font-face", "font-display", swap)`, match)
 	})
 
 	t.Run("vendor prefixes", func(t *testing.T) {
 		t.Run("vendor prefix in keyword name", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchAtruleDescriptor("-prefix-font-face", "font-display", swapValue())
+			match := customSyntax().Lexer().MatchAtruleDescriptor("-prefix-font-face", "font-display", swapValue())
 
 			assertMatchNoError(t, `MatchAtruleDescriptor("-prefix-font-face", "font-display", swap)`, match)
 		})
 
 		t.Run("vendor prefix in declarator name", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchAtruleDescriptor("font-face", "-prefix-font-display", swapValue())
+			match := customSyntax().Lexer().MatchAtruleDescriptor("font-face", "-prefix-font-display", swapValue())
 
 			assertMatchNoError(t, `MatchAtruleDescriptor("font-face", "-prefix-font-display", swap)`, match)
 		})
 
 		t.Run("case insensetive with vendor prefix", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchAtruleDescriptor("FONT-FACE", "FONT-DISPLAY", swapValue())
+			match := customSyntax().Lexer().MatchAtruleDescriptor("FONT-FACE", "FONT-DISPLAY", swapValue())
 			assertMatchNoError(t, `MatchAtruleDescriptor("FONT-FACE", "FONT-DISPLAY", swap)`, match)
 
-			match = customSyntax().Lexer.MatchAtruleDescriptor("FONT-face", "-VENDOR-Font-Display", swapValue())
+			match = customSyntax().Lexer().MatchAtruleDescriptor("FONT-face", "-VENDOR-Font-Display", swapValue())
 			assertMatchNoError(t, `MatchAtruleDescriptor("FONT-face", "-VENDOR-Font-Display", swap)`, match)
 		})
 
 		t.Run("should use verdor version first", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchAtruleDescriptor("font-face", "-foo-font-display", xxxValue())
+			match := customSyntax().Lexer().MatchAtruleDescriptor("font-face", "-foo-font-display", xxxValue())
 			assertMatchNoError(t, `MatchAtruleDescriptor("font-face", "-foo-font-display", xxx)`, match)
 
-			match = customSyntax().Lexer.MatchAtruleDescriptor("font-face", "font-display", xxxValue())
+			match = customSyntax().Lexer().MatchAtruleDescriptor("font-face", "font-display", xxxValue())
 			if match.Matched != nil {
 				t.Errorf(`MatchAtruleDescriptor("font-face", "font-display", xxx) matched a value, want nil`)
 			}
@@ -150,31 +150,31 @@ func TestLexerMatchAtrulePrelude(t *testing.T) {
 	})
 
 	t.Run("should match", func(t *testing.T) {
-		match := customSyntax().Lexer.MatchAtrulePrelude("keyframes", animationName())
+		match := customSyntax().Lexer().MatchAtrulePrelude("keyframes", animationName())
 
 		assertMatchNoError(t, `MatchAtrulePrelude("keyframes", animation-name)`, match)
 	})
 
 	t.Run("vendor prefixes", func(t *testing.T) {
 		t.Run("vendor prefix", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchAtrulePrelude("-webkit-keyframes", animationName())
+			match := customSyntax().Lexer().MatchAtrulePrelude("-webkit-keyframes", animationName())
 
 			assertMatchNoError(t, `MatchAtrulePrelude("-webkit-keyframes", animation-name)`, match)
 		})
 
 		t.Run("case insensetive with vendor prefix", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchAtrulePrelude("KEYFRAMES", animationName())
+			match := customSyntax().Lexer().MatchAtrulePrelude("KEYFRAMES", animationName())
 			assertMatchNoError(t, `MatchAtrulePrelude("KEYFRAMES", animation-name)`, match)
 
-			match = customSyntax().Lexer.MatchAtrulePrelude("-VENDOR-Keyframes", animationName())
+			match = customSyntax().Lexer().MatchAtrulePrelude("-VENDOR-Keyframes", animationName())
 			assertMatchNoError(t, `MatchAtrulePrelude("-VENDOR-Keyframes", animation-name)`, match)
 		})
 
 		t.Run("should use verdor version first", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchAtrulePrelude("-foo-keyframes", number())
+			match := customSyntax().Lexer().MatchAtrulePrelude("-foo-keyframes", number())
 			assertMatchNoError(t, `MatchAtrulePrelude("-foo-keyframes", 123)`, match)
 
-			match = customSyntax().Lexer.MatchAtrulePrelude("keyframes", number())
+			match = customSyntax().Lexer().MatchAtrulePrelude("keyframes", number())
 			if match.Matched != nil {
 				t.Errorf(`MatchAtrulePrelude("keyframes", 123) matched a value, want nil`)
 			}

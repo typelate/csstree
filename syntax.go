@@ -15,11 +15,7 @@ import (
 // ToPlainObject, lexer matching), but Walk and any change to the AST need
 // exclusive access to it.
 type Syntax struct {
-	// Lexer is upstream syntax.lexer: the lexer of the lexer keys of the
-	// config (Generic, CSSWideKeywords, Units, Types, Atrules, Properties,
-	// Node).
-	Lexer *Lexer
-
+	lexer     *Lexer
 	config    *Config
 	parse     ParseFunc
 	walker    *Walker
@@ -82,16 +78,23 @@ func createSyntax(config *Config) (*Syntax, error) {
 	if err != nil {
 		return nil, err
 	}
-	syntax.Lexer = lexer
+	syntax.lexer = lexer
 
 	return syntax, nil
+}
+
+// Lexer returns the lexer of the syntax (upstream syntax.lexer): the lexer
+// of the lexer keys of its config (Generic, CSSWideKeywords, Units, Types,
+// Atrules, Properties, Node).
+func (s *Syntax) Lexer() *Lexer {
+	return s.lexer
 }
 
 // CreateLexer returns a new lexer for the lexer keys of config, sharing
 // this syntax and its node structures (upstream createLexer). It fails when
 // the CSS-wide keywords do not parse as a definition syntax.
 func (s *Syntax) CreateLexer(config *Config) (*Lexer, error) {
-	return newLexer(config, s, s.Lexer.structure)
+	return newLexer(config, s, s.lexer.structure)
 }
 
 // CreateSyntax returns the syntax of a copy of config (upstream
@@ -235,7 +238,7 @@ func DefaultSyntax() *Syntax {
 
 // DefaultLexer returns the lexer of the default syntax (upstream lexer).
 func DefaultLexer() *Lexer {
-	return defaultSyntax().Lexer
+	return defaultSyntax().lexer
 }
 
 // CreateLexer returns a new lexer for the lexer keys of config with the

@@ -23,21 +23,21 @@ func TestLexerMatch(t *testing.T) {
 	t.Run("should match by type", func(t *testing.T) {
 		value := mustParse(t, "fn(1, 2, 3)", ParseOptions{Context: "value"})
 		fn := value.(*Value).Children.First()
-		syntax := customSyntax.Lexer.GetType("fn")
-		match := customSyntax.Lexer.MatchDescriptor(syntax, fn)
+		syntax := customSyntax.Lexer().GetType("fn")
+		match := customSyntax.Lexer().MatchDescriptor(syntax, fn)
 
 		assertMatchNoError(t, `MatchDescriptor(<fn>, fn(1, 2, 3))`, match)
 	})
 
 	t.Run("should take a string as a value", func(t *testing.T) {
-		syntax := customSyntax.Lexer.GetType("fn")
-		match := customSyntax.Lexer.MatchDescriptorString(syntax, "fn(1, 2, 3)")
+		syntax := customSyntax.Lexer().GetType("fn")
+		match := customSyntax.Lexer().MatchDescriptorString(syntax, "fn(1, 2, 3)")
 
 		assertMatchNoError(t, `MatchDescriptorString(<fn>, "fn(1, 2, 3)")`, match)
 	})
 
 	t.Run("should take a string as a syntax", func(t *testing.T) {
-		match := customSyntax.Lexer.MatchString("fn( <number># )", "fn(1, 2, 3)")
+		match := customSyntax.Lexer().MatchString("fn( <number># )", "fn(1, 2, 3)")
 
 		assertMatchNoError(t, `MatchString("fn( <number># )", "fn(1, 2, 3)")`, match)
 	})
@@ -47,7 +47,7 @@ func TestLexerMatch(t *testing.T) {
 		fn := value.(*Value).Children.First()
 		// upstream passes {}, which has no type; a nil descriptor is the Go
 		// counterpart
-		match := customSyntax.Lexer.MatchDescriptor(nil, fn)
+		match := customSyntax.Lexer().MatchDescriptor(nil, fn)
 
 		if match.Matched != nil {
 			t.Errorf("MatchDescriptor(nil, fn) matched a value, want nil")
@@ -108,14 +108,14 @@ func TestLexerMatch(t *testing.T) {
 			{
 				"string",
 				func(t *testing.T, syntax, value string) *MatchResult {
-					return customSyntax.Lexer.MatchString(syntax, value)
+					return customSyntax.Lexer().MatchString(syntax, value)
 				},
 				func(t *testing.T, value string) string { return value },
 			},
 			{
 				"ast",
 				func(t *testing.T, syntax, value string) *MatchResult {
-					return customSyntax.Lexer.Match(syntax, mustParse(t, value, ParseOptions{Context: "value", Positions: true}))
+					return customSyntax.Lexer().Match(syntax, mustParse(t, value, ParseOptions{Context: "value", Positions: true}))
 				},
 				func(t *testing.T, value string) string {
 					return generate(t, mustParse(t, value, ParseOptions{Context: "value", Positions: true}))
@@ -124,7 +124,7 @@ func TestLexerMatch(t *testing.T) {
 			{
 				"ast Raw",
 				func(t *testing.T, syntax, value string) *MatchResult {
-					return customSyntax.Lexer.Match(syntax, rawTestValue(value))
+					return customSyntax.Lexer().Match(syntax, rawTestValue(value))
 				},
 				func(t *testing.T, value string) string { return generate(t, rawTestValue(value)) },
 			},

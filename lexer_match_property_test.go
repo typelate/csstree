@@ -61,35 +61,35 @@ func TestLexerMatchProperty(t *testing.T) {
 
 	t.Run("vendor prefixes and hacks", func(t *testing.T) {
 		t.Run("vendor prefix", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchProperty("-vendor-foo", bar())
+			match := customSyntax().Lexer().MatchProperty("-vendor-foo", bar())
 
 			assertMatchNoError(t, `MatchProperty("-vendor-foo", bar)`, match)
 		})
 
 		t.Run("hacks", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchProperty("_foo", bar())
+			match := customSyntax().Lexer().MatchProperty("_foo", bar())
 
 			assertMatchNoError(t, `MatchProperty("_foo", bar)`, match)
 		})
 
 		t.Run("vendor prefix and hack", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchProperty("_-vendor-foo", bar())
+			match := customSyntax().Lexer().MatchProperty("_-vendor-foo", bar())
 
 			assertMatchNoError(t, `MatchProperty("_-vendor-foo", bar)`, match)
 		})
 
 		t.Run("case insensetive with vendor prefix and hack", func(t *testing.T) {
 			for _, property := range []string{"FOO", "-VENDOR-Foo", "_FOO", "_-VENDOR-Foo"} {
-				match := customSyntax().Lexer.MatchProperty(property, bar())
+				match := customSyntax().Lexer().MatchProperty(property, bar())
 				assertMatchNoError(t, `MatchProperty("`+property+`", bar)`, match)
 			}
 		})
 
 		t.Run("should use verdor version first", func(t *testing.T) {
-			match := customSyntax().Lexer.MatchProperty("-baz-foo", qux())
+			match := customSyntax().Lexer().MatchProperty("-baz-foo", qux())
 			assertMatchNoError(t, `MatchProperty("-baz-foo", qux)`, match)
 
-			match = customSyntax().Lexer.MatchProperty("-baz-baz-foo", qux())
+			match = customSyntax().Lexer().MatchProperty("-baz-baz-foo", qux())
 			if match.Matched != nil {
 				t.Errorf(`MatchProperty("-baz-baz-foo", qux) matched a value, want nil`)
 			}
@@ -116,7 +116,7 @@ func TestLexerMatchProperty(t *testing.T) {
 
 	t.Run("should match css wide keywords", func(t *testing.T) {
 		for _, keyword := range append(testCSSWideKeywords(), "test") {
-			match := customCSSWideKeywords().Lexer.MatchPropertyString("color", keyword)
+			match := customCSSWideKeywords().Lexer().MatchPropertyString("color", keyword)
 
 			assertMatchNoError(t, `MatchPropertyString("color", "`+keyword+`")`, match)
 		}
