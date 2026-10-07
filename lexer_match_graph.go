@@ -4,6 +4,7 @@ package csstree
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -25,7 +26,7 @@ import (
 //   - Comma: syntax (a Comma or a Multiplier node)
 //   - MatchGraph: match, ref (upstream syntax), source
 type matchGraphNode struct {
-	typ string
+	kind graphKind
 
 	match *matchGraphNode
 	then  *matchGraphNode
@@ -54,12 +55,66 @@ type matchGraphNode struct {
 	source definitionsyntax.Node
 }
 
+// graphKind is the kind of a match graph node (upstream its type).
+type graphKind uint8
+
+const (
+	graphMatch graphKind = iota + 1
+	graphMismatch
+	graphDisallowEmpty
+	graphIf
+	graphEnum
+	graphMatchOnce
+	graphMatchOnceBuffer
+	graphAddMatchOnce
+	graphGeneric
+	graphType
+	graphProperty
+	graphKeyword
+	graphAtKeyword
+	graphFunction
+	graphToken
+	graphString
+	graphComma
+	graphMatchGraph
+)
+
+var graphKindNames = [...]string{
+	graphMatch:           "Match",
+	graphMismatch:        "Mismatch",
+	graphDisallowEmpty:   "DisallowEmpty",
+	graphIf:              "If",
+	graphEnum:            "Enum",
+	graphMatchOnce:       "MatchOnce",
+	graphMatchOnceBuffer: "MatchOnceBuffer",
+	graphAddMatchOnce:    "AddMatchOnce",
+	graphGeneric:         "Generic",
+	graphType:            "Type",
+	graphProperty:        "Property",
+	graphKeyword:         "Keyword",
+	graphAtKeyword:       "AtKeyword",
+	graphFunction:        "Function",
+	graphToken:           "Token",
+	graphString:          "String",
+	graphComma:           "Comma",
+	graphMatchGraph:      "MatchGraph",
+}
+
+// String returns upstream's name of the kind.
+func (k graphKind) String() string {
+	if int(k) < len(graphKindNames) && graphKindNames[k] != "" {
+		return graphKindNames[k]
+	}
+
+	return "graphKind(" + strconv.Itoa(int(k)) + ")"
+}
+
 // The sentinel states (upstream MATCH, MISMATCH, DISALLOW_EMPTY). They are
 // compared by identity and never changed.
 var (
-	matchState         = &matchGraphNode{typ: "Match"}
-	mismatchState      = &matchGraphNode{typ: "Mismatch"}
-	disallowEmptyState = &matchGraphNode{typ: "DisallowEmpty"}
+	matchState         = &matchGraphNode{kind: graphMatch}
+	mismatchState      = &matchGraphNode{kind: graphMismatch}
+	disallowEmptyState = &matchGraphNode{kind: graphDisallowEmpty}
 )
 
 // leftParenthesis (40) and rightParenthesis (41) are declared in url.go.
@@ -74,13 +129,13 @@ func createCondition(match, thenBranch, elseBranch *matchGraphNode) *matchGraphN
 		return match
 	}
 
-	if match.typ == "If" && match.els == mismatchState && thenBranch == matchState {
+	if match.kind == graphIf && match.els == mismatchState && thenBranch == matchState {
 		thenBranch = match.then
 		match = match.match
 	}
 
 	return &matchGraphNode{
-		typ:   "If",
+		kind:  graphIf,
 		match: match,
 		then:  thenBranch,
 		els:   elseBranch,
@@ -94,10 +149,10 @@ func isFunctionType(name string) bool {
 }
 
 func isEnumCompatible(term *matchGraphNode) bool {
-	return term.typ == "Keyword" ||
-		term.typ == "AtKeyword" ||
-		term.typ == "Function" ||
-		term.typ == "Type" && isFunctionType(term.name)
+	return term.kind == graphKeyword ||
+		term.kind == graphAtKeyword ||
+		term.kind == graphFunction ||
+		term.kind == graphType && isFunctionType(term.name)
 }
 
 func groupNode(terms []definitionsyntax.Node, combinator definitionsyntax.Combinator, explicit bool) *definitionsyntax.Group {
@@ -113,13 +168,13 @@ func replaceTypeInGraph(node *matchGraphNode, replacements map[string]*matchGrap
 	if !visited[node] {
 		visited[node] = true
 
-		switch node.typ {
-		case "If":
+		switch node.kind {
+		case graphIf:
 			node.match = replaceTypeInGraph(node.match, replacements, visited)
 			node.then = replaceTypeInGraph(node.then, replacements, visited)
 			node.els = replaceTypeInGraph(node.els, replacements, visited)
 
-		case "Type":
+		case graphType:
 			if replacement, ok := replacements[node.name]; ok && replacement != nil {
 				return replacement
 			}
@@ -213,7 +268,7 @@ func buildAlternativesMatchGraph(terms []*matchGraphNode) *matchGraphNode {
 				enumMap = make(map[string]*matchGraphNode)
 				result = createCondition(
 					&matchGraphNode{
-						typ:     "Enum",
+						kind:    graphEnum,
 						enumMap: enumMap,
 					},
 					matchState,
@@ -256,7 +311,7 @@ func buildAllInAnyOrderMatchGraph(terms []*matchGraphNode) *matchGraphNode {
 	// since &&-groups produces at least N!-node trees
 	if len(terms) > 5 {
 		return &matchGraphNode{
-			typ:   "MatchOnce",
+			kind:  graphMatchOnce,
 			terms: terms,
 			all:   true,
 		}
@@ -315,7 +370,7 @@ func buildAnyInAnyOrderMatchGraph(terms []*matchGraphNode, atLeastOneTermMatched
 	// since ||-groups produces at least N!-node trees
 	if len(terms) > 5 {
 		return &matchGraphNode{
-			typ:   "MatchOnce",
+			kind:  graphMatchOnce,
 			terms: terms,
 			all:   false,
 		}
@@ -398,7 +453,7 @@ func buildMultiplierMatchGraph(node *definitionsyntax.Multiplier) (*matchGraphNo
 
 		if node.Comma {
 			result.then.els = createCondition(
-				&matchGraphNode{typ: "Comma", syntax: node},
+				&matchGraphNode{kind: graphComma, syntax: node},
 				result,
 				mismatchState,
 			)
@@ -408,7 +463,7 @@ func buildMultiplierMatchGraph(node *definitionsyntax.Multiplier) (*matchGraphNo
 		for i := max(node.Min, 1); i <= node.Max; i++ {
 			if node.Comma && result != matchState {
 				result = createCondition(
-					&matchGraphNode{typ: "Comma", syntax: node},
+					&matchGraphNode{kind: graphComma, syntax: node},
 					result,
 					mismatchState,
 				)
@@ -438,7 +493,7 @@ func buildMultiplierMatchGraph(node *definitionsyntax.Multiplier) (*matchGraphNo
 		for i := 0; i < node.Min-1; i++ {
 			if node.Comma && result != matchState {
 				result = createCondition(
-					&matchGraphNode{typ: "Comma", syntax: node},
+					&matchGraphNode{kind: graphComma, syntax: node},
 					result,
 					mismatchState,
 				)
@@ -459,7 +514,7 @@ func buildMultiplierMatchGraph(node *definitionsyntax.Multiplier) (*matchGraphNo
 // buildMatchGraphInternal: a generic type.
 func buildGenericMatchGraph(generic genericType) *matchGraphNode {
 	return &matchGraphNode{
-		typ:     "Generic",
+		kind:    graphGeneric,
 		generic: &generic,
 	}
 }
@@ -547,35 +602,35 @@ func buildMatchGraphInternal(node definitionsyntax.Node) (*matchGraphNode, error
 
 	case *definitionsyntax.Type:
 		return &matchGraphNode{
-			typ:    node.Type(),
+			kind:   graphType,
 			name:   node.Name,
 			syntax: node,
 		}, nil
 
 	case *definitionsyntax.Property:
 		return &matchGraphNode{
-			typ:    node.Type(),
+			kind:   graphProperty,
 			name:   node.Name,
 			syntax: node,
 		}, nil
 
 	case *definitionsyntax.Keyword:
 		return &matchGraphNode{
-			typ:    node.Type(),
+			kind:   graphKeyword,
 			name:   toLowerCase(node.Name),
 			syntax: node,
 		}, nil
 
 	case *definitionsyntax.AtKeyword:
 		return &matchGraphNode{
-			typ:    node.Type(),
+			kind:   graphAtKeyword,
 			name:   "@" + toLowerCase(node.Name),
 			syntax: node,
 		}, nil
 
 	case *definitionsyntax.Function:
 		return &matchGraphNode{
-			typ:    node.Type(),
+			kind:   graphFunction,
 			name:   toLowerCase(node.Name) + "(",
 			syntax: node,
 		}, nil
@@ -585,7 +640,7 @@ func buildMatchGraphInternal(node definitionsyntax.Node) (*matchGraphNode, error
 		if utf8.RuneCountInString(node.Value) == 3 {
 			_, size := utf8.DecodeRuneInString(node.Value[1:])
 			return &matchGraphNode{
-				typ:    "Token",
+				kind:   graphToken,
 				value:  node.Value[1 : 1+size],
 				syntax: node,
 			}, nil
@@ -593,21 +648,21 @@ func buildMatchGraphInternal(node definitionsyntax.Node) (*matchGraphNode, error
 
 		// otherwise use it as is
 		return &matchGraphNode{
-			typ:    node.Type(),
+			kind:   graphString,
 			value:  strings.ReplaceAll(node.Value[1:len(node.Value)-1], `\'`, `'`),
 			syntax: node,
 		}, nil
 
 	case *definitionsyntax.Token:
 		return &matchGraphNode{
-			typ:    node.Type(),
+			kind:   graphToken,
 			value:  node.Value,
 			syntax: node,
 		}, nil
 
 	case *definitionsyntax.Comma:
 		return &matchGraphNode{
-			typ:    node.Type(),
+			kind:   graphComma,
 			syntax: node,
 		}, nil
 
@@ -631,7 +686,7 @@ func buildMatchGraph(syntaxTree definitionsyntax.Node, ref *SyntaxRef) (*matchGr
 	}
 
 	return &matchGraphNode{
-		typ:    "MatchGraph",
+		kind:   graphMatchGraph,
 		match:  match,
 		ref:    ref,
 		source: syntaxTree,
@@ -654,7 +709,7 @@ func buildMatchGraphFromString(syntaxTree string, ref *SyntaxRef) (*matchGraphNo
 func buildGenericMatchGraphRoot(generic genericType, ref *SyntaxRef) *matchGraphNode {
 	match := buildGenericMatchGraph(generic)
 	return &matchGraphNode{
-		typ:   "MatchGraph",
+		kind:  graphMatchGraph,
 		match: match,
 		ref:   ref,
 	}

@@ -10,19 +10,43 @@ import (
 	"github.com/typelate/csstree/tokenizer"
 )
 
-// match stack item types
-const (
-	stubItem        = 0
-	tokenItem       = 1
-	openSyntaxItem  = 2
-	closeSyntaxItem = 3
-)
+// stackItemKind is the kind of a match stack item.
+type stackItemKind uint8
 
 const (
-	exitReasonMatch          = "Match"
-	exitReasonMismatch       = "Mismatch"
-	exitReasonIterationLimit = "Maximum iteration number exceeded (please fill an issue on https://github.com/csstree/csstree/issues)"
+	stubItem stackItemKind = iota
+	tokenItem
+	openSyntaxItem
+	closeSyntaxItem
 )
+
+// exitReason is why the matcher stopped; the zero value is that it has
+// not.
+type exitReason uint8
+
+const (
+	exitMatch exitReason = iota + 1
+	exitMismatch
+	exitIterationLimit
+)
+
+// iterationLimitMessage is upstream's reason for exitIterationLimit.
+const iterationLimitMessage = "Maximum iteration number exceeded (please fill an issue on https://github.com/csstree/csstree/issues)"
+
+// message returns upstream's text of the reason (upstream the reason is
+// that text).
+func (r exitReason) message() string {
+	switch r {
+	case exitMatch:
+		return "Match"
+	case exitMismatch:
+		return "Mismatch"
+	case exitIterationLimit:
+		return iterationLimitMessage
+	}
+
+	return ""
+}
 
 const iterationLimit = 15000
 
@@ -44,7 +68,7 @@ type matchSyntaxes interface {
 // matchStackItem is an entry of the match stack: a matched token or the
 // opening or closing of a syntax.
 type matchStackItem struct {
-	typ    int
+	kind   stackItemKind
 	syntax definitionsyntax.Node
 	token  *matchToken
 	prev   *matchStackItem
@@ -78,7 +102,7 @@ type elseStackItem struct {
 // matchAsList and tree by matchAsTree.
 type matchResult struct {
 	tokens       []matchToken
-	reason       string
+	reason       exitReason
 	iterations   int
 	match        *matchStackItem
 	list         []matchListItem
@@ -89,7 +113,7 @@ type matchResult struct {
 // matchListItem is an entry of matchAsList's result: the opening or
 // closing of a syntax, or a token.
 type matchListItem struct {
-	typ     int
+	kind    stackItemKind
 	syntax  definitionsyntax.Node
 	isToken bool
 	token   string
@@ -171,13 +195,13 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 	syntaxStashDisabled := false
 
 	iterationCount := 0 // count iterations and prevent infinite loop
-	exitReason := ""
+	var reason exitReason
 
 	var token *matchToken
 	tokenIndex := -1
 	longestMatch := 0
 	matchStack := &matchStackItem{
-		typ:    stubItem,
+		kind:   stubItem,
 		syntax: nil,
 		token:  nil,
 		prev:   nil,
@@ -222,7 +246,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 	addTokenToMatch := func() {
 		matchStack = &matchStackItem{
-			typ:    tokenItem,
+			kind:   tokenItem,
 			syntax: state.syntax,
 			token:  token,
 			prev:   matchStack,
@@ -250,7 +274,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 		}
 
 		matchStack = &matchStackItem{
-			typ:    openSyntaxItem,
+			kind:   openSyntaxItem,
 			syntax: state.syntax,
 			token:  matchStack.token,
 			prev:   matchStack,
@@ -258,11 +282,11 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 	}
 
 	closeSyntax := func() {
-		if matchStack.typ == openSyntaxItem {
+		if matchStack.kind == openSyntaxItem {
 			matchStack = matchStack.prev
 		} else {
 			matchStack = &matchStackItem{
-				typ:    closeSyntaxItem,
+				kind:   closeSyntaxItem,
 				syntax: syntaxStack.syntax,
 				token:  matchStack.token,
 				prev:   matchStack,
@@ -274,14 +298,14 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 	moveToNextToken()
 
-	for exitReason == "" {
+	for reason == 0 {
 		iterationCount++
 		if iterationCount >= iterationLimit {
 			break
 		}
 
-		switch state.typ {
-		case "Match":
+		switch state.kind {
+		case graphMatch:
 			if thenStack == nil {
 				// turn to MISMATCH when some tokens left unmatched
 				if token != nil {
@@ -293,7 +317,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 				}
 
 				// break the main loop, return a result - MATCH
-				exitReason = exitReasonMatch
+				reason = exitMatch
 				break
 			}
 
@@ -318,7 +342,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			// pop stack
 			thenStack = thenStack.prev
 
-		case "Mismatch":
+		case graphMismatch:
 			// when some syntax is stashed
 			if syntaxStash != nil {
 				// there is no else branches or a branch reduce match stack
@@ -331,7 +355,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			} else if elseStack == nil {
 				// no else branches -> break the main loop
 				// return a result - MISMATCH
-				exitReason = exitReasonMismatch
+				reason = exitMismatch
 				break
 			}
 
@@ -351,10 +375,10 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			// pop stack
 			elseStack = elseStack.prev
 
-		case "MatchGraph":
+		case graphMatchGraph:
 			state = state.match
 
-		case "If":
+		case graphIf:
 			// IMPORTANT: else stack push must go first,
 			// since it stores the state of thenStack before changes
 			if state.els != mismatchState {
@@ -367,15 +391,15 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 			state = state.match
 
-		case "MatchOnce":
+		case graphMatchOnce:
 			state = &matchGraphNode{
-				typ:   "MatchOnceBuffer",
+				kind:  graphMatchOnceBuffer,
 				once:  state,
 				index: 0,
 				mask:  0,
 			}
 
-		case "MatchOnceBuffer":
+		case graphMatchOnceBuffer:
 			terms := state.once.terms
 
 			if state.index == len(terms) {
@@ -404,7 +428,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 					// since it stores the state of thenStack before changes
 					pushElseStack(buffer)
 					pushThenStack(&matchGraphNode{
-						typ:  "AddMatchOnce",
+						kind: graphAddMatchOnce,
 						once: buffer.once,
 						mask: buffer.mask | matchFlag,
 					})
@@ -416,15 +440,15 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 				}
 			}
 
-		case "AddMatchOnce":
+		case graphAddMatchOnce:
 			state = &matchGraphNode{
-				typ:   "MatchOnceBuffer",
+				kind:  graphMatchOnceBuffer,
 				once:  state.once,
 				index: 0,
 				mask:  state.mask,
 			}
 
-		case "Enum":
+		case graphEnum:
 			if token != nil {
 				name := toLowerCase(token.value)
 
@@ -447,7 +471,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 			state = mismatchState
 
-		case "Generic":
+		case graphGeneric:
 			var bounds *definitionsyntax.Range
 			if syntaxStack != nil {
 				bounds = syntaxStack.bounds
@@ -471,8 +495,8 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 				state = mismatchState
 			}
 
-		case "Type", "Property":
-			isType := state.typ == "Type"
+		case graphType, graphProperty:
+			isType := state.kind == graphType
 			var dictSyntax *matchGraphNode
 			if syntaxes != nil {
 				var err error
@@ -517,7 +541,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			openSyntax()
 			state = dictSyntax
 
-		case "Keyword":
+		case graphKeyword:
 			name := state.name
 
 			if token != nil {
@@ -537,7 +561,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 			state = mismatchState
 
-		case "AtKeyword", "Function":
+		case graphAtKeyword, graphFunction:
 			if token != nil && (asciiEqualFold(token.value, state.name) || tokenNameIs(token, state.name)) {
 				addTokenToMatch()
 				state = matchState
@@ -546,7 +570,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 			state = mismatchState
 
-		case "Token":
+		case graphToken:
 			if token != nil && token.value == state.value {
 				addTokenToMatch()
 				state = matchState
@@ -555,7 +579,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 			state = mismatchState
 
-		case "Comma":
+		case graphComma:
 			if token != nil && token.typ == tokenizer.Comma {
 				if isCommaContextStart(matchStack.token) {
 					state = mismatchState
@@ -575,7 +599,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 				}
 			}
 
-		case "String":
+		case graphString:
 			var str strings.Builder
 			lastTokenIndex := tokenIndex
 
@@ -594,18 +618,18 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 			}
 
 		default:
-			return nil, &UnknownNodeTypeError{Type: state.typ}
+			return nil, &UnknownNodeTypeError{Type: state.kind.String()}
 		}
 	}
 
-	switch exitReason {
-	case "":
+	switch reason {
+	case 0:
 		// upstream also logs "[csstree-match] BREAK after 15000 iterations"
 		// with console.warn
-		exitReason = exitReasonIterationLimit
+		reason = exitIterationLimit
 		matchStack = nil
 
-	case exitReasonMatch:
+	case exitMatch:
 		for syntaxStack != nil {
 			closeSyntax()
 		}
@@ -616,7 +640,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 
 	return &matchResult{
 		tokens:       tokens,
-		reason:       exitReason,
+		reason:       reason,
 		iterations:   iterationCount,
 		match:        matchStack,
 		longestMatch: longestMatch,
@@ -635,10 +659,10 @@ func matchAsList(tokens []matchToken, matchGraph *matchGraphNode, syntaxes match
 		matchResult.list = []matchListItem{}
 
 		for item != nil {
-			switch item.typ {
+			switch item.kind {
 			case openSyntaxItem, closeSyntaxItem:
 				matchResult.list = append(matchResult.list, matchListItem{
-					typ:    item.typ,
+					kind:   item.kind,
 					syntax: item.syntax,
 				})
 
@@ -682,7 +706,7 @@ func matchAsTree(tokens []matchToken, matchGraph *matchGraphNode, syntaxes match
 
 	// build a tree
 	for item != nil {
-		switch item.typ {
+		switch item.kind {
 		case openSyntaxItem:
 			host.Match = append(host.Match, &MatchNode{
 				Syntax: item.syntax,

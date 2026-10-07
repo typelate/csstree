@@ -68,23 +68,23 @@ func locateMismatch(matchResult *matchResult, node Node) mismatchLocation {
 		if lastNode == nil {
 			lastNode = node
 		}
-		if loc, ok := fromLoc(lastNode, "end"); ok {
+		if loc, ok := locEnd(lastNode); ok {
 			start = loc
 		} else {
 			start = buildLoc(defaultLoc(), cssText)
 		}
 		end = buildLoc(start, "")
 	} else {
-		if loc, ok := fromLoc(badNode, "start"); ok {
+		if loc, ok := locStart(badNode); ok {
 			start = loc
 		} else {
-			nodeStart, ok := fromLoc(node, "start")
+			nodeStart, ok := locStart(node)
 			if !ok {
 				nodeStart = defaultLoc()
 			}
 			start = buildLoc(nodeStart, cssText[:mismatchOffset])
 		}
-		if loc, ok := fromLoc(badNode, "end"); ok {
+		if loc, ok := locEnd(badNode); ok {
 			end = loc
 		} else {
 			end = buildLoc(start, substr(cssText, mismatchOffset, mismatchLength))
@@ -100,23 +100,31 @@ func locateMismatch(matchResult *matchResult, node Node) mismatchLocation {
 	}
 }
 
-// fromLoc returns the start or end (point) of node's location; ok is false
-// when node has no location (upstream null).
-func fromLoc(node Node, point string) (tokenizer.Position, bool) {
+// locStart returns the start of node's location; ok is false when node
+// has no location (upstream fromLoc(node, 'start') returning null).
+func locStart(node Node) (start tokenizer.Position, ok bool) {
+	if loc := nodeLocation(node); loc != nil {
+		return loc.Start, true
+	}
+
+	return tokenizer.Position{}, false
+}
+
+// locEnd is locStart for the end of node's location.
+func locEnd(node Node) (end tokenizer.Position, ok bool) {
+	if loc := nodeLocation(node); loc != nil {
+		return loc.End, true
+	}
+
+	return tokenizer.Position{}, false
+}
+
+func nodeLocation(node Node) *Location {
 	if node == nil {
-		return tokenizer.Position{}, false
+		return nil
 	}
 
-	loc := node.Location()
-	if loc == nil {
-		return tokenizer.Position{}, false
-	}
-
-	if point == "start" {
-		return buildLoc(loc.Start, ""), true
-	}
-
-	return buildLoc(loc.End, ""), true
+	return node.Location()
 }
 
 var buildLocLineBreak = regexp.MustCompile(`\n|\r\n?|\f`)
@@ -230,7 +238,8 @@ type SyntaxMatchError struct {
 	err error
 }
 
-func newSyntaxMatchError(message string, syntax definitionsyntax.Node, node Node, matchResult *matchResult) *SyntaxMatchError {
+func newSyntaxMatchError(reason exitReason, syntax definitionsyntax.Node, node Node, matchResult *matchResult) *SyntaxMatchError {
+	message := reason.message()
 	mismatch := locateMismatch(matchResult, node)
 
 	err := &SyntaxMatchError{
@@ -252,7 +261,7 @@ func newSyntaxMatchError(message string, syntax definitionsyntax.Node, node Node
 		"   value: " + value + "\n" +
 		"  --------" + strings.Repeat("-", err.MismatchOffset) + "^"
 
-	if message == exitReasonIterationLimit {
+	if reason == exitIterationLimit {
 		err.err = ErrIterationLimit
 	}
 	source := "<unknown>"

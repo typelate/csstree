@@ -861,7 +861,7 @@ func markPercentSiblings(group *definitionsyntax.Group, terms []*matchGraphNode)
 	}
 
 	for _, term := range terms {
-		if term.typ == "Type" {
+		if term.kind == graphType {
 			term.percentSibling = true
 		}
 	}

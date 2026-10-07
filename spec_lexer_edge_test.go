@@ -224,6 +224,6 @@ func TestLexerIterationLimit(t *testing.T) {
 
 	runMatchCases(t, DefaultLexer(), []matchCase{
 		{kind: "syntax", name: syntax, value: "a a a a a a a a a a a a a c", iterations: 14037, mismatchOffset: 26, errText: "Mismatch"},
-		{kind: "syntax", name: syntax, value: "a a a a a a a a a a a a a a c", iterations: 15000, mismatchOffset: 28, errText: exitReasonIterationLimit},
+		{kind: "syntax", name: syntax, value: "a a a a a a a a a a a a a a c", iterations: 15000, mismatchOffset: 28, errText: iterationLimitMessage},
 	})
 }
