@@ -497,25 +497,36 @@
     "bad declaration should include semicolon": [
         {
             "source": "{foo: boom!;}",
+            "generate": "{foo:boom!}",
             "ast": {
                 "type": "Block",
                 "children": [
                     {
-                        "type": "Raw",
-                        "value": "foo: boom!;"
+                        "type": "Declaration",
+                        "important": false,
+                        "property": "foo",
+                        "value": {
+                            "type": "Raw",
+                            "value": "boom!"
+                        }
                     }
                 ]
             }
         },
         {
             "source": "{foo: boom! ; }",
-            "generate": "{foo: boom! ;}",
+            "generate": "{foo:boom!}",
             "ast": {
                 "type": "Block",
                 "children": [
                     {
-                        "type": "Raw",
-                        "value": "foo: boom! ;"
+                        "type": "Declaration",
+                        "important": false,
+                        "property": "foo",
+                        "value": {
+                            "type": "Raw",
+                            "value": "boom!"
+                        }
                     }
                 ]
             }
@@ -555,13 +566,18 @@
         },
         {
             "source": "{ foo: boom! }",
-            "generate": "{foo: boom!}",
+            "generate": "{foo:boom!}",
             "ast": {
                 "type": "Block",
                 "children": [
                     {
-                        "type": "Raw",
-                        "value": "foo: boom!"
+                        "type": "Declaration",
+                        "important": false,
+                        "property": "foo",
+                        "value": {
+                            "type": "Raw",
+                            "value": "boom!"
+                        }
                     }
                 ]
             }
@@ -581,12 +597,18 @@
     },
     "uncomplete !important": {
         "source": "{bada: boom!}",
+        "generate": "{bada:boom!}",
         "ast": {
             "type": "Block",
             "children": [
                 {
-                    "type": "Raw",
-                    "value": "bada: boom!"
+                    "type": "Declaration",
+                    "important": false,
+                    "property": "bada",
+                    "value": {
+                        "type": "Raw",
+                        "value": "boom!"
+                    }
                 }
             ]
         }

@@ -283,6 +283,108 @@ func TestSpecGenerateReverseSolidusNewline(t *testing.T) {
 	}
 }
 
+// CSS Syntax 3 "consume a declaration": the value is everything up to the
+// ; or the end of the block, and only a trailing ! important (last two
+// non-whitespace tokens) makes the declaration important.
+// https://drafts.csswg.org/css-syntax-3/#consume-declaration
+//
+// A trailing ! with another identifier keeps upstream's hack support
+// (Important is that identifier, e.g. "ie").
+func TestSpecDeclarationImportant(t *testing.T) {
+	runSpecParseTests(t, []specParseTest{
+		{
+			source:   "color:red!important!important",
+			context:  "declaration",
+			json:     `{"important":true,"property":"color","type":"Declaration","value":{"type":"Raw","value":"red!important"}}`,
+			generate: "color:red!important!important",
+			errors:   "Unexpected input",
+		},
+		{
+			source:   "color:red !important !important",
+			context:  "declaration",
+			json:     `{"important":true,"property":"color","type":"Declaration","value":{"type":"Raw","value":"red !important"}}`,
+			generate: "color:red !important!important",
+			errors:   "Unexpected input",
+		},
+		{
+			source:   "color:red ! important",
+			context:  "declaration",
+			json:     `{"important":true,"property":"color","type":"Declaration","value":{"children":[{"name":"red","type":"Identifier"}],"type":"Value"}}`,
+			generate: "color:red!important",
+		},
+		{
+			source:   "color:red !/**/ important /**/",
+			context:  "declaration",
+			json:     `{"important":true,"property":"color","type":"Declaration","value":{"children":[{"name":"red","type":"Identifier"}],"type":"Value"}}`,
+			generate: "color:red!important",
+		},
+		{
+			source:   "color:red!IMPORTANT",
+			context:  "declaration",
+			json:     `{"important":"IMPORTANT","property":"color","type":"Declaration","value":{"children":[{"name":"red","type":"Identifier"}],"type":"Value"}}`,
+			generate: "color:red!IMPORTANT",
+		},
+		{
+			source:   "color:red!ie",
+			context:  "declaration",
+			json:     `{"important":"ie","property":"color","type":"Declaration","value":{"children":[{"name":"red","type":"Identifier"}],"type":"Value"}}`,
+			generate: "color:red!ie",
+		},
+		{
+			source:   "color:red !important !ie",
+			context:  "declaration",
+			json:     `{"important":"ie","property":"color","type":"Declaration","value":{"type":"Raw","value":"red !important"}}`,
+			generate: "color:red !important!ie",
+			errors:   "Unexpected input",
+		},
+		{
+			source:   "color:!important",
+			context:  "declaration",
+			json:     `{"important":true,"property":"color","type":"Declaration","value":{"children":[],"type":"Value"}}`,
+			generate: "color:!important",
+		},
+		{
+			// a ! that is not followed by an identifier is part of the value
+			source:   "color:red!",
+			context:  "declaration",
+			json:     `{"important":false,"property":"color","type":"Declaration","value":{"type":"Raw","value":"red!"}}`,
+			generate: "color:red!",
+			errors:   "Unexpected input",
+		},
+		{
+			source:   "color:a!b c",
+			context:  "declaration",
+			json:     `{"important":false,"property":"color","type":"Declaration","value":{"type":"Raw","value":"a!b c"}}`,
+			generate: "color:a!b c",
+			errors:   "Unexpected input",
+		},
+		{
+			source:   "--x:a!important!important",
+			context:  "declaration",
+			json:     `{"important":true,"property":"--x","type":"Declaration","value":{"type":"Raw","value":"a!important"}}`,
+			generate: "--x:a!important!important",
+		},
+		{
+			source:   "--x: a !important",
+			context:  "declaration",
+			json:     `{"important":true,"property":"--x","type":"Declaration","value":{"type":"Raw","value":" a "}}`,
+			generate: "--x: a !important",
+		},
+		{
+			source:   "a{color:red!important!important;b:c!important}",
+			types:    "StyleSheet Rule SelectorList Selector TypeSelector Block Declaration Raw Declaration Value Identifier",
+			generate: "a{color:red!important!important;b:c!important}",
+			errors:   "Unexpected input",
+		},
+		{
+			source:   "a{color:red!;b:c}",
+			types:    "StyleSheet Rule SelectorList Selector TypeSelector Block Declaration Raw Declaration Value Identifier",
+			generate: "a{color:red!;b:c}",
+			errors:   "Unexpected input",
+		},
+	})
+}
+
 // CSS Syntax 3: a declaration value is a list of component values, so a ;
 // inside (), [] or a function is part of the value. The ; is a Raw node.
 // https://drafts.csswg.org/css-syntax-3/#consume-list-of-components

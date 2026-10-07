@@ -375,11 +375,16 @@
             }
         }
     ],
-    "error": [
-        {
-            "source": "--var: !important ()",
-            "offset": "                  ^",
-            "error": "Unexpected input"
+    "! not followed by important at the end is part of the value": {
+        "source": "--var: !important ()",
+        "ast": {
+            "type": "Declaration",
+            "important": false,
+            "property": "--var",
+            "value": {
+                "type": "Raw",
+                "value": " !important ()"
+            }
         }
-    ]
+    }
 }

@@ -6,6 +6,7 @@ package csstree
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 	"sync"
 
@@ -346,6 +347,33 @@ func (p *Parser) ConsumeUntilSemicolonIncluded(code int) int {
 		return 2
 	}
 	return 0
+}
+
+// scanUntilBalanced returns the index of the first token from start that
+// has one of the stop types, skipping blocks, or of the token that ends
+// the block start is in (the token count at the end of the source), as
+// SkipUntilBalanced would stop, without moving the cursor.
+func (p *Parser) scanUntilBalanced(start int, stop ...tokenizer.TokenType) int {
+	cursor := start
+	for ; cursor < p.TokenCount; cursor++ {
+		balanceEnd := p.Balance[cursor]
+
+		// the closing token of the block start is in
+		if balanceEnd < start {
+			break
+		}
+
+		tokenType := p.GetTokenType(cursor)
+		if slices.Contains(stop, tokenType) {
+			break
+		}
+
+		// fast forward to the end of a block
+		if p.IsBlockOpenerTokenType(tokenType) {
+			cursor = balanceEnd
+		}
+	}
+	return min(cursor, p.TokenCount)
 }
 
 // CreateList returns a new empty list.

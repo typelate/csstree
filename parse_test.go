@@ -291,11 +291,15 @@ func TestParse(t *testing.T) {
 		if len(errs) != 2 {
 			t.Fatalf("len(errors) = %d, want 2", len(errs))
 		}
-		if got := errs[0].err.Error(); got != "Identifier is expected" {
-			t.Errorf("errors[0].error.message = %q, want %q", got, "Identifier is expected")
+		// upstream: "Identifier is expected" with the Raw "a: 1!;" in place
+		// of the declaration; the port follows CSS Syntax 3, where a ! not
+		// followed by an identifier at the end is part of the value, so the
+		// value 1! falls back to Raw
+		if got := errs[0].err.Error(); got != "Unexpected input" {
+			t.Errorf("errors[0].error.message = %q, want %q", got, "Unexpected input")
 		}
-		if got := errs[0].fallbackNode.(*Raw).Value; got != "a: 1!;" {
-			t.Errorf("errors[0].fallbackNode.value = %q, want %q", got, "a: 1!;")
+		if got := errs[0].fallbackNode.(*Raw).Value; got != "1!" {
+			t.Errorf("errors[0].fallbackNode.value = %q, want %q", got, "1!")
 		}
 		if got := errs[1].err.Error(); got != "Colon is expected" {
 			t.Errorf("errors[1].error.message = %q, want %q", got, "Colon is expected")

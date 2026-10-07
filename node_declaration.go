@@ -4,27 +4,68 @@ package csstree
 
 import "github.com/typelate/csstree/tokenizer"
 
-func consumeValueRaw(p *Parser) Node {
-	return p.Raw(p.ConsumeUntilExclamationMarkOrSemicolon, true)
+// consumeValueRaw consumes the tokens up to the token index end as a Raw
+// node, without trailing whitespace when excludeWhiteSpace is set.
+func consumeValueRaw(p *Parser, end int, excludeWhiteSpace bool) *Raw {
+	startOffset := p.GetTokenStart(p.TokenIndex)
+	p.Skip(end - p.TokenIndex)
+
+	endOffset := p.TokenStart
+	if excludeWhiteSpace && p.TokenStart > startOffset {
+		endOffset = getOffsetExcludeWS(p)
+	}
+
+	return &Raw{
+		Loc:   p.GetLocation(startOffset, endOffset),
+		Value: p.Substring(startOffset, endOffset),
+	}
 }
 
-func consumeCustomPropertyRaw(p *Parser) Node {
-	return p.Raw(p.ConsumeUntilExclamationMarkOrSemicolon, false)
-}
-
-func consumeValue(p *Parser) Node {
-	startValueToken := p.TokenIndex
+// consumeValue parses the tokens up to the token index end as a Value.
+func consumeValue(p *Parser, end int) Node {
 	value := p.Value()
 
-	if value.Type() != "Raw" &&
-		!p.EOF &&
-		p.TokenType != tokenizer.Semicolon &&
-		!p.IsDelim(exclamationMark, 0) &&
-		!p.IsBalanceEdge(startValueToken) {
+	if value.Type() != "Raw" && p.TokenIndex != end {
 		p.Error("", -1)
 	}
 
 	return value
+}
+
+// declarationValueEnd returns the index of the token that ends the value
+// of the declaration at the cursor and whether the value is followed by
+// ! and an identifier. CSS Syntax 3 "consume a declaration" takes the
+// component values up to a ; (or the end of the block) and removes the
+// last two non-whitespace ones when they are ! and important; the port
+// also splits off ! and any other identifier, for upstream's support of
+// hacks like !ie.
+// https://drafts.csswg.org/css-syntax-3/#consume-declaration
+func declarationValueEnd(p *Parser) (end int, important bool) {
+	start := p.TokenIndex
+	end = p.scanUntilBalanced(start, tokenizer.Semicolon)
+
+	ident := lastNonSC(p, start, end)
+	if ident < 0 || p.GetTokenType(ident) != tokenizer.Ident {
+		return end, false
+	}
+	bang := lastNonSC(p, start, ident)
+	if bang < 0 || !p.IsDelim(exclamationMark, bang-p.TokenIndex) {
+		return end, false
+	}
+	return bang, true
+}
+
+// lastNonSC returns the index of the last token in [start, end) that is
+// not whitespace or a comment, or -1.
+func lastNonSC(p *Parser, start, end int) int {
+	for i := end - 1; i >= start; i-- {
+		switch p.GetTokenType(i) {
+		case tokenizer.WhiteSpace, tokenizer.Comment:
+		default:
+			return i
+		}
+	}
+	return -1
 }
 
 // Declaration is a property declaration.
@@ -122,10 +163,8 @@ func (p *Parser) Declaration() *Declaration {
 	property := readProperty(p)
 	customProperty := IsCustomProperty(property, 0)
 	parseValue := p.ParseValue
-	consumeRaw := consumeValueRaw
 	if customProperty {
 		parseValue = p.ParseCustomProperty
-		consumeRaw = consumeCustomPropertyRaw
 	}
 	important := ""
 	var value Node
@@ -139,10 +178,13 @@ func (p *Parser) Declaration() *Declaration {
 		p.SkipSC()
 	}
 
+	valueEnd, hasImportant := declarationValueEnd(p)
+	consumeRaw := func() Node { return consumeValueRaw(p, valueEnd, !customProperty) }
+
 	if parseValue {
-		value = p.ParseWithFallback(func() Node { return consumeValue(p) }, func() Node { return consumeRaw(p) })
+		value = p.ParseWithFallback(func() Node { return consumeValue(p, valueEnd) }, consumeRaw)
 	} else {
-		value = consumeRaw(p)
+		value = consumeRaw()
 	}
 
 	if value, ok := value.(*Value); customProperty && ok && value.Children.IsEmpty() {
@@ -157,7 +199,7 @@ func (p *Parser) Declaration() *Declaration {
 		}
 	}
 
-	if p.IsDelim(exclamationMark, 0) {
+	if hasImportant {
 		important = getImportant(p)
 		p.SkipSC()
 	}
