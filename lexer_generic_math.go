@@ -618,9 +618,13 @@ func (p *calcParser) arguments(isKeyword func(index int, keyword string) bool) (
 	var args []calcArg
 	for {
 		p.skipWhiteSpace()
+		start := p.pos
 		if keyword, ok := p.loneKeyword(); ok && isKeyword(len(args), keyword) {
 			args = append(args, calcArg{keyword: keyword})
 		} else {
+			// an identifier that is not a keyword of the function may be
+			// a <calc-keyword>
+			p.pos = start
 			t, ok := p.sum()
 			if !ok {
 				return nil, false

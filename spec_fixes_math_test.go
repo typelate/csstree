@@ -123,6 +123,12 @@ func TestSpecMathMatchProperty(t *testing.T) {
 		{kind: "property", name: "width", value: "calc(0 + 5px)"},
 		{kind: "property", name: "width", value: "calc(5)"},
 		{kind: "property", name: "width", value: "calc(pi)"},
+		// §10.7 a <calc-keyword> may be a whole argument
+		{kind: "property", name: "opacity", value: "calc(pi)", matched: true},
+		{kind: "property", name: "opacity", value: "min(pi, 1)", matched: true},
+		{kind: "property", name: "opacity", value: "max(1, e)", matched: true},
+		{kind: "property", name: "opacity", value: "clamp(0, infinity, 1)", matched: true},
+		{kind: "property", name: "opacity", value: "min(none, 1)"},
 		{kind: "property", name: "width", value: "calc(1px + (2s))"},
 		{kind: "property", name: "width", value: "calc(10% * 10%)"},
 		{kind: "property", name: "width", value: "min(1px, 1s)"},
