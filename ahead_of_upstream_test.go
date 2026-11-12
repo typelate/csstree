@@ -58,6 +58,65 @@ func TestAheadDecodeWhitespaceOnlyURL(t *testing.T) {
 	}, DecodeURL)
 }
 
+// firstValueNode parses source as a value and returns it with its first
+// child.
+func firstValueNode(t *testing.T, source string) (*Value, Node) {
+	t.Helper()
+	ast, err := Parse(source, ParseOptions{Context: ContextValue})
+	if err != nil {
+		t.Fatalf("Parse(%q) error = %v", source, err)
+	}
+	value, ok := ast.(*Value)
+	if !ok {
+		t.Fatalf("Parse(%q) is a %T, want a *Value", source, ast)
+	}
+	return value, value.Children.First()
+}
+
+// Escaped whitespace at the end of a url() is part of its value, and the
+// value survives generating and parsing again.
+func TestAheadEscapedURLEndings(t *testing.T) {
+	tests := []decodeEncodeTest{
+		{`url(data:x\ )`, `data:x `},
+		{`url(a\  )`, `a `},
+		{`url(\ )`, ` `},
+		{"url(a\\\t )", "a\t"},
+		{`url(a\\ )`, `a\`},
+		{`url(a\\\ )`, `a\ `},
+		{`url(a\20  )`, `a `},
+		{`url(a\)`, `a)`},
+		{`url(data:x\ `, `data:x `},
+	}
+
+	forEachDecodeEncodeTest(t, tests, DecodeURL)
+
+	for _, test := range tests {
+		t.Run("preserves the parsed value through generation: "+jsonString(test.from), func(t *testing.T) {
+			ast, first := firstValueNode(t, test.from)
+			url, ok := first.(*URL)
+			if !ok {
+				t.Fatalf("Parse(%q) first child is a %T, want a *URL", test.from, first)
+			}
+			if url.Value != test.to {
+				t.Errorf("Parse(%q) first child value = %q, want %q", test.from, url.Value, test.to)
+			}
+
+			generated, err := Generate(ast, GenerateOptions{})
+			if err != nil {
+				t.Fatalf("Generate(Parse(%q)) error = %v", test.from, err)
+			}
+			_, first = firstValueNode(t, generated)
+			url, ok = first.(*URL)
+			if !ok {
+				t.Fatalf("Parse(%q) first child is a %T, want a *URL", generated, first)
+			}
+			if url.Value != test.to {
+				t.Errorf("Parse(Generate(Parse(%q))) = Parse(%q) first child value = %q, want %q", test.from, generated, url.Value, test.to)
+			}
+		})
+	}
+}
+
 // The EOF position of sources around 16 KiB, parsed by a syntax that has
 // parsed a smaller source before.
 func TestAheadEOFPositionsAfterSmallerSource(t *testing.T) {

@@ -99,6 +99,16 @@ func (g *Generator) Tokenize(raw string) {
 	})
 }
 
+// endsWithOpenEscape reports whether str ends with a \ that no \ before it
+// escapes.
+func endsWithOpenEscape(str string) bool {
+	backslashes := 0
+	for backslashes < len(str) && str[len(str)-1-backslashes] == reverseSolidus {
+		backslashes++
+	}
+	return backslashes%2 == 1
+}
+
 // generateFailure carries an error of the generation (an
 // UnknownNodeTypeError, or a bad source mapping) up to the generate
 // function.

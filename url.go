@@ -33,14 +33,17 @@ func DecodeURL(str string) string {
 		start++
 	}
 
-	for start < end && tokenizer.IsWhiteSpace(tokenizer.CharCodeAt(str, end)) {
+	// (upstream also trims a whitespace that the \ before it escapes, which
+	// belongs to the URL)
+	for start < end && tokenizer.IsWhiteSpace(tokenizer.CharCodeAt(str, end)) && !endsWithOpenEscape(str[start:end]) {
 		end--
 	}
 
 	decoded, trailingBackslash := decodeEscapes(str, start, end)
 	if trailingBackslash && end != length-1 {
-		// upstream: include the last right parenthesis as escaped
-		return str[end+1:]
+		// include the last right parenthesis as escaped
+		// (upstream returns only the parenthesis)
+		return decoded + str[end+1:]
 	}
 
 	return decoded
