@@ -123,6 +123,7 @@ Tokenizer (CSS Syntax 3):
   resume right after an escape.
 - Only U+FEFF is skipped as a byte order mark.
 - A `\` at the end of the source is an escape, so `a\` is one ident.
+- A name is `url` by its value: `u\72l(foo)` is a url token.
 - `DecodeURL` keeps a whitespace that a `\` escapes at the end of a url,
   and decodes a url of only whitespace to the empty string.
 

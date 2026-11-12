@@ -21,7 +21,9 @@ const (
 // preprocessing replaces them.
 func DecodeURL(str string) string {
 	length := len(str)
-	start := 4 // length of "url("
+	// (upstream skips the four chars of "url(", but the name may be longer
+	// when it has escapes, such as `u\72l(`; a name has no bare "(")
+	start := strings.IndexByte(str, leftParenthesis) + 1
 	end := length - 1
 	if tokenizer.CharCodeAt(str, length-1) == rightParenthesis {
 		end = length - 2

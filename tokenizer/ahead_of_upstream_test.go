@@ -32,6 +32,53 @@ func TestAheadEscapeBeforeEOF(t *testing.T) {
 	}
 }
 
+// A name is "url" by its value, after escapes (CSS Syntax 3, 4.3.4).
+func TestAheadEscapedURLNames(t *testing.T) {
+	names := []string{`\75 Rl`, `u\72l`, `ur\6c`, `\u\r\l`, `\000075\000052\00006c`, "\\75\r\nr\\6C"}
+
+	for _, name := range names {
+		t.Run("tokenizes an unquoted URL named "+name, func(t *testing.T) {
+			source := name + `(foo\ bar.png)`
+			want := []typedChunk{{URL, source}}
+			if got := typedChunks(source); !slices.Equal(got, want) {
+				t.Errorf("Tokenize(%q) = %v, want %v", source, got, want)
+			}
+		})
+
+		t.Run("preserves the quoted function boundary for "+name, func(t *testing.T) {
+			source := name + `( "foo" )`
+			want := []typedChunk{
+				{Function, name + "("},
+				{WhiteSpace, " "},
+				{String, `"foo"`},
+				{WhiteSpace, " "},
+				{RightParenthesis, ")"},
+			}
+			if got := typedChunks(source); !slices.Equal(got, want) {
+				t.Errorf("Tokenize(%q) = %v, want %v", source, got, want)
+			}
+		})
+	}
+
+	for _, name := range []string{"curl", "urls", "urlx", `\75rlx`, `u\0072lx`, `\000075xrl`} {
+		t.Run("keeps the distinct function name "+name, func(t *testing.T) {
+			source := name + "(foo)"
+			got := typedChunks(source)
+			if len(got) == 0 || got[0].Type != Function {
+				t.Errorf("Tokenize(%q) = %v, want a first token of type %v", source, got, Function)
+			}
+		})
+	}
+
+	t.Run("keeps bad URL handling for an escaped name", func(t *testing.T) {
+		const source = `\75rl(a b)`
+		want := []typedChunk{{BadURL, source}}
+		if got := typedChunks(source); !slices.Equal(got, want) {
+			t.Errorf("Tokenize(%q) = %v, want %v", source, got, want)
+		}
+	})
+}
+
 // A stream reused for a smaller source gives the tokens of a fresh stream.
 func TestAheadSetSourceAfterLargerSource(t *testing.T) {
 	const css = ".test\n{\n  prop: url(foo/bar.jpg) url( a\\(\\33 \\).\\ \\\"\\'test ) calc(1 + 1) \\x \\aa ;\n}<!--<-->\\\n"

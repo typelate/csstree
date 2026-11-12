@@ -295,7 +295,8 @@ func (s *scanner) consumeIdentLikeToken() TokenType {
 
 	// If string’s value is an ASCII case-insensitive match for "url",
 	// and the next input code point is U+0028 LEFT PARENTHESIS ((), consume it.
-	if CmpStr(s.source, nameStartOffset, s.offset, "url") && s.charCode(s.offset) == '(' {
+	// (upstream compares the text of the name, so it misses `u\72l(`)
+	if nameEndOffset := s.offset; s.charCode(s.offset) == '(' && IsURLName(s.source, nameStartOffset, nameEndOffset) {
 		// While the next two input code points are whitespace, consume the next input code point.
 		s.offset = findWhiteSpaceEnd(s.source, s.offset+1)
 
@@ -303,7 +304,7 @@ func (s *scanner) consumeIdentLikeToken() TokenType {
 		// or whitespace followed by U+0022 QUOTATION MARK (") or U+0027 APOSTROPHE ('),
 		// then create a <function-token> with its value set to string and return it.
 		if code := s.charCode(s.offset); code == '"' || code == '\'' {
-			s.offset = nameStartOffset + len("url(")
+			s.offset = nameEndOffset + len("(")
 			return Function
 		}
 

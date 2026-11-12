@@ -38,7 +38,7 @@ func defaultRecognizer(p *Parser, context *SequenceContext) Node {
 		return p.Number()
 
 	case tokenizer.Function:
-		if p.CmpStr(p.TokenStart, p.TokenEnd, "url(") {
+		if tokenizer.IsURLName(p.Source, p.TokenStart, p.TokenEnd-1) {
 			return p.URL()
 		}
 		return p.Function(p.ReadSequence, context.Recognizer)

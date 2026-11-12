@@ -119,6 +119,52 @@ func TestAheadGenerateEscapeBeforeEOF(t *testing.T) {
 	}
 }
 
+// A name is "url" by its value, after escapes (CSS Syntax 3, 4.3.4). The
+// tokenizer package has the token tests.
+func TestAheadEscapedURLNames(t *testing.T) {
+	names := []string{`\75 Rl`, `u\72l`, `ur\6c`, `\u\r\l`, `\000075\000052\00006c`, "\\75\r\nr\\6C"}
+
+	for _, name := range names {
+		t.Run("decodes the URL value after "+name, func(t *testing.T) {
+			source := name + `(foo\ bar.png)`
+			if got, want := DecodeURL(source), "foo bar.png"; got != want {
+				t.Errorf("DecodeURL(%q) = %q, want %q", source, got, want)
+			}
+		})
+
+		for _, suffix := range []string{`(foo)`, `( "foo" )`, `( 'foo' )`} {
+			source := name + suffix
+			t.Run("parses "+source+" as a URL", func(t *testing.T) {
+				ast, first := firstValueNode(t, source)
+				url, ok := first.(*URL)
+				if !ok {
+					t.Fatalf("Parse(%q) first child is a %T, want a *URL", source, first)
+				}
+				if url.Value != "foo" {
+					t.Errorf("Parse(%q) first child value = %q, want %q", source, url.Value, "foo")
+				}
+				generated, err := Generate(ast, GenerateOptions{})
+				if err != nil {
+					t.Fatalf("Generate(Parse(%q)) error = %v", source, err)
+				}
+				if generated != "url(foo)" {
+					t.Errorf("Generate(Parse(%q)) = %q, want %q", source, generated, "url(foo)")
+				}
+			})
+		}
+	}
+
+	for _, name := range []string{"curl", "urls", "urlx", `\75rlx`, `u\0072lx`, `\000075xrl`} {
+		t.Run("keeps the distinct function name "+name, func(t *testing.T) {
+			source := name + "(foo)"
+			_, first := firstValueNode(t, source)
+			if _, ok := first.(*Function); !ok {
+				t.Errorf("Parse(%q) first child is a %T, want a *Function", source, first)
+			}
+		})
+	}
+}
+
 // Escaped whitespace at the end of a url() is part of its value, and the
 // value survives generating and parsing again.
 func TestAheadEscapedURLEndings(t *testing.T) {

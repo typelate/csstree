@@ -23,7 +23,7 @@ func (p *Parser) URL() *URL {
 		value = DecodeURL(p.Consume(tokenizer.URL))
 
 	case tokenizer.Function:
-		if !p.CmpStr(p.TokenStart, p.TokenEnd, "url(") {
+		if !tokenizer.IsURLName(p.Source, p.TokenStart, p.TokenEnd-1) {
 			p.Fail("Function name must be `url`")
 		}
 

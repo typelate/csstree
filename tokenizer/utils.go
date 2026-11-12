@@ -137,6 +137,51 @@ func CmpStr(testStr string, start, end int, referenceStr string) bool {
 	return true
 }
 
+// IsURLName reports whether the name source[start:end] has the value "url":
+// an ASCII case-insensitive match once its escapes are resolved, so `u\72l`
+// and `\55 RL` are "url" too. (Go only: upstream compares the text.)
+//
+// § 4.3.4. Consume an ident-like token
+func IsURLName(source string, start, end int) bool {
+	if end-start == len("url") {
+		return CmpStr(source, start, end, "url")
+	}
+	if start < 0 || end > len(source) {
+		return false
+	}
+
+	const name = "url"
+	matched := 0
+
+	for i := start; i < end; matched++ {
+		if matched == len(name) {
+			return false
+		}
+
+		code := int(source[i])
+		if code == '\\' {
+			escapeEnd := min(ConsumeEscaped(source, i), end)
+			decoded := DecodeEscaped(source[i+1 : escapeEnd])
+			if len(decoded) != 1 {
+				return false
+			}
+			code = int(decoded[0])
+			i = escapeEnd
+		} else {
+			i++
+		}
+
+		if isUppercaseLetter(code) {
+			code |= 0x20
+		}
+		if code != int(name[matched]) {
+			return false
+		}
+	}
+
+	return matched == len(name)
+}
+
 // FindWhiteSpaceStart scans backwards from offset and returns the offset of
 // the first char of the whitespace run that ends at offset.
 func FindWhiteSpaceStart(source string, offset int) int {
