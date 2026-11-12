@@ -137,6 +137,8 @@ Parser and generator:
   `s`.
 - A functional pseudo with only whitespace or a comment inside, such as
   `:is( )`, parses with no children.
+- The end of the source closes an open attribute selector: `[a=b` parses as
+  `[a=b]`.
 - Only a trailing `!important` leaves a declaration value
   (`red!important!important` is important with value `red!important`), and a
   `;` inside `()`, `[]` or a function stays in the value.

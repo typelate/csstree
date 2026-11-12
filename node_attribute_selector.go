@@ -106,7 +106,10 @@ func (p *Parser) AttributeSelector() *AttributeSelector {
 	name := getAttributeName(p)
 	p.SkipSC()
 
-	if p.TokenType != tokenizer.RightSquareBracket {
+	// (upstream fails on an attribute selector that the end of the source
+	// leaves open; the end closes an open block, CSS Syntax 3 §5.4.8, as it
+	// does for the functions and parentheses the parser reads)
+	if !p.EOF && p.TokenType != tokenizer.RightSquareBracket {
 		// a modifier follows a matcher and a value: [name i] is not an
 		// attribute selector
 		matcher = getOperator(p)
@@ -132,7 +135,9 @@ func (p *Parser) AttributeSelector() *AttributeSelector {
 		}
 	}
 
-	p.Eat(tokenizer.RightSquareBracket)
+	if !p.EOF {
+		p.Eat(tokenizer.RightSquareBracket)
+	}
 
 	return &AttributeSelector{
 		Loc:     p.Location(start, p.TokenStart),

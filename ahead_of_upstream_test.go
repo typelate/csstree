@@ -50,6 +50,11 @@ func TestAheadNestedRules(t *testing.T) {
 	runAheadASTFixtures(t, "rule/nesting.json")
 }
 
+// An attribute selector left open at EOF is closed there.
+func TestAheadUnclosedAttributeSelector(t *testing.T) {
+	runAheadASTFixtures(t, "selector/AttributeSelector.json")
+}
+
 // A url() of only whitespace decodes to the empty string.
 func TestAheadDecodeWhitespaceOnlyURL(t *testing.T) {
 	forEachDecodeEncodeTest(t, []decodeEncodeTest{
