@@ -156,6 +156,10 @@ Lexer (CSS Values 4):
 - Math functions (`calc()`, `min()`, `clamp()`, `round()`, trigonometric and
   others) are type checked: `width: calc(red)`, `opacity: calc(1px)` and
   `calc(1px+2px)` no longer match.
+- A value with `env()` that does not match as written fails with
+  `ErrEnvNotSupported` instead of a mismatch, since what `env()` stands for
+  is unknown; a value that matches with it, such as
+  `calc(1px + env(safe-area-inset-top))`, still matches.
 - The color functions take relative colors (CSS Color 5):
   `rgb(from red r g b / alpha)` and `oklch(from red calc(l * 0.9) c h)`
   match, with the channel keywords of each function.

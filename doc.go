@@ -140,7 +140,8 @@
 //     the matcher gave up; a [*SyntaxReferenceError] for an unknown
 //     property, type, at-rule or descriptor; an [*AtruleSyntaxError] for a
 //     prelude or descriptor the at-rule does not allow; or one of
-//     [ErrVarNotSupported], [ErrCustomProperty] and [ErrNotDeclaration].
+//     [ErrVarNotSupported], [ErrEnvNotSupported], [ErrCustomProperty] and
+//     [ErrNotDeclaration].
 //     [Lexer] lists the rest.
 //   - Walk returns [ErrNoWalkHandler] or an [*UnknownVisitError] for bad
 //     [WalkOptions].

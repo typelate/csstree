@@ -5,6 +5,7 @@
 package csstree
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -42,6 +43,55 @@ func runAheadASTFixtures(t *testing.T, names ...string) {
 			})
 		}
 	}
+}
+
+// A value with env() that does not match as written is not a mismatch: what
+// env() stands for is unknown.
+func TestAheadEnvPassthrough(t *testing.T) {
+	lexer, err := DefaultSyntax().NewLexer(&Config{
+		Types: map[string]string{"bar": "foo"},
+	})
+	if err != nil {
+		t.Fatalf("NewLexer() error = %v", err)
+	}
+
+	for _, value := range []string{
+		"env(name)",
+		"env(name) qux",
+		"ENV(name)",
+		"ENV(name) qux",
+		`\65nv(name)`,
+		"foo env(name)",
+		"rgb(env(name))",
+	} {
+		t.Run(value, func(t *testing.T) {
+			match := outcome(lexer.MatchString("<bar>", value))
+			if match.Matched != nil {
+				t.Errorf("MatchString(%q, %q) matched, want no match", "<bar>", value)
+			}
+			if !errors.Is(match.err, ErrEnvNotSupported) {
+				t.Errorf("MatchString(%q, %q) error = %v, want %v", "<bar>", value, match.err, ErrEnvNotSupported)
+			}
+		})
+	}
+
+	t.Run("a value without env() still mismatches", func(t *testing.T) {
+		assertSyntaxMatchError(t, `MatchString("<bar>", "qux")`, outcome(lexer.MatchString("<bar>", "qux")))
+	})
+
+	t.Run("a value that matches with env() still matches", func(t *testing.T) {
+		assertMatchNoError(t, `MatchString("<bar>", "foo")`, outcome(lexer.MatchString("<bar>", "foo")))
+		const value = "calc(1px + env(safe-area-inset-top))"
+		assertMatchNoError(t, fmt.Sprintf("MatchPropertyString(%q, %q)", "width", value),
+			outcome(DefaultLexer().MatchPropertyString("width", value)))
+	})
+
+	t.Run("var() comes first", func(t *testing.T) {
+		_, err := lexer.MatchString("<bar>", "env(name) var(--x)")
+		if !errors.Is(err, ErrVarNotSupported) {
+			t.Errorf("MatchString() error = %v, want %v", err, ErrVarNotSupported)
+		}
+	})
 }
 
 // Nested style rules that start with a class, ID, attribute, universal or

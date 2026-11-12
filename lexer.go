@@ -20,6 +20,10 @@ var (
 	// ErrVarNotSupported is returned for a value containing var(), which
 	// the lexer cannot match.
 	ErrVarNotSupported = errors.New("csstree: matching a value with var() is not supported")
+	// ErrEnvNotSupported is returned for a value containing env() that
+	// does not match as written: it may match once env() is substituted,
+	// which the lexer cannot do.
+	ErrEnvNotSupported = errors.New("csstree: matching a value with env() is not supported")
 	// ErrCustomProperty is returned for a custom property (--*), whose
 	// value has no syntax to match.
 	ErrCustomProperty = errors.New("csstree: custom property values are not matched")
@@ -280,9 +284,11 @@ func sortedKeys[V any](m map[string]V) []string {
 	return slices.Sorted(maps.Keys(m))
 }
 
-func valueHasVar(tokens []matchToken) bool {
+// valueHasFunction reports whether tokens has the function token name,
+// such as "var(".
+func valueHasFunction(tokens []matchToken, name string) bool {
 	for i := 0; i < len(tokens); i++ {
-		if toLowerCase(tokens[i].value) == "var(" || tokenNameIs(&tokens[i], "var(") {
+		if toLowerCase(tokens[i].value) == name || tokenNameIs(&tokens[i], name) {
 			return true
 		}
 	}
@@ -310,7 +316,7 @@ func matchSyntax(lexer *Lexer, syntax *Descriptor, value matchInput, useCSSWideK
 	}
 	var result *matchResult
 
-	if valueHasVar(tokens) {
+	if valueHasFunction(tokens, "var(") {
 		return &MatchResult{}, ErrVarNotSupported
 	}
 
@@ -331,6 +337,11 @@ func matchSyntax(lexer *Lexer, syntax *Descriptor, value matchInput, useCSSWideK
 			return &MatchResult{}, err
 		}
 		if result.tree == nil {
+			// (Go only: upstream reports a mismatch) what env() stands
+			// for is not known, so the mismatch may not be one
+			if valueHasFunction(tokens, "env(") {
+				return &MatchResult{Iterations: result.iterations}, ErrEnvNotSupported
+			}
 			definition, err := syntax.Syntax()
 			if err != nil {
 				return &MatchResult{}, err
@@ -356,7 +367,7 @@ func matchSyntax(lexer *Lexer, syntax *Descriptor, value matchInput, useCSSWideK
 // a *SyntaxReferenceError for an unknown type, property, at-rule or
 // descriptor, or one a syntax refers to, an *AtruleSyntaxError for a
 // prelude or descriptor the at-rule does not allow, ErrVarNotSupported,
-// ErrCustomProperty or ErrNotDeclaration, an *UnknownNodeTypeError for a
+// ErrEnvNotSupported, ErrCustomProperty or ErrNotDeclaration, an *UnknownNodeTypeError for a
 // value they cannot generate, or the *definitionsyntax.SyntaxError of a
 // syntax that does not parse.
 type Lexer struct {
