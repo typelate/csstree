@@ -174,8 +174,10 @@ Definition syntax:
 - Benchmarks of tokenizing, parsing, generating (with and without a source
   map) and property matching: `go test -run='^$' -bench=. .`
 - The fixtures in `testdata/` come from upstream csstree, except
-  `testdata/fuzz`, which holds fuzz corpus entries. `data/mdn` is mdn-data
-  and `data/patch.json` is upstream's patch to it (`data-patch.js`) as JSON.
+  `testdata/fuzz`, which holds fuzz corpus entries, and
+  `testdata/ahead-of-upstream`, which holds fixtures for behavior upstream
+  does not have. `data/mdn` is mdn-data and `data/patch.json` is upstream's
+  patch to it (`data-patch.js`) as JSON.
 
 ## License
 
