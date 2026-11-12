@@ -31,6 +31,9 @@ func (p *Parser) PseudoElementSelector() *PseudoElementSelector {
 		nameLowerCase := toLowerCase(name)
 
 		if p.LookupNonWSType(0) == tokenizer.RightParenthesis {
+			// (upstream leaves the whitespace and comments, and then fails
+			// to find the right parenthesis)
+			p.SkipSC()
 			children = new(List[Node])
 		} else if pseudo, ok := p.config.Pseudo[nameLowerCase]; ok {
 			p.SkipSC()

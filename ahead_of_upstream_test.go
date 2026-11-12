@@ -60,6 +60,16 @@ func TestAheadDecodeWhitespaceOnlyURL(t *testing.T) {
 	}, DecodeURL)
 }
 
+// A functional pseudo whose argument is only whitespace or a comment has no
+// children.
+func TestAheadEmptyFunctionalPseudo(t *testing.T) {
+	runAheadASTFixtures(t,
+		"selector/functional-pseudo/is.json",
+		"selector/functional-pseudo/not.json",
+		"selector/functional-pseudo/slotted.json",
+	)
+}
+
 // firstValueNode parses source as a value and returns it with its first
 // child.
 func firstValueNode(t *testing.T, source string) (*Value, Node) {

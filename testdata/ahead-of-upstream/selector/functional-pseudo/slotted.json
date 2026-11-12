@@ -1,0 +1,11 @@
+{
+    "empty argument with whitespace": {
+        "source": "::slotted( )",
+        "generate": "::slotted()",
+        "ast": {
+            "type": "PseudoElementSelector",
+            "name": "slotted",
+            "children": []
+        }
+    }
+}

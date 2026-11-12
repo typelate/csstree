@@ -135,6 +135,8 @@ Parser and generator:
   direction ranges and conditions mixing `and`/`or` at one level are errors.
 - The column combinator `||` parses, and attribute modifiers must be `i` or
   `s`.
+- A functional pseudo with only whitespace or a comment inside, such as
+  `:is( )`, parses with no children.
 - Only a trailing `!important` leaves a declaration value
   (`red!important!important` is important with value `red!important`), and a
   `;` inside `()`, `[]` or a function stays in the value.
