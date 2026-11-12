@@ -780,7 +780,8 @@
             "syntax": "<number [1,∞]>"
         },
         "color()": {
-            "syntax": "color( <colorspace-params> [ / [ <alpha-value> | none ] ]? )"
+            "comment": "added relative colors, https://drafts.csswg.org/css-color-5/#relative-colors",
+            "syntax": "color( <colorspace-params> [ / [ <alpha-value> | none ] ]? ) | color( from <color> <predefined-rgb> [ <number> | <percentage> | none | r | g | b | alpha ]{3} [ / [ <alpha-value> | none | r | g | b | alpha ] ]? ) | color( from <color> <xyz-space> [ <number> | <percentage> | none | x | y | z | alpha ]{3} [ / [ <alpha-value> | none | x | y | z | alpha ] ]? )"
         },
         "colorspace-params": {
             "syntax": "[ <predefined-rgb-params> | <xyz-params>]"
@@ -848,6 +849,42 @@
         },
         "syntax-string": {
             "syntax": "<string>"
+        },
+        "rgb()": {
+            "comment": "added relative colors, https://drafts.csswg.org/css-color-5/#relative-colors",
+            "syntax": "rgb( <percentage>#{3} , <alpha-value>? ) | rgb( <number>#{3} , <alpha-value>? ) | rgb( [ <number> | <percentage> | none ]{3} [ / [ <alpha-value> | none ] ]? ) | rgb( from <color> [ <number> | <percentage> | none | r | g | b | alpha ]{3} [ / [ <alpha-value> | none | r | g | b | alpha ] ]? )"
+        },
+        "rgba()": {
+            "comment": "added relative colors, https://drafts.csswg.org/css-color-5/#relative-colors",
+            "syntax": "rgba( <percentage>#{3} , <alpha-value>? ) | rgba( <number>#{3} , <alpha-value>? ) | rgba( [ <number> | <percentage> | none ]{3} [ / [ <alpha-value> | none ] ]? ) | rgba( from <color> [ <number> | <percentage> | none | r | g | b | alpha ]{3} [ / [ <alpha-value> | none | r | g | b | alpha ] ]? )"
+        },
+        "hsl()": {
+            "comment": "added relative colors, https://drafts.csswg.org/css-color-5/#relative-colors",
+            "syntax": "hsl( <hue>, <percentage>, <percentage>, <alpha-value>? ) | hsl( [ <hue> | none ] [ <percentage> | <number> | none ] [ <percentage> | <number> | none ] [ / [ <alpha-value> | none ] ]? ) | hsl( from <color> [ <hue> | none | h | s | l | alpha ] [ <number> | <percentage> | none | h | s | l | alpha ]{2} [ / [ <alpha-value> | none | h | s | l | alpha ] ]? )"
+        },
+        "hsla()": {
+            "comment": "added relative colors, https://drafts.csswg.org/css-color-5/#relative-colors",
+            "syntax": "hsla( <hue>, <percentage>, <percentage>, <alpha-value>? ) | hsla( [ <hue> | none ] [ <percentage> | <number> | none ] [ <percentage> | <number> | none ] [ / [ <alpha-value> | none ] ]? ) | hsla( from <color> [ <hue> | none | h | s | l | alpha ] [ <number> | <percentage> | none | h | s | l | alpha ]{2} [ / [ <alpha-value> | none | h | s | l | alpha ] ]? )"
+        },
+        "hwb()": {
+            "comment": "added relative colors, https://drafts.csswg.org/css-color-5/#relative-colors",
+            "syntax": "hwb( [ <hue> | none ] [ <percentage> | <number> | none ] [ <percentage> | <number> | none ] [ / [ <alpha-value> | none ] ]? ) | hwb( from <color> [ <hue> | none | h | w | b | alpha ] [ <number> | <percentage> | none | h | w | b | alpha ]{2} [ / [ <alpha-value> | none | h | w | b | alpha ] ]? )"
+        },
+        "lab()": {
+            "comment": "added relative colors, https://drafts.csswg.org/css-color-5/#relative-colors",
+            "syntax": "lab( [<percentage> | <number> | none] [ <percentage> | <number> | none] [ <percentage> | <number> | none] [ / [<alpha-value> | none] ]? ) | lab( from <color> [ <number> | <percentage> | none | l | a | b | alpha ]{3} [ / [ <alpha-value> | none | l | a | b | alpha ] ]? )"
+        },
+        "oklab()": {
+            "comment": "added relative colors, https://drafts.csswg.org/css-color-5/#relative-colors",
+            "syntax": "oklab( [ <percentage> | <number> | none] [ <percentage> | <number> | none] [ <percentage> | <number> | none] [ / [<alpha-value> | none] ]? ) | oklab( from <color> [ <number> | <percentage> | none | l | a | b | alpha ]{3} [ / [ <alpha-value> | none | l | a | b | alpha ] ]? )"
+        },
+        "lch()": {
+            "comment": "added relative colors, https://drafts.csswg.org/css-color-5/#relative-colors",
+            "syntax": "lch( [<percentage> | <number> | none] [ <percentage> | <number> | none] [ <hue> | none] [ / [<alpha-value> | none] ]? ) | lch( from <color> [ <number> | <percentage> | none | l | c | h | alpha ]{2} [ <hue> | none | l | c | h | alpha ] [ / [ <alpha-value> | none | l | c | h | alpha ] ]? )"
+        },
+        "oklch()": {
+            "comment": "added relative colors, https://drafts.csswg.org/css-color-5/#relative-colors",
+            "syntax": "oklch( [ <percentage> | <number> | none] [ <percentage> | <number> | none] [ <hue> | none] [ / [<alpha-value> | none] ]? ) | oklch( from <color> [ <number> | <percentage> | none | l | c | h | alpha ]{2} [ <hue> | none | l | c | h | alpha ] [ / [ <alpha-value> | none | l | c | h | alpha ] ]? )"
         }
     }
 }

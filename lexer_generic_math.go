@@ -7,6 +7,7 @@
 package csstree
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/typelate/csstree/definitionsyntax"
@@ -378,7 +379,11 @@ func (u calcUnits) base(unit string) (calcBase, bool) {
 // Upstream wraps the numeric generic types in math(), which consumes a
 // math function without looking at its arguments; the matcher calls
 // matchMathFunction before the type instead.
-func matchMathFunction(target calcTarget, percentSibling bool, tokens []matchToken) (consumed int, handled bool) {
+//
+// The function is at token index of the value that colors reads, which
+// tells whether it is in a relative color, whose channel keywords are
+// numbers in a calculation; a nil colors means it is not.
+func matchMathFunction(target calcTarget, percentSibling bool, tokens []matchToken, colors *relativeColors, index int) (consumed int, handled bool) {
 	if len(tokens) == 0 || tokens[0].typ != tokenizer.Function || target.want == calcWantNone {
 		return 0, false
 	}
@@ -402,7 +407,7 @@ func matchMathFunction(target calcTarget, percentSibling bool, tokens []matchTok
 	if percentSibling {
 		ctx = target.percentCtx
 	}
-	p := &calcParser{tokens: tokens, ctx: ctx, units: target.units}
+	p := &calcParser{tokens: tokens, ctx: ctx, units: target.units, colors: colors, index: index}
 	t, ok := p.mathFunction()
 	// a type matching the target also resolves to one of the §10.9
 	// productions
@@ -421,6 +426,142 @@ type calcParser struct {
 	depth  int
 	ctx    calcBase
 	units  calcUnits
+	// colors and index tell whether the calculation, which starts at
+	// token index of the value, is in a relative color.
+	colors *relativeColors
+	index  int
+}
+
+// isChannel reports whether name is a channel keyword of the relative
+// color the calculation is in, which is a number there (CSS Color 5 §4.1).
+func (p *calcParser) isChannel(name string) bool {
+	return p.colors != nil && slices.Contains(p.colors.channels(p.index), name)
+}
+
+// relativeColors tells which math functions of a value are in a relative
+// color. It reads the value once, the first time a calculation has an
+// identifier that is not a calc keyword, so that a value costs one pass
+// however many math functions it has.
+type relativeColors struct {
+	tokens []matchToken
+	known  bool
+	// byIndex has the channel keywords for the index of each math function
+	// token that is in a relative color.
+	byIndex map[int][]string
+}
+
+// channels returns the channel keywords that are numbers in the math
+// function at token index: those of the innermost color function around it
+// that is not a math function, when it is a relative color (`from` follows
+// its name), such as "r", "g", "b" and "alpha" in rgb(). It returns nil
+// anywhere else.
+func (c *relativeColors) channels(index int) []string {
+	if !c.known {
+		c.known = true
+		c.byIndex = relativeColorChannels(c.tokens)
+	}
+	return c.byIndex[index]
+}
+
+// relativeColorChannels returns the channel keywords of each math function
+// token of tokens that is in a relative color, by token index.
+func relativeColorChannels(tokens []matchToken) map[int][]string {
+	// an open function or parenthesis; a math function and a parenthesis
+	// are transparent: what they hold is in the function around them
+	type frame struct {
+		name        string
+		transparent bool
+		// started is set once the first token of the function is read,
+		// and relative when that token is `from`
+		started  bool
+		relative bool
+		channels []string
+		// color is the index in open of the innermost frame, this one
+		// included, that is not transparent; -1 when there is none
+		color int
+	}
+	var (
+		open   []frame
+		result map[int][]string
+	)
+	// pushTransparent opens a frame inside the color function, if any, of
+	// the frame around it.
+	pushTransparent := func() {
+		color := -1
+		if len(open) > 0 {
+			color = open[len(open)-1].color
+		}
+		open = append(open, frame{transparent: true, color: color})
+	}
+
+	for i := range tokens {
+		t := &tokens[i]
+		if t.typ == tokenizer.WhiteSpace || t.typ == tokenizer.Comment {
+			continue
+		}
+
+		if len(open) > 0 {
+			if top := &open[len(open)-1]; !top.transparent {
+				switch {
+				case !top.started:
+					top.started = true
+					top.relative = top.channels != nil && t.typ == tokenizer.Ident && tokenName(t) == "from"
+				case top.relative && top.name == "color(" && t.typ == tokenizer.Ident:
+					switch tokenName(t) {
+					case "xyz", "xyz-d50", "xyz-d65":
+						top.channels = []string{"x", "y", "z", "alpha"}
+					}
+				}
+			}
+		}
+
+		switch t.typ {
+		case tokenizer.LeftParenthesis:
+			pushTransparent()
+
+		case tokenizer.RightParenthesis:
+			if len(open) > 0 {
+				open = open[:len(open)-1]
+			}
+
+		case tokenizer.Function:
+			name := tokenName(t)
+			if !isMathFunctionName(name) {
+				open = append(open, frame{name: name, channels: colorFunctionChannels(name), color: len(open)})
+				continue
+			}
+			if len(open) > 0 {
+				if color := open[len(open)-1].color; color >= 0 && open[color].relative {
+					if result == nil {
+						result = make(map[int][]string)
+					}
+					result[i] = open[color].channels
+				}
+			}
+			pushTransparent()
+		}
+	}
+
+	return result
+}
+
+// colorFunctionChannels returns the channel keywords of the color function
+// name, a lowercased function token value, in a relative color; nil for
+// any other function. For color() they are those of the RGB color spaces.
+func colorFunctionChannels(name string) []string {
+	switch name {
+	case "rgb(", "rgba(", "color(":
+		return []string{"r", "g", "b", "alpha"}
+	case "hsl(", "hsla(":
+		return []string{"h", "s", "l", "alpha"}
+	case "hwb(":
+		return []string{"h", "w", "b", "alpha"}
+	case "lab(", "oklab(":
+		return []string{"l", "a", "b", "alpha"}
+	case "lch(", "oklch(":
+		return []string{"l", "c", "h", "alpha"}
+	}
+	return nil
 }
 
 // skipComments advances pos past comments and returns the token there,
@@ -572,6 +713,10 @@ func (p *calcParser) value() (calcType, bool) {
 		// §10.7 <calc-keyword> = e | pi | infinity | -infinity | NaN
 		switch tokenName(t) {
 		case "e", "pi", "infinity", "-infinity", "nan":
+			p.pos++
+			return numberCalcType(), true
+		}
+		if p.isChannel(tokenName(t)) {
 			p.pos++
 			return numberCalcType(), true
 		}

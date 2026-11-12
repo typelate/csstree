@@ -180,6 +180,9 @@ type matcher struct {
 	tokenIndex   int
 	longestMatch int
 
+	// colors tells which math functions of tokens are in a relative color
+	colors relativeColors
+
 	matchStack  *matchStackItem
 	syntaxStack *syntaxStackItem
 	thenStack   *thenStackItem
@@ -324,6 +327,7 @@ func internalMatch(tokens []matchToken, state *matchGraphNode, syntaxes matchSyn
 		syntaxes:   syntaxes,
 		state:      state,
 		tokenIndex: -1,
+		colors:     relativeColors{tokens: tokens},
 	}
 	m.pushMatch(stubItem, nil, nil)
 
@@ -518,7 +522,7 @@ func (m *matcher) run() (*matchResult, error) {
 			// math functions are type checked (Values 4 §10.9)
 			percentSibling := m.syntaxStack != nil && m.syntaxStack.percentSibling
 			rest := m.tokens[m.tokenIndex:]
-			consumed, handled := matchMathFunction(m.state.generic.calc, percentSibling, rest)
+			consumed, handled := matchMathFunction(m.state.generic.calc, percentSibling, rest, &m.colors, m.tokenIndex)
 			if !handled {
 				consumed = m.state.generic.fn(rest, bounds)
 			}

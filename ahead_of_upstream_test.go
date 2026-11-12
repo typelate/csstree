@@ -280,3 +280,82 @@ func TestAheadParseRecoveryAfterLargerSource(t *testing.T) {
 		t.Errorf("Parse(%q) error = %v", source, err)
 	}
 }
+
+// Relative colors (CSS Color 5): `from <color>` and channel keywords in the
+// color functions.
+func TestAheadRelativeColorSyntax(t *testing.T) {
+	lexer := DefaultLexer()
+
+	for _, value := range []string{
+		"rgb(from red r g b)",
+		"rgb(from #123456 r g b / 0.5)",
+		"rgb(from blue r g b / alpha)",
+		"rgba(from red r g b / 0.5)",
+		"hsl(from red h s l)",
+		"hsl(from red h s l / 0.5)",
+		"hsla(from red h s l / alpha)",
+		"hwb(from red h w b)",
+		"hwb(from red h w b / 0.5)",
+		"lab(from red l a b)",
+		"lab(from red l a b / 0.5)",
+		"lch(from red l c h)",
+		"lch(from red l c h / 0.5)",
+		"oklab(from red l a b)",
+		"oklab(from red l a b / 0.5)",
+		"oklch(from #0af l c h)",
+		"oklch(from red l c h / alpha)",
+		"oklch(from red calc(l * 0.9) c h)",
+		"color(from red srgb r g b)",
+		"color(from red display-p3 r g b / alpha)",
+		"color(from red xyz-d50 x y z / 0.5)",
+	} {
+		t.Run(value, func(t *testing.T) {
+			assertMatchNoError(t, fmt.Sprintf("MatchPropertyString(%q, %q)", "color", value),
+				outcome(lexer.MatchPropertyString("color", value)))
+		})
+	}
+
+	// more of the same, and the keywords of each color space of color()
+	for _, value := range []string{
+		"RGB(FROM red R G B / ALPHA)",
+		"rgb(from rgb(from red r g b) b g r)",
+		"rgb(from red calc(r + 10) min(g, b) calc((b + alpha) / 2))",
+		"hsl(from red calc(h + 180) s l / calc(alpha * 0.5))",
+		"lab(from red l a b / calc(alpha - 0.1))",
+		"color(from red xyz calc(x * 2) y z)",
+		"color(from color(xyz 0 0 0) srgb calc(r * 2) g b)",
+		"rgb(from red 10 20% none)",
+	} {
+		t.Run(value, func(t *testing.T) {
+			assertMatchNoError(t, fmt.Sprintf("MatchPropertyString(%q, %q)", "color", value),
+				outcome(lexer.MatchPropertyString("color", value)))
+		})
+	}
+
+	for _, value := range []string{
+		"rgb(r g b)",                             // channel keywords need an origin color
+		"rgb(0 calc(g) 0)",                       // also inside a calculation
+		"rgb(from red h s l)",                    // the keywords of another function
+		"rgb(from red calc(l) g b)",              // also inside a calculation
+		"rgb(from red, r, g, b)",                 // no legacy syntax with an origin color
+		"rgb(from r g b)",                        // an origin color is required
+		"color(from red srgb x y z)",             // the keywords of another color space
+		"color(from red srgb calc(x) g b)",       // also inside a calculation
+		"color(from red xyz calc(r) y z)",        // also inside a calculation
+		"rgb(from red r g b) calc(r)",            // after the color function
+		"rgb(from red r g b / calc(1px))",        // a calculation is still type checked
+		"rgb(from red r g calc(b * 1px))",        // a channel keyword is a number
+		"rgb(from hsl(from red h s l) h s l)",    // an inner function's keywords
+		"rgb(from red r g b / alpha alpha)",      // one alpha
+		"oklch(from red l c)",                    // three channels
+		"linear-gradient(from red, calc(r))",     // not a color function
+		"rgb(from red r g rgb(0 0 calc(b)))",     // not relative itself
+		"rgb(from red var-like(calc(r)) g b)",    // inside an unknown function
+		"rgb(from red r g b / calc(infinity x))", // a broken calculation
+	} {
+		t.Run("invalid "+value, func(t *testing.T) {
+			assertSyntaxMatchError(t, fmt.Sprintf("MatchPropertyString(%q, %q)", "color", value),
+				outcome(lexer.MatchPropertyString("color", value)))
+		})
+	}
+}

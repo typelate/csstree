@@ -156,6 +156,9 @@ Lexer (CSS Values 4):
 - Math functions (`calc()`, `min()`, `clamp()`, `round()`, trigonometric and
   others) are type checked: `width: calc(red)`, `opacity: calc(1px)` and
   `calc(1px+2px)` no longer match.
+- The color functions take relative colors (CSS Color 5):
+  `rgb(from red r g b / alpha)` and `oklch(from red calc(l * 0.9) c h)`
+  match, with the channel keywords of each function.
 
 Definition syntax:
 
@@ -185,7 +188,7 @@ Definition syntax:
   `testdata/fuzz`, which holds fuzz corpus entries, and
   `testdata/ahead-of-upstream`, which holds fixtures for behavior upstream
   does not have. `data/mdn` is mdn-data and `data/patch.json` is upstream's
-  patch to it (`data-patch.js`) as JSON.
+  patch to it (`data-patch.js`) as JSON, plus the relative color syntaxes.
 
 ## License
 
