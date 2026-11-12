@@ -239,7 +239,7 @@ func TestConsumeEscapedSpecFixes(t *testing.T) {
 		{"\\\xe2\x82a", 3}, // one maximal subpart
 		{"\\\xffa", 2},
 		{"\\a", 2},
-		{"\\", 2},
+		{"\\", 1}, // upstream 2: past the end of the source
 	} {
 		t.Run(tt.source, func(t *testing.T) {
 			if got := ConsumeEscaped(tt.source, 0); got != tt.want {

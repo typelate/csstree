@@ -43,7 +43,7 @@ func TestTokenizeSpecEdges(t *testing.T) {
 		{"§4.3.6 DEL makes a url bad", "url(a\u007fb)c", []tokenChunk{{"bad-url-token", "url(a\u007fb)"}, {"ident-token", "c"}}},
 		{"§4.3.6 an escaped ) stays in a url", "url(a\\)b)c", []tokenChunk{{"url-token", "url(a\\)b)"}, {"ident-token", "c"}}},
 		{"§4.3.6 an escaped newline makes a url bad", "url(a\\\nb)c", []tokenChunk{{"bad-url-token", "url(a\\\nb)"}, {"ident-token", "c"}}},
-		{"§4.3.6 backslash at EOF makes a url bad", "url(a\\", []tokenChunk{{"bad-url-token", "url(a\\"}}},
+		{"§4.3.6 backslash at EOF is an escape in a url", "url(a\\", []tokenChunk{{"url-token", "url(a\\"}}},
 		{"§4.3.6 url( followed by whitespace and a quote is a function", "url(  \"a\")", []tokenChunk{{"function-token", "url("}, {"whitespace-token", "  "}, {"string-token", "\"a\""}, {")-token", ")"}}},
 		{"§4.3.6 url( is ASCII case-insensitive", "URL(a)uRl(b)", []tokenChunk{{"url-token", "URL(a)"}, {"url-token", "uRl(b)"}}},
 		{"§4.3.6 an empty url", "url()", []tokenChunk{{"url-token", "url()"}}},
@@ -70,7 +70,7 @@ func TestTokenizeSpecEdges(t *testing.T) {
 		{"§4.3.1 at-keyword", "@a @- @-- @-a @\\31 @1 @é @", []tokenChunk{{"at-keyword-token", "@a"}, {"whitespace-token", " "}, {"delim-token", "@"}, {"delim-token", "-"}, {"whitespace-token", " "}, {"at-keyword-token", "@--"}, {"whitespace-token", " "}, {"at-keyword-token", "@-a"}, {"whitespace-token", " "}, {"at-keyword-token", "@\\31 "}, {"delim-token", "@"}, {"number-token", "1"}, {"whitespace-token", " "}, {"at-keyword-token", "@é"}, {"whitespace-token", " "}, {"delim-token", "@"}}},
 		{"§4.3.1 backslash followed by a newline is a delim", "\\\nb", []tokenChunk{{"delim-token", "\\"}, {"whitespace-token", "\n"}, {"ident-token", "b"}}},
 		{"§4.3.1 an escape in an ident", "a\\62 c\\\"d", []tokenChunk{{"ident-token", "a\\62 c\\\"d"}}},
-		{"§4.3.1 an ident ends at a backslash before EOF", "a\\", []tokenChunk{{"ident-token", "a"}, {"delim-token", "\\"}}},
+		{"§4.3.8 a backslash before EOF is an escape", "a\\", []tokenChunk{{"ident-token", "a\\"}}},
 		{"§4.3.7 at most six hex digits in an escape", "\\aaaaaaa", []tokenChunk{{"ident-token", "\\aaaaaaa"}}},
 		{"§4.3.7 one whitespace after a hex escape", "\\61  \\61\r\nb", []tokenChunk{{"ident-token", "\\61 "}, {"whitespace-token", " "}, {"ident-token", "\\61\r\nb"}}},
 		{"§4.3.1 function tokens", "a( é( \\61(", []tokenChunk{{"function-token", "a("}, {"whitespace-token", " "}, {"function-token", "é("}, {"whitespace-token", " "}, {"function-token", "\\61("}}},
@@ -231,7 +231,7 @@ func TestIsIdentifierStart(t *testing.T) {
 		{"é", true},
 		{"\\a", true},
 		{"\\\n", false},
-		{"\\", false},
+		{"\\", true},
 		{"1", false},
 		{"", false},
 	} {
@@ -377,7 +377,7 @@ func TestConsumeHelpers(t *testing.T) {
 		{"ConsumeEscaped", ConsumeEscaped, "\\g", 2},
 		{"consumeName", consumeName, "abc d", 3},
 		{"consumeName", consumeName, "a\\62 c", 6},
-		{"consumeName", consumeName, "a\\", 1},
+		{"consumeName", consumeName, "a\\", 2}, // upstream 1: it takes EOF for an invalid escape
 		{"consumeName", consumeName, "a\\\nb", 1},
 		{"consumeName", consumeName, "-_1é(", 5}, // upstream 4: é is two bytes
 		{"consumeName", consumeName, "a\\)b", 4},

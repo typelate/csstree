@@ -90,7 +90,19 @@ func (g *Generator) Token(tokenType tokenizer.TokenType, value string) {
 
 // Tokenize splits raw into tokens and emits them.
 func (g *Generator) Tokenize(raw string) {
-	tokenizer.Tokenize(raw, func(tokenType tokenizer.TokenType, start, end int) {
+	source := raw
+	if endsWithOpenEscape(raw) {
+		// A \ at the end of raw would escape U+FFFD at the end of a source,
+		// but raw is a piece of one: token emits a newline after that \, so
+		// tokenize it as it will be read, before a newline.
+		source += "\n"
+	}
+
+	tokenizer.Tokenize(source, func(tokenType tokenizer.TokenType, start, end int) {
+		end = min(end, len(raw))
+		if start >= end {
+			return
+		}
 		g.h.token(
 			tokenType,
 			raw[start:end],
@@ -194,12 +206,14 @@ func createGenerator(config *Config) generateFunc {
 
 				h.emit(tokenType, value, false)
 
-				// A lone \ must not escape the next char, and a string left open
-				// (a bad-string, or a Raw value ending inside a string) must end at
-				// a newline (CSS Syntax 4.3.5) instead of swallowing what follows.
+				// A \ at the end of a token, be it a lone \ or the end of a
+				// name that was read at the end of its source, must not escape
+				// the next char, and a string left open (a bad-string, or a Raw
+				// value ending inside a string) must end at a newline (CSS
+				// Syntax 4.3.5) instead of swallowing what follows.
 				if tokenType == tokenizer.BadString ||
 					tokenType == tokenizer.String && !isClosedString(value) ||
-					tokenType == tokenizer.Delim && tokenizer.CharCodeAt(value, 0) == reverseSolidus {
+					endsWithOpenEscape(value) {
 					newlineDue = true
 				}
 			},

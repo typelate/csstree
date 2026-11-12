@@ -8,10 +8,6 @@ import "strings"
 // upstream reads UTF-16 code units. Every byte >= 0x80 is part of a non-ASCII
 // code point, so it classifies the same way as the code unit upstream sees.
 
-// eofCode is upstream's local EOF constant; renamed so it does not clash with
-// the EOF token type.
-const eofCode = 0
-
 // https://drafts.csswg.org/css-syntax-3/
 // § 4.2. Definitions
 
@@ -126,8 +122,10 @@ func IsValidEscape(first, second int) bool {
 		return false
 	}
 
-	// Otherwise, if the second code point is a newline or EOF, return false.
-	if isNewline(second) || second == eofCode {
+	// Otherwise, if the second code point is a newline, return false.
+	// (upstream also returns false for EOF; the spec does not, so a \ at
+	// the end of the source is an escape of U+FFFD)
+	if isNewline(second) {
 		return false
 	}
 

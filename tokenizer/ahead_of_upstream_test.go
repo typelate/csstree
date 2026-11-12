@@ -9,6 +9,29 @@ import (
 	"testing"
 )
 
+type typedChunk struct {
+	Type  TokenType
+	Value string
+}
+
+func typedChunks(source string) []typedChunk {
+	var result []typedChunk
+	Tokenize(source, func(tokenType TokenType, start, end int) {
+		result = append(result, typedChunk{tokenType, source[start:end]})
+	})
+	return result
+}
+
+// A backslash before EOF is a valid escape (CSS Syntax 3, 4.3.8), so it
+// starts an ident.
+func TestAheadEscapeBeforeEOF(t *testing.T) {
+	const source = `\`
+	want := []typedChunk{{Ident, source}}
+	if got := typedChunks(source); !slices.Equal(got, want) {
+		t.Errorf("Tokenize(%q) = %v, want %v", source, got, want)
+	}
+}
+
 // A stream reused for a smaller source gives the tokens of a fresh stream.
 func TestAheadSetSourceAfterLargerSource(t *testing.T) {
 	const css = ".test\n{\n  prop: url(foo/bar.jpg) url( a\\(\\33 \\).\\ \\\"\\'test ) calc(1 + 1) \\x \\aa ;\n}<!--<-->\\\n"

@@ -182,10 +182,16 @@ func ConsumeEscaped(source string, offset int) int {
 	// that the next input code point has already been verified to be part of a valid escape.
 	offset++
 
+	// EOF
+	// This is a parse error. Return U+FFFD REPLACEMENT CHARACTER.
+	// (Go only: upstream returns an offset past the end of the source)
+	if offset >= len(source) {
+		return len(source)
+	}
+
 	// anything else
 	// Return the current input code point.
-	// (Go only: the whole code point; upstream consumes one UTF-16 code unit,
-	// and offset+1 past the end, where this returns that too.)
+	// (Go only: the whole code point; upstream consumes one UTF-16 code unit)
 	if !IsHexDigit(CharCodeAt(source, offset)) {
 		_, size := CodePointAt(source, offset)
 		return offset + max(size, 1)

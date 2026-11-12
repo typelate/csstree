@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/typelate/csstree/tokenizer"
 )
 
 const aheadFixtureDir = "testdata/ahead-of-upstream"
@@ -71,6 +73,50 @@ func firstValueNode(t *testing.T, source string) (*Value, Node) {
 		t.Fatalf("Parse(%q) is a %T, want a *Value", source, ast)
 	}
 	return value, value.Children.First()
+}
+
+// A token that ends with a \ escaping the end of its source, such as the
+// ident `c\`, is generated with a newline after it, so that the \ does not
+// escape what the generator writes next.
+func TestAheadGenerateEscapeBeforeEOF(t *testing.T) {
+	for _, source := range []string{`c\`, `#c\`, `1c\`, `c\\\`, `-\`, `\`} {
+		t.Run("in a value: "+source, func(t *testing.T) {
+			_, first := firstValueNode(t, source)
+			value := &Value{Children: new(List[Node]).AppendData(first).AppendData(&Identifier{Name: "z"})}
+
+			// the value context does not take the \ delim the newline leaves,
+			// so look at the tokens
+			generated := mustGenerate(t, value)
+			var last string
+			tokenizer.Tokenize(generated, func(tokenType tokenizer.TokenType, start, end int) {
+				last = tokenType.String() + " " + generated[start:end]
+			})
+			if want := "ident-token z"; last != want {
+				t.Errorf("Generate(Parse(%q) and the identifier z) = %q, whose last token is %q, want %q", source, generated, last, want)
+			}
+		})
+	}
+
+	for _, source := range []string{`a{b:c\`, `a{b:#c\`, `a{b:1c\`, `a{--b:c\`, `a{b\`, `@a b\`, `@a{b:c\`, `a{b:c\\\`} {
+		t.Run("before the end of a block: "+source, func(t *testing.T) {
+			generated := mustGenerate(t, mustParse(t, source, ParseOptions{}))
+
+			// a rule after the generated text stays a rule of the style sheet
+			sheet, ok := mustParse(t, generated+"\nz{}", ParseOptions{}).(*StyleSheet)
+			if !ok {
+				t.Fatalf("Parse(%q) is not a *StyleSheet", generated+"\nz{}")
+			}
+			rule, ok := sheet.Children.Last().(*Rule)
+			if !ok || sheet.Children.Len() != 2 || mustGenerate(t, rule) != "z{}" {
+				t.Errorf("Parse(%q), generated from Parse(%q) and followed by z{}, = %s, want two children, the last one z{}",
+					generated, source, jsonText(t, toPlainJSON(t, sheet), ""))
+			}
+
+			if second := mustGenerate(t, mustParse(t, generated, ParseOptions{})); second != generated {
+				t.Errorf("Generate(Parse(%q)) = %q, want the same", generated, second)
+			}
+		})
+	}
 }
 
 // Escaped whitespace at the end of a url() is part of its value, and the
