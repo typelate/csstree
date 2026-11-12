@@ -27,7 +27,9 @@ func DecodeURL(str string) string {
 		end = length - 2
 	}
 
-	for start < end && tokenizer.IsWhiteSpace(tokenizer.CharCodeAt(str, start)) {
+	// (upstream stops at end, which leaves the last whitespace of a url of
+	// only whitespace)
+	for start <= end && tokenizer.IsWhiteSpace(tokenizer.CharCodeAt(str, start)) {
 		start++
 	}
 

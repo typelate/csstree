@@ -48,6 +48,16 @@ func TestAheadNestedRules(t *testing.T) {
 	runAheadASTFixtures(t, "rule/nesting.json")
 }
 
+// A url() of only whitespace decodes to the empty string.
+func TestAheadDecodeWhitespaceOnlyURL(t *testing.T) {
+	forEachDecodeEncodeTest(t, []decodeEncodeTest{
+		{`url( )`, ``},
+		{`url(  )`, ``},
+		{"url(\t)", ``},
+		{"url( \t )", ``},
+	}, DecodeURL)
+}
+
 // The EOF position of sources around 16 KiB, parsed by a syntax that has
 // parsed a smaller source before.
 func TestAheadEOFPositionsAfterSmallerSource(t *testing.T) {
